@@ -69,6 +69,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .main-content {
     padding: 32px;
+    overflow-y: auto;
 }
 
 /* ---------------------------------- */
@@ -177,8 +178,8 @@ h1, h2, h3, h4, h5, h6 {
     padding: 10px 16px;
 }
 
-button[type="submit"] {
-    width: 100%;
+button[type="submit"], .button-primary {
+    display: inline-block;
     padding: 14px;
     background-color: var(--color-accent-primary);
     color: white;
@@ -188,14 +189,22 @@ button[type="submit"] {
     font-weight: 600;
     font-family: var(--font-primary);
     cursor: pointer;
+    text-decoration: none;
+    text-align: center;
     transition: background-color 0.2s ease, transform 0.1s ease;
 }
+button[type="submit"] {
+    width: 100%;
+}
+.button-primary:hover {
+    color: white;
+}
 
-button[type="submit"]:hover {
+button[type="submit"]:hover, .button-primary:hover {
     background-color: var(--color-accent-primary-dark);
 }
 
-button[type="submit"]:active {
+button[type="submit"]:active, .button-primary:active {
     transform: translateY(1px);
 }
 
@@ -237,8 +246,6 @@ button[type="submit"]:active {
 /* ---------------------------------- */
 @media (max-width: 992px) {
     .app-layout {
-        /* On mobile, we stack sidebar and content */
-        /* For now, we just hide the sidebar for simplicity */
         grid-template-columns: 1fr;
     }
     .sidebar {
@@ -250,20 +257,142 @@ button[type="submit"]:active {
     .card-body, .card-header {
         padding: 24px;
     }
-}```
+}
 
----
+/* ---------------------------------- */
+/* 8. Staff List Page Styles          */
+/* ---------------------------------- */
 
-### Mettre à jour le Dépôt Git
+.page-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 32px;
+}
 
-Cette refonte visuelle est une étape majeure. Engageons-la avec un message clair.
+.page-header h2 {
+    margin-bottom: 0;
+}
 
-```bash
-# 1. Add all changed files to staging
-git add .
+.filter-controls label {
+    font-weight: 500;
+    margin-right: 16px;
+}
 
-# 2. Commit the changes
-git commit -m "refactor(ui): Implement new dashboard design with sidebar"
+.filter-controls select {
+    padding: 8px 12px;
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface);
+    font-family: var(--font-primary);
+    font-size: 0.95rem;
+}
 
-# 3. Push to GitHub
-git push
+.staff-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
+}
+
+.staff-card {
+    background-color: var(--color-surface);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-card);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.staff-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 28px rgba(26, 32, 53, 0.08);
+}
+
+.staff-card-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 24px;
+}
+
+.staff-card-header img {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--color-border);
+}
+
+.staff-card-name h3 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+.staff-card-name span {
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+}
+
+.staff-card-body {
+    padding: 0 24px;
+    flex-grow: 1;
+}
+
+.staff-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 16px;
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+}
+.staff-details p {
+    margin: 0;
+}
+.staff-details strong {
+    color: var(--color-text-primary);
+}
+
+.staff-card-status {
+    margin-top: 16px;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+/* Status Badge Colors */
+.status-active { background-color: #d1fae5; color: #065f46; }
+.status-on-assignment { background-color: #dbeafe; color: #1e40af; }
+.status-quiet-recent { background-color: #ffedd5; color: #9a3412; }
+.status-moderately-active { background-color: #e0e7ff; color: #3730a3; }
+.status-on-holiday { background-color: #fce7f3; color: #9d266b; }
+.status-inactive-long-time { background-color: #e5e7eb; color: #374151; }
+
+.staff-card-footer {
+    padding: 24px;
+    text-align: right;
+    border-top: 1px solid var(--color-border);
+    margin-top: 24px;
+}
+
+.button-details {
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+    padding: 8px 16px;
+    border-radius: var(--border-radius-sm);
+    font-weight: 500;
+    font-size: 0.9rem;
+    border: 1px solid var(--color-border);
+    text-decoration: none;
+}
+.button-details:hover {
+    background-color: var(--color-main-bg);
+    color: var(--color-text-primary);
+    border-color: var(--color-accent-primary);
+}

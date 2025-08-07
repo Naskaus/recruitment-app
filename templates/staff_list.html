@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Staff Inventory</h2>
+    <div class="filter-controls">
+        <label for="statusFilter">Filter by status:</label>
+        <select id="statusFilter">
+            <option value="all">All Statuses</option>
+            {% for status in statuses %}
+                <option value="{{ status | lower | replace(' ', '-') }}">{{ status }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<div class="staff-grid">
+    {% for profile in profiles %}
+        <div class="staff-card" data-status="{{ profile.status | lower | replace(' ', '-') }}">
+            <div class="staff-card-header">
+                <img src="{{ profile.photo_url }}" alt="Photo of {{ profile.first_name }}">
+                <div class="staff-card-name">
+                    <h3>{{ profile.first_name }} {{ profile.last_name }}</h3>
+                    {% if profile.nickname %}
+                        <span>"{{ profile.nickname }}"</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="staff-card-body">
+                <div class="staff-details">
+                    <p><strong>Age:</strong> {{ profile.age or 'N/A' }}</p>
+                    <p><strong>Height:</strong> {{ profile.height }} cm</p>
+                    <p><strong>Weight:</strong> {{ profile.weight }} kg</p>
+                </div>
+                <div class="staff-card-status">
+                    <span class="status-badge status-{{ profile.status | lower | replace(' ', '-') }}">{{ profile.status }}</span>
+                </div>
+            </div>
+            <div class="staff-card-footer">
+                <a href="#" class="button-details">View Details</a>
+            </div>
+        </div>
+    {% else %}
+        <div class="card">
+            <div class="card-body" style="text-align: center;">
+                <h3>No Staff Profiles Found</h3>
+                <p>Get started by creating a new profile.</p>
+                <a href="/profile/new" class="button-primary">Create Profile Now</a>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

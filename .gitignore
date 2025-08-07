@@ -12,3 +12,10 @@ venv/
 # IDE / Editor
 .vscode/
 .idea/
+
+# Database
+recruitment.db
+instance/
+
+# Flask-Migrate
+migrations/

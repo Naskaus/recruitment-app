@@ -1,86 +1,195 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 import os
-from datetime import datetime
+from datetime import datetime, date
+from werkzeug.utils import secure_filename
+import time
 
+# --- App Initialization ---
 app = Flask(__name__)
 
-# In-memory database, now with status and creation date
-staff_profiles = {}
-next_staff_id = 1
+# --- Configuration ---
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 
-# Define status levels
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(BASE_DIR, "recruitment.db")}'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# --- Database Setup ---
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+# --- Hardcoded Admin List (for now) ---
+ADMIN_LIST = ["Admin 1", "Mama Rose", "Mama Joy", "Khun Somchai"]
+
+# Ensure an 'uploads' directory exists
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+# --- Database Models ---
+class StaffProfile(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    first_name = db.Column(db.String(80))
+    last_name = db.Column(db.String(80))
+    nickname = db.Column(db.String(80), nullable=False)
+    phone = db.Column(db.String(20))
+    instagram = db.Column(db.String(80))
+    facebook = db.Column(db.String(80))
+    line_id = db.Column(db.String(80))
+    dob = db.Column(db.Date, nullable=False)
+    height = db.Column(db.Integer)
+    weight = db.Column(db.Float)
+    status = db.Column(db.String(50), nullable=False, default='Active')
+    photo_url = db.Column(db.String(200), default='/static/images/default_avatar.png')
+    admin_mama_name = db.Column(db.String(80))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def age(self):
+        if not self.dob: return None
+        today = date.today()
+        return today.year - self.dob.year - ((today.month, today.day) < (self.dob.month, self.dob.day))
+
+# --- Data Definitions ---
 STATUS_LEVELS = [
     "Active", "On assignment", "Quiet (recent)", "Moderately active", 
     "On holiday", "Inactive (long time)"
 ]
 
-# Ensure an 'uploads' directory exists
-if not os.path.exists('uploads'):
-    os.makedirs('uploads')
+# --- Routes ---
 
 @app.route('/')
-def index():
-    """Renders the home page, which will now be the staff list."""
-    # The list() is important to avoid issues with modifying dicts during iteration
-    all_profiles = list(staff_profiles.values())
-    return render_template('staff_list.html', profiles=all_profiles, statuses=STATUS_LEVELS)
-
 @app.route('/staff')
 def staff_list():
-    """Renders the page that lists all staff members."""
-    all_profiles = list(staff_profiles.values())
+    all_profiles = StaffProfile.query.order_by(StaffProfile.created_at.desc()).all()
     return render_template('staff_list.html', profiles=all_profiles, statuses=STATUS_LEVELS)
 
 @app.route('/profile/new', methods=['GET'])
 def new_profile_form():
-    """Displays the form to create a new staff profile."""
-    return render_template('profile_form.html')
+    current_year = date.today().year
+    years = range(current_year - 18, current_year - 60, -1)
+    months = range(1, 13)
+    days = range(1, 32)
+    return render_template('profile_form.html', years=years, months=months, days=days, admins=ADMIN_LIST, edit_mode=False)
+
+@app.route('/profile/<int:profile_id>')
+def profile_detail(profile_id):
+    profile = StaffProfile.query.get_or_404(profile_id)
+    return render_template('profile_detail.html', profile=profile)
+
+@app.route('/profile/<int:profile_id>/edit', methods=['GET'])
+def edit_profile_form(profile_id):
+    profile = StaffProfile.query.get_or_404(profile_id)
+    current_year = date.today().year
+    years = range(current_year - 18, current_year - 60, -1)
+    months = range(1, 13)
+    days = range(1, 32)
+    return render_template('profile_form.html', profile=profile, years=years, months=months, days=days, admins=ADMIN_LIST, edit_mode=True)
+
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+# --- API Endpoints ---
 
 @app.route('/api/profile', methods=['POST'])
 def create_profile():
-    """Handles the creation of a new staff profile."""
-    global next_staff_id
-    
     data = request.form
-    
-    # Calculate age from date of birth
-    age = None
-    if data.get('dob'):
-        try:
-            birth_date = datetime.strptime(data.get('dob'), '%Y-%m-%d')
-            today = datetime.today()
-            age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
-        except ValueError:
-            age = None # Or handle error appropriately
+    if not data.get('nickname'): return jsonify({'status': 'error', 'message': 'Nickname is a required field.'}), 400
+    try:
+        year = int(data.get('dob_year'))
+        month = int(data.get('dob_month'))
+        day = int(data.get('dob_day'))
+        dob_date = date(year, month, day)
+    except (TypeError, ValueError):
+        return jsonify({'status': 'error', 'message': 'A valid Date of Birth is required.'}), 400
 
-    new_profile = {
-        'id': next_staff_id,
-        'first_name': data.get('first_name'),
-        'last_name': data.get('last_name'),
-        'nickname': data.get('nickname'),
-        'phone': data.get('phone'),
-        'instagram': data.get('instagram'),
-        'facebook': data.get('facebook'),
-        'line_id': data.get('line_id'),
-        'dob': data.get('dob'),
-        'age': age,
-        'height': data.get('height'),
-        'weight': data.get('weight'),
-        'status': 'Active',  # Default status for new profiles
-        'photo_url': 'https://via.placeholder.com/100' # Placeholder for now
-    }
-    
-    # Handle photo upload
+    photo_url = '/static/images/default_avatar.png'
     if 'photo' in request.files:
         photo = request.files['photo']
         if photo.filename != '':
-            print(f"Photo '{photo.filename}' received for profile {next_staff_id}.")
+            filename = secure_filename(photo.filename)
+            unique_filename = f"{int(time.time())}_{filename}"
+            save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+            photo.save(save_path)
+            photo_url = f'/uploads/{unique_filename}'
 
-    staff_profiles[next_staff_id] = new_profile
-    next_staff_id += 1
+    new_profile = StaffProfile(
+        nickname=data.get('nickname'),
+        dob=dob_date,
+        first_name=data.get('first_name'),
+        last_name=data.get('last_name'),
+        phone=data.get('phone'),
+        instagram=data.get('instagram'),
+        facebook=data.get('facebook'),
+        line_id=data.get('line_id'),
+        height=data.get('height') or None,
+        weight=data.get('weight') or None,
+        photo_url=photo_url,
+        admin_mama_name=data.get('admin_mama_name')
+    )
+    db.session.add(new_profile)
+    db.session.commit()
+    return jsonify({'status': 'success', 'message': 'Profile created successfully!'}), 201
+
+@app.route('/api/profile/<int:profile_id>', methods=['POST'])
+def update_profile(profile_id):
+    profile = StaffProfile.query.get_or_404(profile_id)
+    data = request.form
     
-    return jsonify({'status': 'success', 'message': 'Profile created successfully!', 'profile': new_profile}), 201
+    if not data.get('nickname'): return jsonify({'status': 'error', 'message': 'Nickname is a required field.'}), 400
+    try:
+        year = int(data.get('dob_year'))
+        month = int(data.get('dob_month'))
+        day = int(data.get('dob_day'))
+        dob_date = date(year, month, day)
+    except (TypeError, ValueError):
+        return jsonify({'status': 'error', 'message': 'A valid Date of Birth is required.'}), 400
 
+    if 'photo' in request.files:
+        photo = request.files['photo']
+        if photo.filename != '':
+            filename = secure_filename(photo.filename)
+            unique_filename = f"{int(time.time())}_{filename}"
+            save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+            photo.save(save_path)
+            profile.photo_url = f'/uploads/{unique_filename}'
+
+    profile.nickname = data.get('nickname')
+    profile.dob = dob_date
+    profile.first_name = data.get('first_name')
+    profile.last_name = data.get('last_name')
+    profile.phone = data.get('phone')
+    profile.instagram = data.get('instagram')
+    profile.facebook = data.get('facebook')
+    profile.line_id = data.get('line_id')
+    profile.height = data.get('height') or None
+    profile.weight = data.get('weight') or None
+    profile.admin_mama_name = data.get('admin_mama_name')
+    
+    db.session.commit()
+    return jsonify({'status': 'success', 'message': 'Profile updated successfully!'}), 200
+
+@app.route('/api/profile/<int:profile_id>/delete', methods=['POST'])
+def delete_profile(profile_id):
+    """Deletes a staff profile."""
+    profile = StaffProfile.query.get_or_404(profile_id)
+    
+    # Optional: Delete the user's photo from the filesystem
+    # Be careful with this in a real app (backups, etc.)
+    if profile.photo_url and 'default_avatar' not in profile.photo_url:
+        try:
+            photo_path = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(profile.photo_url))
+            if os.path.exists(photo_path):
+                os.remove(photo_path)
+        except Exception as e:
+            print(f"Error deleting photo {profile.photo_url}: {e}") # Log the error
+            
+    db.session.delete(profile)
+    db.session.commit()
+    return jsonify({'status': 'success', 'message': 'Profile deleted successfully.'})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

@@ -629,3 +629,15 @@ button:disabled {
 .card-delete-button:hover svg {
     fill: white;
 }
+/* ---------------------------------- */
+/* 13. Drag and Drop Styles           */
+/* ---------------------------------- */
+
+.staff-card.sortable-ghost {
+    opacity: 0.4;
+    background-color: var(--color-accent-focus);
+}
+
+.staff-card.sortable-drag {
+    cursor: grabbing;
+}

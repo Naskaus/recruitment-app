@@ -104,6 +104,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // --- Drag-and-Drop Logic for Staff List ---
+    const staffGrid = document.querySelector('.staff-grid');
+    if (staffGrid) {
+        new Sortable(staffGrid, {
+            animation: 150, // ms, animation speed moving items when sorting, `0` — without animation
+            ghostClass: 'sortable-ghost', // Class name for the drop placeholder
+            dragClass: 'sortable-drag', // Class name for the dragging item
+        });
+    }
+
 });
 
 function handleDelete(profileId, profileName) {

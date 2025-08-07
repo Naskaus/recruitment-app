@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>Create Staff Profile</h2>
+    </div>
+    <div class="card-body">
+        <form id="profileForm" enctype="multipart/form-data">
+            <!-- Photo Upload -->
+            <div class="form-group">
+                <label for="photo">Photo</label>
+                <div class="photo-preview-container">
+                    <img id="photoPreview" src="https://via.placeholder.com/150" alt="Photo preview">
+                </div>
+                <input type="file" id="photo" name="photo" accept="image/*" required>
+            </div>
+
+            <!-- Grid for form fields for better layout on larger screens -->
+            <div class="form-grid">
+                <!-- Personal Information -->
+                <div class="form-group">
+                    <label for="first_name">First Name</label>
+                    <input type="text" id="first_name" name="first_name" required>
+                </div>
+                <div class="form-group">
+                    <label for="last_name">Last Name</label>
+                    <input type="text" id="last_name" name="last_name" required>
+                </div>
+                <div class="form-group">
+                    <label for="nickname">Nickname</label>
+                    <input type="text" id="nickname" name="nickname">
+                </div>
+
+                <!-- Contact Information -->
+                <div class="form-group">
+                    <label for="phone">Phone</label>
+                    <input type="tel" id="phone" name="phone" required>
+                </div>
+                <div class="form-group">
+                    <label for="instagram">Instagram</label>
+                    <input type="text" id="instagram" name="instagram">
+                </div>
+                <div class="form-group">
+                    <label for="facebook">Facebook</label>
+                    <input type="text" id="facebook" name="facebook">
+                </div>
+                <div class="form-group">
+                    <label for="line_id">Line ID</label>
+                    <input type="text" id="line_id" name="line_id">
+                </div>
+
+                <!-- Physical Attributes -->
+                <div class="form-group">
+                    <label for="dob">Date of Birth</label>
+                    <input type="date" id="dob" name="dob" required>
+                </div>
+                <div class="form-group">
+                    <label for="height">Height 

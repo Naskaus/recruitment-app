@@ -1,27 +1,269 @@
-/* Basic Mobile-First Reset & Styles */
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+/* ---------------------------------- */
+/* 1. Design System & Variables       */
+/* ---------------------------------- */
+:root {
+    --font-primary: 'Poppins', sans-serif;
+    
+    /* Color Palette */
+    --color-sidebar-bg: #1A2035;
+    --color-sidebar-text: #D0D2D6;
+    --color-main-bg: #F8F9FB;
+    --color-surface: #FFFFFF;
+    --color-text-primary: #2C3E50;
+    --color-text-secondary: #8492a6;
+    --color-accent-primary: #6A5ACD; /* SlateBlue */
+    --color-accent-primary-dark: #483D8B; /* Darker SlateBlue */
+    --color-accent-secondary: #E87A9B; /* Rose */
+    --color-hover-bg: #2C334D;
+    --color-border: #E5E9F2;
+
+    /* Status Colors */
+    --success-bg: #d1e7dd;
+    --success-text: #0a3622;
+    --error-bg: #f8d7da;
+    --error-text: #58151c;
+
+    /* Sizing & Shadow */
+    --sidebar-width: 260px;
+    --border-radius-sm: 8px;
+    --border-radius-lg: 16px;
+    --shadow-card: 0 8px 24px rgba(26, 32, 53, 0.04);
+}
+
+/* ---------------------------------- */
+/* 2. Global Reset & Base Styles      */
+/* ---------------------------------- */
+* {
     margin: 0;
-    padding: 1rem;
-    background-color: #f4f4f9;
-    color: #333;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-primary);
+    background-color: var(--color-main-bg);
+    color: var(--color-text-primary);
     line-height: 1.6;
 }
 
-header, footer {
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+}
+
+/* ---------------------------------- */
+/* 3. Main Layout                     */
+/* ---------------------------------- */
+.app-layout {
+    display: grid;
+    grid-template-columns: var(--sidebar-width) 1fr;
+    min-height: 100vh;
+}
+
+.sidebar {
+    background-color: var(--color-sidebar-bg);
+    color: var(--color-sidebar-text);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+}
+
+.main-content {
+    padding: 32px;
+}
+
+/* ---------------------------------- */
+/* 4. Sidebar Components              */
+/* ---------------------------------- */
+.sidebar-header h2 {
+    color: white;
     text-align: center;
-    padding: 1rem 0;
+    letter-spacing: 1px;
+    margin-bottom: 40px;
 }
 
-h1 {
-    color: #5a5a5a;
+.sidebar-nav {
+    flex-grow: 1;
 }
 
-main {
-    max-width: 800px;
-    margin: 0 auto;
+.sidebar-nav a,
+.sidebar-footer a {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    border-radius: var(--border-radius-sm);
+    text-decoration: none;
+    color: var(--color-sidebar-text);
+    font-weight: 500;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-nav a:hover {
+    background-color: var(--color-hover-bg);
+    color: white;
+}
+
+.sidebar-nav a.active {
+    background-color: var(--color-accent-primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(106, 90, 205, 0.3);
+}
+
+.sidebar-nav a svg {
+    flex-shrink: 0; /* Prevents icon from shrinking */
+}
+
+/* ---------------------------------- */
+/* 5. Main Content Components         */
+/* ---------------------------------- */
+.card {
+    background-color: var(--color-surface);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-card);
+    overflow: hidden; /* Ensures child elements respect the border radius */
+}
+
+.card-header {
+    padding: 24px 32px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.card-header h2 {
+    font-size: 1.5rem;
+    margin-bottom: 0;
+}
+
+.card-body {
+    padding: 32px;
+}
+
+/* ---------------------------------- */
+/* 6. Form Styles                     */
+/* ---------------------------------- */
+.form-group {
+    margin-bottom: 24px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+}
+
+.form-group input[type="text"],
+.form-group input[type="tel"],
+.form-group input[type="date"],
+.form-group input[type="number"],
+.form-group input[type="file"] {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-sm);
+    font-size: 1rem;
+    font-family: var(--font-primary);
+    background-color: var(--color-main-bg);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--color-accent-primary);
+    box-shadow: 0 0 0 3px rgba(106, 90, 205, 0.2);
+}
+
+.form-group input[type="file"] {
+    padding: 10px 16px;
+}
+
+button[type="submit"] {
+    width: 100%;
+    padding: 14px;
+    background-color: var(--color-accent-primary);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    font-size: 1.1rem;
+    font-weight: 600;
+    font-family: var(--font-primary);
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+button[type="submit"]:hover {
+    background-color: var(--color-accent-primary-dark);
+}
+
+button[type="submit"]:active {
+    transform: translateY(1px);
+}
+
+.photo-preview-container {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+#photoPreview {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 5px solid var(--color-surface);
+    box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    background-color: var(--color-border);
+}
+
+.hidden { display: none; }
+
+#form-response {
+    margin-top: 1.5rem;
     padding: 1rem;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-radius: var(--border-radius-sm);
+    text-align: center;
+    border: 1px solid transparent;
 }
+#form-response.success {
+    background-color: var(--success-bg);
+    color: var(--success-text);
+}
+#form-response.error {
+    background-color: var(--error-bg);
+    color: var(--error-text);
+}
+
+/* ---------------------------------- */
+/* 7. Responsive (Initial)            */
+/* ---------------------------------- */
+@media (max-width: 992px) {
+    .app-layout {
+        /* On mobile, we stack sidebar and content */
+        /* For now, we just hide the sidebar for simplicity */
+        grid-template-columns: 1fr;
+    }
+    .sidebar {
+        display: none; /* We'll replace this with a hamburger menu later */
+    }
+    .main-content {
+        padding: 16px;
+    }
+    .card-body, .card-header {
+        padding: 24px;
+    }
+}```
+
+---
+
+### Mettre à jour le Dépôt Git
+
+Cette refonte visuelle est une étape majeure. Engageons-la avec un message clair.
+
+```bash
+# 1. Add all changed files to staging
+git add .
+
+# 2. Commit the changes
+git commit -m "refactor(ui): Implement new dashboard design with sidebar"
+
+# 3. Push to GitHub
+git push

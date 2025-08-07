@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Dispatch Board</h2>
+    <!-- Future controls like date pickers can go here -->
+</div>
+
+<div class="dispatch-board">
+    <!-- Column for Available Staff -->
+    <div class="dispatch-column">
+        <div class="dispatch-column-header">
+            <h3>Available Staff</h3>
+            <span class="staff-count">{{ available_staff|length }}</span>
+        </div>
+        <div class="dispatch-list" id="available-staff-list" data-venue="available">
+            {% for profile in available_staff %}
+                <div class="dispatch-card" data-id="{{ profile.id }}">
+                    <img src="{{ profile.photo_url }}" alt="{{ profile.nickname }}">
+                    <div class="dispatch-card-info">
+                        <strong>{{ profile.nickname }}</strong>
+                        <span>{{ profile.first_name or '' }}</span>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Columns for Venues -->
+    {% for venue in venues %}
+    <div class="dispatch-column">
+        <div class="dispatch-column-header">
+            <h3>{{ venue }}</h3>
+            <span class="staff-count">{{ dispatched_staff[venue]|length }}</span>
+        </div>
+        <div class="dispatch-list" id="venue-{{ venue|lower|replace(' ', '-') }}-list" data-venue="{{ venue }}">
+            {% for profile in dispatched_staff[venue] %}
+                <div class="dispatch-card" data-id="{{ profile.id }}">
+                    <img src="{{ profile.photo_url }}" alt="{{ profile.nickname }}">
+                    <div class="dispatch-card-info">
+                        <strong>{{ profile.nickname }}</strong>
+                        <span>{{ profile.first_name or '' }}</span>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

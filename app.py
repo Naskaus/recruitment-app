@@ -21,8 +21,9 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-# --- Hardcoded Admin List (for now) ---
+# --- Hardcoded Data (for now) ---
 ADMIN_LIST = ["Admin 1", "Mama Rose", "Mama Joy", "Khun Somchai"]
+VENUE_LIST = ["Red Dragon", "Mandarin", "Shark"]
 
 # Ensure an 'uploads' directory exists
 if not os.path.exists(UPLOAD_FOLDER):
@@ -44,6 +45,7 @@ class StaffProfile(db.Model):
     status = db.Column(db.String(50), nullable=False, default='Active')
     photo_url = db.Column(db.String(200), default='/static/images/default_avatar.png')
     admin_mama_name = db.Column(db.String(80))
+    current_venue = db.Column(db.String(80), nullable=True) # New field for dispatch
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     @property
@@ -65,6 +67,20 @@ STATUS_LEVELS = [
 def staff_list():
     all_profiles = StaffProfile.query.order_by(StaffProfile.created_at.desc()).all()
     return render_template('staff_list.html', profiles=all_profiles, statuses=STATUS_LEVELS)
+
+@app.route('/dispatch')
+def dispatch_board():
+    """Renders the dispatch board page."""
+    all_staff = StaffProfile.query.all()
+    
+    # Sort staff into their respective venues or as available
+    available_staff = [s for s in all_staff if not s.current_venue]
+    dispatched_staff = {venue: [s for s in all_staff if s.current_venue == venue] for venue in VENUE_LIST}
+    
+    return render_template('dispatch.html', 
+                           available_staff=available_staff, 
+                           dispatched_staff=dispatched_staff, 
+                           venues=VENUE_LIST)
 
 @app.route('/profile/new', methods=['GET'])
 def new_profile_form():
@@ -97,7 +113,8 @@ def uploaded_file(filename):
 @app.route('/api/profile', methods=['POST'])
 def create_profile():
     data = request.form
-    if not data.get('nickname'): return jsonify({'status': 'error', 'message': 'Nickname is a required field.'}), 400
+    if not data.get('nickname'):
+        return jsonify({'status': 'error', 'message': 'Nickname is a required field.'}), 400
     try:
         year = int(data.get('dob_year'))
         month = int(data.get('dob_month'))
@@ -115,21 +132,14 @@ def create_profile():
             save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
             photo.save(save_path)
             photo_url = f'/uploads/{unique_filename}'
-
+    
     new_profile = StaffProfile(
-        nickname=data.get('nickname'),
-        dob=dob_date,
-        first_name=data.get('first_name'),
-        last_name=data.get('last_name'),
-        phone=data.get('phone'),
-        instagram=data.get('instagram'),
-        facebook=data.get('facebook'),
-        line_id=data.get('line_id'),
-        height=data.get('height') or None,
-        weight=data.get('weight') or None,
-        photo_url=photo_url,
-        admin_mama_name=data.get('admin_mama_name')
+        nickname=data.get('nickname'), dob=dob_date, first_name=data.get('first_name'),
+        last_name=data.get('last_name'), phone=data.get('phone'), instagram=data.get('instagram'),
+        facebook=data.get('facebook'), line_id=data.get('line_id'), height=data.get('height') or None,
+        weight=data.get('weight') or None, photo_url=photo_url, admin_mama_name=data.get('admin_mama_name')
     )
+
     db.session.add(new_profile)
     db.session.commit()
     return jsonify({'status': 'success', 'message': 'Profile created successfully!'}), 201
@@ -139,7 +149,8 @@ def update_profile(profile_id):
     profile = StaffProfile.query.get_or_404(profile_id)
     data = request.form
     
-    if not data.get('nickname'): return jsonify({'status': 'error', 'message': 'Nickname is a required field.'}), 400
+    if not data.get('nickname'):
+        return jsonify({'status': 'error', 'message': 'Nickname is a required field.'}), 400
     try:
         year = int(data.get('dob_year'))
         month = int(data.get('dob_month'))
@@ -174,22 +185,35 @@ def update_profile(profile_id):
 
 @app.route('/api/profile/<int:profile_id>/delete', methods=['POST'])
 def delete_profile(profile_id):
-    """Deletes a staff profile."""
     profile = StaffProfile.query.get_or_404(profile_id)
     
-    # Optional: Delete the user's photo from the filesystem
-    # Be careful with this in a real app (backups, etc.)
     if profile.photo_url and 'default_avatar' not in profile.photo_url:
         try:
             photo_path = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(profile.photo_url))
             if os.path.exists(photo_path):
                 os.remove(photo_path)
         except Exception as e:
-            print(f"Error deleting photo {profile.photo_url}: {e}") # Log the error
+            print(f"Error deleting photo {profile.photo_url}: {e}")
             
     db.session.delete(profile)
     db.session.commit()
     return jsonify({'status': 'success', 'message': 'Profile deleted successfully.'})
+
+@app.route('/api/profile/<int:profile_id>/dispatch', methods=['POST'])
+def dispatch_staff(profile_id):
+    profile = StaffProfile.query.get_or_404(profile_id)
+    data = request.json
+    new_venue = data.get('venue')
+
+    if new_venue == 'available':
+        profile.current_venue = None
+    elif new_venue in VENUE_LIST:
+        profile.current_venue = new_venue
+    else:
+        return jsonify({'status': 'error', 'message': 'Invalid venue specified.'}), 400
+    
+    db.session.commit()
+    return jsonify({'status': 'success', 'message': f'{profile.nickname} dispatched to {new_venue}.'})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

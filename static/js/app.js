@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => response.json())
             .then(data => {
-                formResponseDiv.classList.remove('hidden', 'success', 'error');
+                formResponsediv.classList.remove('hidden', 'success', 'error');
 
                 if (data.status === 'success') {
                     formResponseDiv.textContent = data.message;
@@ -108,9 +108,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const staffGrid = document.querySelector('.staff-grid');
     if (staffGrid) {
         new Sortable(staffGrid, {
-            animation: 150, // ms, animation speed moving items when sorting, `0` — without animation
-            ghostClass: 'sortable-ghost', // Class name for the drop placeholder
-            dragClass: 'sortable-drag', // Class name for the dragging item
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            dragClass: 'sortable-drag',
+        });
+    }
+
+    // --- Dispatch Board Logic ---
+    const dispatchLists = document.querySelectorAll('.dispatch-list');
+    if (dispatchLists.length > 0) {
+        dispatchLists.forEach(list => {
+            new Sortable(list, {
+                group: 'dispatch', // set all lists to same group
+                animation: 150,
+                ghostClass: 'dispatch-card-ghost',
+                dragClass: 'dispatch-card-drag',
+                onEnd: function (evt) {
+                    const profileId = evt.item.dataset.id;
+                    const newVenue = evt.to.dataset.venue;
+                    updateStaffVenue(profileId, newVenue);
+                },
+            });
         });
     }
 
@@ -143,4 +161,26 @@ function handleDelete(profileId, profileName) {
             alert('A network error occurred while trying to delete the profile.');
         });
     }
+}
+
+function updateStaffVenue(profileId, newVenue) {
+    fetch(`/api/profile/${profileId}/dispatch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ venue: newVenue }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            console.log(data.message);
+            // We can add a visual success indicator later if needed
+        } else {
+            console.error('Failed to update venue:', data.message);
+            alert('Error updating assignment. Please refresh the page.');
+        }
+    })
+    .catch(error => {
+        console.error('Network error:', error);
+        alert('Network error. Please check your connection and refresh the page.');
+    });
 }

@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Payroll & Performance</h2>
+    <p>Showing staff currently on assignment for <strong>{{ today.strftime("%d %B %Y") }}</strong></p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="payroll-table">
+            <thead>
+                <tr>
+                    <th>Staff Member</th>
+                    <th>Current Venue</th>
+                    <th>Managed By</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for staff in assigned_staff %}
+                <tr>
+                    <td>
+                        <div class="staff-cell">
+                            <img src="{{ staff.photo_url }}" alt="{{ staff.nickname }}">
+                            <div class="staff-cell-info">
+                                <strong>{{ staff.nickname }}</strong>
+                                <span>{{ staff.first_name or '' }}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ staff.current_venue }}</td>
+                    <td>{{ staff.admin_mama_name or 'Unassigned' }}</td>
+                    <td>
+                        {% if staff.has_record_for_today %}
+                            <button class="button button-secondary edit-record-btn"
+                                    data-record-id="{{ staff.record_id_for_today }}"
+                                    data-staff-name="{{ staff.nickname }}">Edit Record</button>
+                        {% else %}
+                            <button class="button button-primary add-record-btn"
+                                    data-id="{{ staff.id }}"
+                                    data-staff-name="{{ staff.nickname }}">Add Daily Record</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center">No staff currently on assignment. Go to the <a href="/dispatch">Dispatch Board</a> to assign staff.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ===== Edit Performance Record Modal ===== -->
+<div id="editRecordModal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit Record for <span id="modalStaffName"></span> on <strong id="modalRecordDate"></strong></h3>
+            <button id="closeModalBtn" class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="editRecordForm">
+                <input type="hidden" id="recordId" name="record_id">
+                
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="arrivalTime">Arrival Time (e.g., 19:30)</label>
+                        <input type="time" id="arrivalTime" name="arrival_time">
+                    </div>
+                    <div class="form-group">
+                        <label for="departureTime">Departure Time (e.g., 02:00)</label>
+                        <input type="time" id="departureTime" name="departure_time">
+                    </div>
+                </div>
+
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="drinksSold">Drinks Sold (#)</label>
+                        <input type="number" id="drinksSold" name="drinks_sold" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="specialCommissions">Special Sales (THB)</label>
+                        <input type="number" id="specialCommissions" name="special_commissions" min="0" step="1" value="0">
+                    </div>
+                </div>
+
+                <div class="form-grid-2">
+                     <div class="form-group">
+                        <label for="dailySalary">Base Salary Paid (THB)</label>
+                        <input type="number" id="dailySalary" name="daily_salary" min="0" step="50" value="800">
+                    </div>
+                    <div class="form-group">
+                        <label for="otherDeductions">Other Deductions (-) / Bonus (+)</label>
+                        <input type="number" id="otherDeductions" name="other_deductions" step="1" value="0">
+                    </div>
+                </div>
+
+                <hr>
+                
+                <h4>Calculated Summary</h4>
+                <div class="form-grid-2 summary-grid">
+                    <div class="form-group">
+                        <label>Lateness Penalty (THB)</label>
+                        <input type="number" id="latenessPenalty" name="lateness_penalty" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Drink Commissions (THB)</label>
+                        <input type="number" id="drinkCommissions" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Staff Net Pay (THB)</label>
+                        <input type="number" id="staffNetPay" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Agency Net Profit (THB)</label>
+                        <input type="number" id="agencyNetProfit" readonly>
+                    </div>
+                </div>
+
+                <hr>
+                
+                <h4>Recent History</h4>
+                <div id="recordHistory" class="record-history-list">
+                    <!-- History items will be injected here by JS -->
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" id="cancelModalBtn" class="button button-secondary">Cancel</button>
+                    <button type="submit" class="button button-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

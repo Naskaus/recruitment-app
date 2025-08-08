@@ -103,7 +103,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .sidebar-nav a:hover {
-    background-color: var(--color-hover-bg);
+    background-color: rgba(255, 255, 255, 0.1);
     color: white;
 }
 
@@ -111,7 +111,6 @@ h1, h2, h3, h4, h5, h6 {
     background-color: var(--color-accent-primary);
     color: white;
     box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3); /* Use primary blue for shadow */
-    text-shadow: 0 0 1px rgba(44, 62, 80, 0.7); /* Dark stroke effect */
 }
 
 .sidebar-nav a svg {
@@ -171,6 +170,7 @@ h1, h2, h3, h4, h5, h6 {
 .form-group input[type="date"],
 .form-group input[type="number"],
 .form-group input[type="file"],
+.form-group input[type="time"],
 .form-group select {
     width: 100%;
     padding: 12px 16px;
@@ -183,7 +183,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .form-group input:focus,
-.form-group select:focus {
+.form-group select:focus,
+.form-group input[type="time"]:focus {
     outline: none;
     border-color: var(--color-accent-primary);
     box-shadow: 0 0 0 4px var(--color-accent-focus); /* Halo effect */
@@ -215,6 +216,7 @@ button[type="submit"] {
 button:disabled {
     background-color: var(--color-text-secondary);
     cursor: not-allowed;
+    opacity: 0.7;
 }
 
 .button:active:not(:disabled) {
@@ -284,7 +286,7 @@ button:disabled {
         grid-template-columns: 1fr;
     }
     .sidebar {
-        display: none;
+        display: none; /* In a real app, we'd toggle this with a hamburger menu */
     }
     .main-content {
         padding: 16px;
@@ -491,10 +493,19 @@ button:disabled {
 .button.button-primary {
     background-color: var(--color-accent-primary);
     color: white;
-    text-shadow: 0 0 1px rgba(44, 62, 80, 0.7); /* Dark stroke effect */
 }
 .button.button-primary:hover {
     background-color: var(--color-accent-primary-dark);
+}
+
+.button.button-secondary {
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+}
+.button.button-secondary:hover {
+    background-color: var(--color-hover-bg);
+    border-color: var(--color-text-secondary);
 }
 
 .button.button-danger {
@@ -603,6 +614,7 @@ button:disabled {
     height: 32px;
     background-color: rgba(255, 255, 255, 0.7);
     border-radius: 50%;
+    border: none;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -647,7 +659,7 @@ button:disabled {
 
 .dispatch-board {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 24px;
     align-items: start; /* Align columns at the top */
 }
@@ -728,12 +740,215 @@ button:disabled {
 }
 
 /* Drag and Drop styling for dispatch cards */
-.dispatch-card-ghost {
+.dispatch-card.sortable-ghost {
     opacity: 0.5;
     background-color: var(--color-accent-focus);
     border: 2px dashed var(--color-accent-primary);
 }
 
-.dispatch-card-drag {
+.dispatch-card.sortable-drag {
     cursor: grabbing;
+}
+/* ---------------------------------- */
+/* 15. Payroll Page Styles            */
+/* ---------------------------------- */
+.payroll-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.payroll-table th, .payroll-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+}
+.payroll-table th {
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    color: var(--color-text-secondary);
+}
+.payroll-table tr:last-child td {
+    border-bottom: none;
+}
+.payroll-table td {
+    vertical-align: middle;
+}
+.text-center {
+    text-align: center;
+}
+
+.staff-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.staff-cell img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.staff-cell-info {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ---------------------------------- */
+/* 16. Payroll Modal Styles           */
+/* ---------------------------------- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(26, 32, 53, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.modal-overlay:not(.hidden) {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background-color: var(--color-surface);
+    border-radius: var(--border-radius-lg);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    width: 90%;
+    max-width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+}
+
+.modal-overlay:not(.hidden) .modal-content {
+    transform: scale(1);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.4rem;
+}
+
+.modal-header h3 span {
+    color: var(--color-accent-primary);
+}
+.modal-header h3 strong {
+    color: var(--color-text-primary);
+    font-weight: 600;
+}
+
+
+.modal-close-btn {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    font-weight: 300;
+    line-height: 1;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    padding: 0;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.summary-grid input[readonly] {
+    background-color: var(--color-main-bg);
+    font-weight: bold;
+    color: var(--color-text-primary);
+    border: 1px solid transparent;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 20px 24px;
+    border-top: 1px solid var(--color-border);
+    background-color: var(--color-main-bg);
+}
+
+@media (max-width: 600px) {
+    .form-grid-2 {
+        grid-template-columns: 1fr;
+    }
+    .modal-body {
+        padding: 16px;
+    }
+    .modal-header, .modal-footer {
+        padding: 16px;
+    }
+}
+
+/* ---------------------------------- */
+/* 17. Record History Styles          */
+/* ---------------------------------- */
+.record-history-list {
+    margin-top: 16px;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-sm);
+}
+
+.history-item {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 16px;
+    padding: 12px;
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--color-border);
+    background-color: var(--color-main-bg);
+}
+.history-item:last-child {
+    border-bottom: none;
+}
+.history-item.new-item {
+    animation: slide-in-and-fade 0.7s ease-out forwards;
+}
+
+
+.history-item span {
+    color: var(--color-text-secondary);
+}
+.history-item strong {
+    color: var(--color-text-primary);
+    font-weight: 600;
+}
+
+@keyframes slide-in-and-fade {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

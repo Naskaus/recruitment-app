@@ -1,9 +1,19 @@
+===== TEMPLATES/PAYROLL.HTML – CONTRACTS VERSION =====
 {% extends "base.html" %}
 
 {% block content %}
 <div class="page-header">
-    <h2>Payroll & Performance</h2>
-    <p>Showing staff currently on assignment for <strong>{{ today.strftime("%d %B %Y") }}</strong></p>
+    <h2>Payroll & Performance (Contracts)</h2>
+
+    <form method="get" action="/payroll" class="filter-bar">
+        <label for="venueFilter"><strong>Filter by Venue:</strong></label>
+        <select id="venueFilter" name="venue" onchange="this.form.submit()">
+            <option value="">All venues</option>
+            {% for v in venues %}
+                <option value="{{ v }}" {% if selected_venue == v %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+        </select>
+    </form>
 </div>
 
 <div class="card">
@@ -12,62 +22,96 @@
             <thead>
                 <tr>
                     <th>Staff Member</th>
-                    <th>Current Venue</th>
-                    <th>Managed By</th>
+                    <th>Venue</th>
+                    <th>Contract</th>
+                    <th>Period</th>
+                    <th>Base Salary (THB)</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-                {% for staff in assigned_staff %}
-                <tr>
-                    <td>
-                        <div class="staff-cell">
-                            <img src="{{ staff.photo_url }}" alt="{{ staff.nickname }}">
-                            <div class="staff-cell-info">
-                                <strong>{{ staff.nickname }}</strong>
-                                <span>{{ staff.first_name or '' }}</span>
-                            </div>
-                        </div>
-                    </td>
-                    <td>{{ staff.current_venue }}</td>
-                    <td>{{ staff.admin_mama_name or 'Unassigned' }}</td>
-                    <td>
-                        {% if staff.has_record_for_today %}
-                            <button class="button button-secondary edit-record-btn"
-                                    data-record-id="{{ staff.record_id_for_today }}"
-                                    data-staff-name="{{ staff.nickname }}">Edit Record</button>
-                        {% else %}
-                            <button class="button button-primary add-record-btn"
-                                    data-id="{{ staff.id }}"
-                                    data-staff-name="{{ staff.nickname }}">Add Daily Record</button>
-                        {% endif %}
-                    </td>
-                </tr>
+                {% if assignments and assignments|length > 0 %}
+                    {% for row in assignments %}
+                        {% set a = row.assignment %}
+                        <tr>
+                            <td>
+                                <div class="staff-cell">
+                                    <img src="{{ a.staff.photo_url }}" alt="{{ a.staff.nickname }}">
+                                    <div class="staff-cell-info">
+                                        <strong>{{ a.staff.nickname }}</strong>
+                                        <span>{{ a.staff.first_name or '' }}</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{{ a.venue }}</td>
+                            <td>
+                                <span class="badge">{{ a.contract_type }}</span>
+                                <small class="muted">({{ row.contract_days }} days)</small>
+                            </td>
+                            <td>
+                                {{ a.start_date.strftime("%d/%m/%Y") }} → {{ a.end_date.strftime("%d/%m/%Y") }}
+                            </td>
+                            <td>{{ '%.0f'|format(a.base_salary or 0) }}</td>
+                            <td>
+                                <button
+                                    class="button button-primary manage-performance-btn"
+                                    data-assignment-id="{{ a.id }}"
+                                    data-staff-name="{{ a.staff.nickname }}"
+                                    data-start-date="{{ a.start_date.isoformat() }}"
+                                    data-end-date="{{ a.end_date.isoformat() }}"
+                                    data-base-salary="{{ a.base_salary }}"
+                                    data-contract-days="{{ row.contract_days }}"
+                                >
+                                    Manage Performance
+                                </button>
+                            </td>
+                        </tr>
+                    {% endfor %}
                 {% else %}
-                <tr>
-                    <td colspan="4" class="text-center">No staff currently on assignment. Go to the <a href="/dispatch">Dispatch Board</a> to assign staff.</td>
-                </tr>
-                {% endfor %}
+                    <tr>
+                        <td colspan="6" class="text-center">No ongoing contracts. Use the <a href="/dispatch">Dispatch Board</a> to create one.</td>
+                    </tr>
+                {% endif %}
             </tbody>
         </table>
     </div>
 </div>
 
-<!-- ===== Edit Performance Record Modal ===== -->
+<!-- ===== Manage Performance (by assignment + date) Modal ===== -->
 <div id="editRecordModal" class="modal-overlay hidden">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>Edit Record for <span id="modalStaffName"></span> on <strong id="modalRecordDate"></strong></h3>
+            <h3>
+                Manage Performance for
+                <span id="modalStaffName"></span>
+            </h3>
             <button id="closeModalBtn" class="modal-close-btn">&times;</button>
         </div>
+
         <div class="modal-body">
             <form id="editRecordForm">
-                <input type="hidden" id="recordId" name="record_id">
-                
+                <!-- Hidden data for JS -->
+                <input type="hidden" id="assignmentId" name="assignment_id">
+                <input type="hidden" id="contractDays" name="contract_days">
+                <input type="hidden" id="contractBaseSalary" name="contract_base_salary">
+                <input type="hidden" id="contractStart" name="contract_start">
+                <input type="hidden" id="contractEnd" name="contract_end">
+
+                <!-- Date inside contract period -->
+                <div class="form-group">
+                    <label for="recordDate"><strong>Select Date (within contract period)</strong></label>
+                    <input type="date" id="recordDate" name="record_date">
+                    <small class="muted">
+                        Contract period:
+                        <span id="periodText"></span>
+                    </small>
+                </div>
+
                 <div class="form-grid-2">
                     <div class="form-group">
                         <label for="arrivalTime">Arrival Time (e.g., 19:30)</label>
                         <input type="time" id="arrivalTime" name="arrival_time">
+                        <small class="muted">Late after 19:30 = 5 THB/min</small>
                     </div>
                     <div class="form-group">
                         <label for="departureTime">Departure Time (e.g., 02:00)</label>
@@ -79,56 +123,62 @@
                     <div class="form-group">
                         <label for="drinksSold">Drinks Sold (#)</label>
                         <input type="number" id="drinksSold" name="drinks_sold" min="0" value="0">
+                        <small class="muted">Commission staff: 100 THB/drink</small>
                     </div>
                     <div class="form-group">
-                        <label for="specialCommissions">Special Sales (THB)</label>
+                        <label for="specialCommissions">Special Commissions (THB)</label>
                         <input type="number" id="specialCommissions" name="special_commissions" min="0" step="1" value="0">
+                        <small class="muted">Extra bar revenue</small>
                     </div>
                 </div>
 
                 <div class="form-grid-2">
-                     <div class="form-group">
-                        <label for="dailySalary">Base Salary Paid (THB)</label>
-                        <input type="number" id="dailySalary" name="daily_salary" min="0" step="50" value="800">
+                    <div class="form-group">
+                        <label for="bonus">Bonus (+ THB)</label>
+                        <input type="number" id="bonus" name="bonus" step="1" value="0">
                     </div>
                     <div class="form-group">
-                        <label for="otherDeductions">Other Deductions (-) / Bonus (+)</label>
-                        <input type="number" id="otherDeductions" name="other_deductions" step="1" value="0">
+                        <label for="malus">Malus (- THB)</label>
+                        <input type="number" id="malus" name="malus" step="1" value="0">
                     </div>
                 </div>
 
                 <hr>
-                
-                <h4>Calculated Summary</h4>
+
+                <h4>Calculated Summary (per day)</h4>
                 <div class="form-grid-2 summary-grid">
                     <div class="form-group">
                         <label>Lateness Penalty (THB)</label>
                         <input type="number" id="latenessPenalty" name="lateness_penalty" readonly>
                     </div>
                     <div class="form-group">
-                        <label>Drink Commissions (THB)</label>
-                        <input type="number" id="drinkCommissions" readonly>
+                        <label>Commission paid (THB)</label>
+                        <input type="number" id="commissionPaid" readonly>
                     </div>
                     <div class="form-group">
-                        <label>Staff Net Pay (THB)</label>
-                        <input type="number" id="staffNetPay" readonly>
+                        <label>Prorated Base (THB)</label>
+                        <input type="number" id="proratedBase" readonly>
                     </div>
                     <div class="form-group">
-                        <label>Agency Net Profit (THB)</label>
-                        <input type="number" id="agencyNetProfit" readonly>
+                        <label>Salary paid (THB)</label>
+                        <input type="number" id="salaryPaid" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Bar Profit (THB)</label>
+                        <input type="number" id="barProfit" readonly>
                     </div>
                 </div>
 
                 <hr>
-                
+
                 <h4>Recent History</h4>
                 <div id="recordHistory" class="record-history-list">
-                    <!-- History items will be injected here by JS -->
+                    <!-- History items injected by JS -->
                 </div>
 
                 <div class="modal-footer">
                     <button type="button" id="cancelModalBtn" class="button button-secondary">Cancel</button>
-                    <button type="submit" class="button button-primary">Save Changes</button>
+                    <button type="submit" class="button button-primary">Save</button>
                 </div>
             </form>
         </div>
@@ -136,3 +186,4 @@
 </div>
 
 {% endblock %}
+===== END PAYROLL.HTML =====

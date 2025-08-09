@@ -2,49 +2,81 @@
 
 {% block content %}
 <div class="page-header">
-    <h2>Dispatch Board</h2>
-    <!-- Future controls like date pickers can go here -->
+  <h2>Dispatch Board</h2>
 </div>
 
 <div class="dispatch-board">
-    <!-- Column for Available Staff -->
-    <div class="dispatch-column">
-        <div class="dispatch-column-header">
-            <h3>Available Staff</h3>
-            <span class="staff-count">{{ available_staff|length }}</span>
+  <div class="dispatch-column">
+    <h3>Available</h3>
+    <div class="dispatch-list" data-venue="available">
+      {% for s in available_staff %}
+      <div class="dispatch-card" data-id="{{ s.id }}">
+        <img src="{{ s.photo_url }}" alt="{{ s.nickname }}">
+        <div class="info">
+          <strong>{{ s.nickname }}</strong>
+          <small>{{ s.first_name or '' }}</small>
         </div>
-        <div class="dispatch-list" id="available-staff-list" data-venue="available">
-            {% for profile in available_staff %}
-                <div class="dispatch-card" data-id="{{ profile.id }}">
-                    <img src="{{ profile.photo_url }}" alt="{{ profile.nickname }}">
-                    <div class="dispatch-card-info">
-                        <strong>{{ profile.nickname }}</strong>
-                        <span>{{ profile.first_name or '' }}</span>
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
+      </div>
+      {% endfor %}
     </div>
+  </div>
 
-    <!-- Columns for Venues -->
-    {% for venue in venues %}
-    <div class="dispatch-column">
-        <div class="dispatch-column-header">
-            <h3>{{ venue }}</h3>
-            <span class="staff-count">{{ dispatched_staff[venue]|length }}</span>
+  {% for v in venues %}
+  <div class="dispatch-column">
+    <h3>{{ v }}</h3>
+    <div class="dispatch-list" data-venue="{{ v }}">
+      {% for s in dispatched_staff[v] %}
+      <div class="dispatch-card" data-id="{{ s.id }}">
+        <img src="{{ s.photo_url }}" alt="{{ s.nickname }}">
+        <div class="info">
+          <strong>{{ s.nickname }}</strong>
+          <small>{{ s.first_name or '' }}</small>
         </div>
-        <div class="dispatch-list" id="venue-{{ venue|lower|replace(' ', '-') }}-list" data-venue="{{ venue }}">
-            {% for profile in dispatched_staff[venue] %}
-                <div class="dispatch-card" data-id="{{ profile.id }}">
-                    <img src="{{ profile.photo_url }}" alt="{{ profile.nickname }}">
-                    <div class="dispatch-card-info">
-                        <strong>{{ profile.nickname }}</strong>
-                        <span>{{ profile.first_name or '' }}</span>
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
+      </div>
+      {% endfor %}
     </div>
-    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Assignment modal -->
+<div id="assignmentModal" class="modal-overlay hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Create Assignment for <span id="assignmentStaffName"></span></h3>
+      <button id="closeAssignmentModalBtn" class="modal-close-btn">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="assignmentForm">
+        <input type="hidden" id="assignmentStaffId">
+        <input type="hidden" id="assignmentVenue">
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="contractType">Contract Type</label>
+            <select id="contractType" required>
+              <option value="1jour">1 jour</option>
+              <option value="10jours">10 jours</option>
+              <option value="1mois">1 mois</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="startDate">Start Date</label>
+            <input type="date" id="startDate" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="baseSalary">Base Salary (THB, whole contract)</label>
+          <input type="number" id="baseSalary" min="0" step="50" value="0" required>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="button button-secondary" id="cancelAssignmentModalBtn">Cancel</button>
+          <button type="submit" class="button button-primary">Create Assignment</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 {% endblock %}

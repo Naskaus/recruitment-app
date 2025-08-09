@@ -1,403 +1,196 @@
-document.addEventListener('DOMContentLoaded', function() {
-    
-    // --- General Helper Functions ---
-    const showToast = (message, type = 'error') => {
-        console.error(`Error: ${message}`);
-        alert(message);
-    };
+// ===== static/js/app.js (FULL REPLACEMENT) =====
+(function () {
+  console.log("✅ app.js loaded");
 
-    // --- Logic for the Profile Creation/Edit Form ---
-    const profileForm = document.getElementById('profileForm');
-    if (profileForm) {
-        // This logic remains unchanged
-        const photoInput = document.getElementById('photo');
-        const photoPreview = document.getElementById('photoPreview');
-        const photoPlaceholder = document.getElementById('photoPlaceholder');
-        if (photoInput) {
-            photoInput.addEventListener('change', function(event) {
-                const file = event.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        photoPreview.src = e.target.result;
-                        photoPreview.classList.remove('hidden');
-                        photoPlaceholder.classList.add('hidden');
-                    }
-                    reader.readAsDataURL(file);
-                }
-            });
+  // ---------- Helpers ----------
+  const showToast = (msg) => alert(msg);
+
+  // petit util pour trouver un attribut data-id / data-name proprement
+  function getTargetData(el) {
+    const btn = el.closest(".card-delete-button, .button.button-danger");
+    if (!btn) return null;
+    let id = btn.dataset.id;
+    let name = btn.dataset.name;
+    // fallback si pas de data-name
+    if (!name) {
+      const card = btn.closest("[data-id]");
+      if (card) {
+        const h3 = card.querySelector(".staff-card-name h3, strong");
+        if (h3) name = h3.textContent.trim();
+      }
+    }
+    return { btn, id, name };
+  }
+
+  // ---------- Delete (corbeille et bouton rouge) ----------
+  document.addEventListener("click", function (e) {
+    const info = getTargetData(e.target);
+    if (!info) return;
+
+    e.preventDefault();
+
+    const { id, name } = info;
+    if (!id) {
+      console.warn("⚠️ Delete: data-id manquant");
+      return;
+    }
+
+    if (!confirm(`Delete "${name || "this profile"}"? This cannot be undone.`)) {
+      return;
+    }
+
+    fetch(`/api/profile/${id}/delete`, { method: "POST" })
+      .then((r) => r.json().catch(() => ({})).then((d) => ({ ok: r.ok, data: d })))
+      .then(({ ok, data }) => {
+        if (!ok || data.status !== "success") {
+          throw new Error(data.message || "Server error");
         }
-        profileForm.addEventListener('submit', function(event) {
-            event.preventDefault();
-            const submitButton = profileForm.querySelector('button[type="submit"]');
-            submitButton.disabled = true;
-            submitButton.textContent = 'Saving...';
-            const formData = new FormData(profileForm);
-            const formResponseDiv = document.getElementById('form-response');
-            
-            const mode = profileForm.dataset.mode;
-            const profileId = profileForm.dataset.id;
-            
-            let url = '/api/profile';
-            if (mode === 'edit') {
-                url = `/api/profile/${profileId}`;
-            }
-
-            fetch(url, {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                formResponseDiv.classList.remove('hidden', 'success', 'error');
-                if (data.status === 'success') {
-                    formResponseDiv.textContent = data.message;
-                    formResponseDiv.classList.add('success');
-                    setTimeout(() => {
-                        if (mode === 'edit') {
-                            window.location.href = `/profile/${profileId}`;
-                        } else {
-                            window.location.href = '/staff';
-                        }
-                    }, 1500);
-                } else {
-                    formResponseDiv.textContent = data.message || 'An error occurred.';
-                    formResponseDiv.classList.add('error');
-                    submitButton.disabled = false;
-                    submitButton.textContent = mode === 'edit' ? 'Update Profile' : 'Create Profile';
-                }
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-                showToast('A network error occurred. Please try again.');
-                submitButton.disabled = false;
-                submitButton.textContent = mode === 'edit' ? 'Update Profile' : 'Create Profile';
-            });
-        });
-    }
-
-    // --- Logic for the Staff List Page ---
-    const staffGrid = document.querySelector('.staff-grid');
-    if (staffGrid) {
-        const statusFilter = document.getElementById('statusFilter');
-        statusFilter.addEventListener('change', function() {
-            const selectedStatus = this.value;
-            const staffCards = document.querySelectorAll('.staff-card');
-            staffCards.forEach(function(card) {
-                if (selectedStatus === 'all' || card.dataset.status === selectedStatus) {
-                    card.style.display = 'flex';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-        });
-
-        new Sortable(staffGrid, {
-            animation: 150,
-            ghostClass: 'sortable-ghost',
-            dragClass: 'sortable-drag',
-        });
-    }
-    
-    // --- Dispatch Board Logic ---
-    const dispatchLists = document.querySelectorAll('.dispatch-list');
-    if (dispatchLists.length > 0) {
-        dispatchLists.forEach(list => {
-            new Sortable(list, {
-                group: 'dispatch',
-                animation: 150,
-                ghostClass: 'dispatch-card-ghost',
-                dragClass: 'dispatch-card-drag',
-                onEnd: function (evt) {
-                    const profileId = evt.item.dataset.id;
-                    const newVenue = evt.to.dataset.venue;
-                    updateStaffVenue(profileId, newVenue);
-                },
-            });
-        });
-    }
-
-    // --- Payroll Page & Modal Logic ---
-    const payrollPage = document.querySelector('.payroll-table');
-    if (payrollPage) {
-        const modal = document.getElementById('editRecordModal');
-        const form = document.getElementById('editRecordForm');
-        const closeModalBtn = document.getElementById('closeModalBtn');
-        const cancelModalBtn = document.getElementById('cancelModalBtn');
-        const submitBtn = form.querySelector('button[type="submit"]');
-
-        const modalStaffName = document.getElementById('modalStaffName');
-        const modalRecordDate = document.getElementById('modalRecordDate');
-        const recordIdInput = document.getElementById('recordId');
-        const arrivalInput = document.getElementById('arrivalTime');
-        const departureInput = document.getElementById('departureTime');
-        const drinksInput = document.getElementById('drinksSold');
-        const specialInput = document.getElementById('specialCommissions');
-        const salaryInput = document.getElementById('dailySalary');
-        const otherInput = document.getElementById('otherDeductions');
-
-        const latenessPenaltyInput = document.getElementById('latenessPenalty');
-        const drinkCommissionsInput = document.getElementById('drinkCommissions');
-        const staffNetPayInput = document.getElementById('staffNetPay');
-        const agencyNetProfitInput = document.getElementById('agencyNetProfit');
-        
-        const historyContainer = document.getElementById('recordHistory');
-
-        const STANDARD_ARRIVAL_TIME = "19:00";
-
-        const calculatePerformance = () => {
-            const drinksSold = parseFloat(drinksInput.value) || 0;
-            const specialCommissions = parseFloat(specialInput.value) || 0;
-            const dailySalary = parseFloat(salaryInput.value) || 0;
-            const otherDeductions = parseFloat(otherInput.value) || 0;
-            const arrivalTime = arrivalInput.value;
-
-            // Lateness Penalty
-            let latenessPenalty = 0;
-            if (arrivalTime) {
-                const standardDate = new Date(`1970-01-01T${STANDARD_ARRIVAL_TIME}:00`);
-                const arrivalDate = new Date(`1970-01-01T${arrivalTime}:00`);
-                if (arrivalDate > standardDate) {
-                    const minutesLate = (arrivalDate - standardDate) / 60000;
-                    latenessPenalty = 100 + (minutesLate * 5);
-                }
-            }
-            latenessPenaltyInput.value = latenessPenalty.toFixed(2);
-
-            // Drink Commission
-            const drinkCommission = drinksSold * 100;
-            drinkCommissionsInput.value = drinkCommission.toFixed(2);
-            
-            // Staff Net Pay (Base + Commissions + Bonus/Deduction - Penalty)
-            const staffNetPay = dailySalary + drinkCommission + otherDeductions - latenessPenalty;
-            staffNetPayInput.value = staffNetPay.toFixed(2);
-
-            // Agency Profit (Drinks Revenue + Special Sales - Base Salary Paid)
-            const agencyRevenueFromDrinks = drinksSold * 120;
-            const agencyProfit = (agencyRevenueFromDrinks + specialCommissions) - dailySalary;
-            agencyNetProfitInput.value = agencyProfit.toFixed(2);
-        };
-
-        const renderHistory = (history) => {
-            historyContainer.innerHTML = '';
-            if (!history || history.length === 0) {
-                historyContainer.innerHTML = '<p class="text-center" style="padding: 1rem;">No recent history found.</p>';
-                return;
-            }
-            history.forEach(rec => {
-                const historyItem = createHistoryElement(rec);
-                historyContainer.appendChild(historyItem);
-            });
-        };
-
-        const createHistoryElement = (rec) => {
-            const item = document.createElement('div');
-            item.className = 'history-item';
-            const date = new Date(rec.record_date + 'T00:00:00');
-            const formattedDate = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-            
-            const drinkComm = (rec.drinks_sold || 0) * 100;
-            const netPay = (rec.daily_salary || 0) + drinkComm + (rec.other_deductions || 0) - (rec.lateness_penalty || 0);
-
-            item.innerHTML = `
-                <div><span>Date:</span> <strong>${formattedDate}</strong></div>
-                <div><span>Drinks:</span> <strong>${rec.drinks_sold}</strong></div>
-                <div><span>Penalty:</span> <strong>${(rec.lateness_penalty || 0).toFixed(0)} THB</strong></div>
-                <div><span>Net Pay:</span> <strong>${netPay.toFixed(0)} THB</strong></div>
-            `;
-            return item;
-        };
-
-        const openModal = () => modal.classList.remove('hidden');
-        const closeModal = () => modal.classList.add('hidden');
-
-        const populateForm = (data) => {
-            const { record, history } = data;
-            
-            const recordDate = new Date(record.record_date + 'T00:00:00');
-            modalRecordDate.textContent = recordDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-
-            recordIdInput.value = record.id;
-            arrivalInput.value = record.arrival_time || '';
-            departureInput.value = record.departure_time || '';
-            drinksInput.value = record.drinks_sold || 0;
-            specialInput.value = record.special_commissions || 0;
-            salaryInput.value = record.daily_salary || 800;
-            otherInput.value = record.other_deductions || 0;
-            
-            calculatePerformance();
-            renderHistory(history);
-        };
-
-        payrollPage.addEventListener('click', async (e) => {
-            const button = e.target.closest('button');
-            if (!button) return;
-
-            if (button.matches('.add-record-btn')) {
-                const staffId = button.dataset.id;
-                button.disabled = true;
-                button.textContent = 'Creating...';
-                try {
-                    const response = await fetch('/api/performance-record/', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ staff_id: staffId }),
-                    });
-                    if (response.ok) window.location.reload();
-                    else {
-                        const data = await response.json();
-                        showToast(data.message || 'Error creating record.');
-                        button.disabled = false;
-                        button.textContent = 'Add Daily Record';
-                    }
-                } catch (error) {
-                    showToast('Network error. Could not create record.');
-                    button.disabled = false;
-                    button.textContent = 'Add Daily Record';
-                }
-            }
-
-            if (button.matches('.edit-record-btn')) {
-                const recordId = button.dataset.recordId;
-                const staffName = button.dataset.staffName;
-                modalStaffName.textContent = staffName;
-                try {
-                    const response = await fetch(`/api/performance-record/${recordId}`);
-                    const data = await response.json();
-                    if (response.ok) {
-                        populateForm(data);
-                        openModal();
-                    } else {
-                        showToast(data.message || 'Could not fetch record data.');
-                    }
-                } catch (error) {
-                    showToast('Network error. Could not fetch record data.');
-                }
-            }
-        });
-
-        closeModalBtn.addEventListener('click', closeModal);
-        cancelModalBtn.addEventListener('click', closeModal);
-        form.addEventListener('input', calculatePerformance);
-
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Saving...';
-
-            const recordId = recordIdInput.value;
-            const formData = {
-                arrival_time: arrivalInput.value || null,
-                departure_time: departureInput.value || null,
-                drinks_sold: drinksInput.value,
-                special_commissions: specialInput.value,
-                daily_salary: salaryInput.value,
-                other_deductions: otherInput.value,
-                lateness_penalty: latenessPenaltyInput.value,
-            };
-
-            try {
-                const response = await fetch(`/api/performance-record/${recordId}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData),
-                });
-                const data = await response.json();
-                if (response.ok) {
-                    // Create and animate the new history item for visual feedback
-                    const newHistoryItem = createHistoryElement(data.record);
-                    newHistoryItem.classList.add('new-item');
-                    
-                    const placeholder = historyContainer.querySelector('p');
-                    if(placeholder) placeholder.remove();
-                    historyContainer.prepend(newHistoryItem);
-
-                    // Wait for the animation to be visible, then close and reload for data consistency
-                    setTimeout(() => {
-                        closeModal();
-                        window.location.reload();
-                    }, 1500);
-                } else {
-                    showToast(data.message || 'Failed to save the record.');
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Save Changes';
-                }
-            } catch (error) {
-                showToast('Network error. Could not save the record.');
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Save Changes';
-            }
-        });
-    }
-
-    // --- Global Click Listener for Deletes ---
-    document.addEventListener('click', function(e) {
-        const deleteButton = e.target.closest('.button-danger, .card-delete-button');
-        if (deleteButton) {
-            e.preventDefault();
-            const profileId = deleteButton.dataset.id;
-            const profileName = deleteButton.dataset.name;
-            handleDelete(profileId, profileName);
+        // Si on est sur la page détail du même profil -> redirect liste
+        if (window.location.pathname === `/profile/${id}` || window.location.pathname === `/profile/${id}/`) {
+          window.location.href = "/staff";
+          return;
         }
+        // Sinon, retirer la carte de la liste si elle existe
+        const card = document.querySelector(`.staff-card[data-id="${id}"]`);
+        if (card) {
+          card.style.transition = "opacity .25s ease";
+          card.style.opacity = "0";
+          setTimeout(() => card.remove(), 250);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        showToast("Error deleting profile.");
+      });
+  });
+
+  // ---------- Staff list: Sortable sur .staff-grid ----------
+  document.addEventListener("DOMContentLoaded", function () {
+    const grid = document.querySelector(".staff-grid");
+    if (grid) {
+      if (window.Sortable) {
+        console.log("🔧 Initializing Sortable on .staff-grid");
+        new Sortable(grid, {
+          animation: 150,
+          ghostClass: "sortable-ghost",
+          dragClass: "sortable-drag",
+        });
+      } else {
+        console.warn("⚠️ SortableJS not found. Check <script src='...Sortable.min.js'> in base.html");
+      }
+    }
+  });
+
+  // ---------- Dispatch board: DnD + modal assignment ----------
+  document.addEventListener("DOMContentLoaded", function () {
+    const lists = document.querySelectorAll(".dispatch-list");
+    if (!lists.length) return;
+
+    if (!window.Sortable) {
+      console.warn("⚠️ SortableJS not found on dispatch page.");
+      return;
+    }
+
+    console.log("🔧 Initializing Sortable on .dispatch-list");
+
+    let originalList = null;
+
+    lists.forEach((list) => {
+      new Sortable(list, {
+        group: "dispatch",
+        animation: 150,
+        ghostClass: "dispatch-card-ghost",
+        dragClass: "dispatch-card-drag",
+        onStart(evt) {
+          originalList = evt.from;
+        },
+        onEnd(evt) {
+          const item = evt.item;
+          const profileId = item?.dataset?.id;
+          const newVenue = evt.to?.dataset?.venue;
+          const staffName = item?.querySelector("strong")?.textContent || "Staff";
+
+          if (!profileId || !newVenue) {
+            if (originalList) originalList.appendChild(item);
+            return;
+          }
+
+          if (newVenue === "available") {
+            // On n’implémente pas le retour "available" pour l’instant : on annule
+            if (originalList) originalList.appendChild(item);
+            alert("De-assignment will be added later. For now, you cannot move back to 'Available'.");
+            return;
+          }
+
+          // ouvrir le modal d’Assignment
+          if (typeof window.openAssignmentModal === "function") {
+            window.openAssignmentModal(profileId, staffName, newVenue);
+          } else {
+            alert("Assignment modal not found.");
+          }
+
+          // on annule visuellement le move (la page rechargera après création)
+          if (originalList) originalList.appendChild(item);
+        },
+      });
     });
 
-});
+    // ----- Modal assignment -----
+    const assignmentModal = document.getElementById("assignmentModal");
+    if (!assignmentModal) return;
 
-// --- Globally Scoped Helper Functions ---
-function handleDelete(profileId, profileName) {
-    if (confirm(`Are you sure you want to permanently delete the profile for "${profileName}"? This action cannot be undone.`)) {
-        fetch(`/api/profile/${profileId}/delete`, {
-            method: 'POST',
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                if (window.location.pathname.includes(`/profile/${profileId}`)) {
-                    window.location.href = '/staff';
-                } else {
-                    const cardToRemove = document.querySelector(`.staff-card[data-id='${profileId}']`);
-                    if (cardToRemove) {
-                        cardToRemove.style.transition = 'opacity 0.5s ease';
-                        cardToRemove.style.opacity = '0';
-                        setTimeout(() => cardToRemove.remove(), 500);
-                    }
-                }
-            } else {
-                alert('Error deleting profile: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('A network error occurred while trying to delete the profile.');
-        });
+    const form = document.getElementById("assignmentForm");
+    const closeBtn = document.getElementById("closeAssignmentModalBtn");
+    const cancelBtn = document.getElementById("cancelAssignmentModalBtn");
+    const staffNameSpan = document.getElementById("assignmentStaffName");
+    const staffIdInput = document.getElementById("assignmentStaffId");
+    const venueInput = document.getElementById("assignmentVenue");
+    const startDateInput = document.getElementById("startDate");
+
+    function openModal(staffId, staffName, venue) {
+      staffIdInput.value = staffId;
+      staffNameSpan.textContent = staffName;
+      venueInput.value = venue;
+      startDateInput.value = new Date().toISOString().split("T")[0];
+      assignmentModal.classList.remove("hidden");
     }
-}
+    function closeModal() {
+      assignmentModal.classList.add("hidden");
+    }
+    window.openAssignmentModal = openModal;
+    closeBtn?.addEventListener("click", closeModal);
+    cancelBtn?.addEventListener("click", closeModal);
 
-function updateStaffVenue(profileId, newVenue) {
-    fetch(`/api/profile/${profileId}/dispatch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ venue: newVenue }),
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            console.log(data.message);
-            // Update staff count on the UI
-            document.querySelectorAll('.dispatch-column-header').forEach(header => {
-                const list = header.nextElementSibling;
-                const countSpan = header.querySelector('.staff-count');
-                if(list && countSpan) {
-                    countSpan.textContent = list.children.length;
-                }
-            });
-        } else {
-            console.error('Failed to update venue:', data.message);
-            alert('Error updating assignment. Please refresh the page.');
-        }
-    })
-    .catch(error => {
-        console.error('Network error:', error);
-        alert('Network error. Please check your connection and refresh the page.');
+    form?.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Creating...";
+
+      const payload = {
+        staff_id: staffIdInput.value,
+        venue: venueInput.value,
+        contract_type: document.getElementById("contractType").value,
+        start_date: startDateInput.value,
+        base_salary: document.getElementById("baseSalary").value,
+      };
+
+      try {
+        const res = await fetch("/api/assignment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || "Server error");
+        closeModal();
+        window.location.reload();
+      } catch (err) {
+        alert(err.message || "Network error.");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Create Assignment";
+      }
     });
-}
+  });
+})();

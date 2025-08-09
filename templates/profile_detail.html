@@ -6,23 +6,37 @@
         <div class="profile-detail-header">
             <h2>Profile Details</h2>
             <div class="header-actions">
-                <a href="{{ url_for('edit_profile_form', profile_id=profile.id) }}" class="button button-primary">Edit Profile</a>
-                <button class="button button-danger" data-id="{{ profile.id }}" data-name="{{ profile.nickname }}">Delete</button>
+                <a href="{{ url_for('edit_profile_form', profile_id=profile.id) }}" class="button button-primary">
+                    Edit Profile
+                </a>
+                <button 
+                    class="button button-danger" 
+                    type="button"
+                    data-id="{{ profile.id }}" 
+                    data-name="{{ profile.nickname }}">
+                    Delete
+                </button>
             </div>
         </div>
     </div>
     <div class="card-body">
         <div class="profile-detail-grid">
+            
+            <!-- Photo + Nom + Statut -->
             <div class="profile-photo-section">
                 <img src="{{ profile.photo_url }}" alt="Photo of {{ profile.nickname }}" class="profile-photo-large">
                 <div class="profile-main-names">
                     <h3>{{ profile.nickname }}</h3>
                     <p>{{ profile.first_name or '' }} {{ profile.last_name or '' }}</p>
                 </div>
-                 <div class="staff-card-status">
-                    <span class="status-badge status-{{ profile.status | lower | replace(' ', '-') }}">{{ profile.status }}</span>
+                <div class="staff-card-status">
+                    <span class="status-badge status-{{ profile.status | lower | replace(' ', '-') }}">
+                        {{ profile.status }}
+                    </span>
                 </div>
             </div>
+
+            <!-- Infos personnelles -->
             <div class="profile-info-section">
                 <h4>Personal Information</h4>
                 <div class="info-grid">
@@ -35,14 +49,34 @@
                     <p><strong>Managed by:</strong> {{ profile.admin_mama_name or 'Unassigned' }}</p>
                 </div>
 
+                <!-- Contact et réseaux sociaux -->
                 <h4>Contact & Social</h4>
-                 <div class="info-grid">
+                <div class="info-grid">
                     <p><strong>Phone:</strong> {{ profile.phone or 'N/A' }}</p>
-                    <p><strong>Instagram:</strong> {% if profile.instagram %}<a href="https://instagram.com/{{ profile.instagram }}" target="_blank">{{ profile.instagram }}</a>{% else %}N/A{% endif %}</p>
-                    <p><strong>Facebook:</strong> {% if profile.facebook %}<a href="https://facebook.com/{{ profile.facebook }}" target="_blank">{{ profile.facebook }}</a>{% else %}N/A{% endif %}</p>
-                    <p><strong>Line:</strong> {% if profile.line_id %}<a href="https://line.me/ti/p/~{{ profile.line_id }}" target="_blank">{{ profile.line_id }}</a>{% else %}N/A{% endif %}</p>
+                    <p><strong>Instagram:</strong> 
+                        {% if profile.instagram %}
+                            <a href="https://instagram.com/{{ profile.instagram }}" target="_blank">{{ profile.instagram }}</a>
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </p>
+                    <p><strong>Facebook:</strong> 
+                        {% if profile.facebook %}
+                            <a href="https://facebook.com/{{ profile.facebook }}" target="_blank">{{ profile.facebook }}</a>
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </p>
+                    <p><strong>Line:</strong> 
+                        {% if profile.line_id %}
+                            <a href="https://line.me/ti/p/~{{ profile.line_id }}" target="_blank">{{ profile.line_id }}</a>
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </p>
                 </div>
             </div>
+
         </div>
     </div>
 </div>

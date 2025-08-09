@@ -1,119 +1,248 @@
+
 {% extends "base.html" %}
 
 {% block content %}
-<div class="card">
-    <div class="card-header">
-        <h2>{{ "Edit Profile" if edit_mode else "Create Staff Profile" }}</h2>
-    </div>
-    <div class="card-body">
-        <div class="form-container">
-            <form id="profileForm" 
-                  enctype="multipart/form-data" 
-                  data-mode="{{ 'edit' if edit_mode else 'create' }}"
-                  data-id="{{ profile.id if profile else '' }}">
-                
-                <!-- Photo Upload -->
-                <div class="form-group">
-                    <label for="photo">Photo {{ "(Leave blank to keep current photo)" if edit_mode }}</label>
-                    <div class="photo-preview-container">
-                        <img id="photoPreview" 
-                             src="{{ profile.photo_url if profile and profile.photo_url != '/static/images/default_avatar.png' else '' }}" 
-                             alt="Photo preview" 
-                             class="{{ '' if profile and profile.photo_url != '/static/images/default_avatar.png' else 'hidden' }}">
-                        <div id="photoPlaceholder" class="photo-placeholder {{ 'hidden' if profile and profile.photo_url != '/static/images/default_avatar.png' }}">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                            <span>Upload Image</span>
-                        </div>
-                    </div>
-                    <input type="file" id="photo" name="photo" accept="image/*">
-                </div>
-                
-                <!-- Nickname (Required) -->
-                <div class="form-group">
-                    <label for="nickname">Nickname<span>*</span></label>
-                    <input type="text" id="nickname" name="nickname" value="{{ profile.nickname if profile else '' }}" required>
-                </div>
-
-                <!-- Date of Birth (Required) -->
-                <div class="form-group">
-                    <label>Date of Birth<span>*</span></label>
-                    <div class="form-group-inline">
-                        <div class="form-sub-group">
-                            <label for="dob_year" class="sub-label">Year</label>
-                            <select id="dob_year" name="dob_year" required>
-                                {% for year in years %}
-                                    <option value="{{ year }}" {% if profile and profile.dob and year == profile.dob.year %}selected{% elif not profile and year == 2005 %}selected{% endif %}>{{ year }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="form-sub-group">
-                             <label for="dob_month" class="sub-label">Month</label>
-                            <select id="dob_month" name="dob_month" required>
-                                {% for month in months %}
-                                    <option value="{{ month }}" {% if profile and profile.dob and month == profile.dob.month %}selected{% endif %}>{{ month }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="form-sub-group">
-                            <label for="dob_day" class="sub-label">Day</label>
-                            <select id="dob_day" name="dob_day" required>
-                                {% for day in days %}
-                                    <option value="{{ day }}" {% if profile and profile.dob and day == profile.dob.day %}selected{% endif %}>{{ day }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Admin/Mama -->
-                <div class="form-group">
-                    <label for="admin_mama_name">Managed by (Admin/Mama)</label>
-                    <select id="admin_mama_name" name="admin_mama_name">
-                        <option value="">Unassigned</option>
-                        {% for admin in admins %}
-                            <option value="{{ admin }}" {% if profile and profile.admin_mama_name == admin %}selected{% endif %}>{{ admin }}</option>
-                    {% endfor %}
-                    </select>
-                </div>
-
-                <!-- Optional Fields -->
-                <div class="form-group">
-                    <label for="first_name">First Name</label>
-                    <input type="text" id="first_name" name="first_name" value="{{ profile.first_name if profile else '' }}">
-                </div>
-                <div class="form-group">
-                    <label for="last_name">Last Name</label>
-                    <input type="text" id="last_name" name="last_name" value="{{ profile.last_name if profile else '' }}">
-                </div>
-                <div class="form-group">
-                    <label for="phone">Phone</label>
-                    <input type="tel" id="phone" name="phone" value="{{ profile.phone if profile else '' }}">
-                </div>
-                <div class="form-group">
-                    <label for="instagram">Instagram Username</label>
-                    <input type="text" id="instagram" name="instagram" value="{{ profile.instagram if profile else '' }}">
-                </div>
-                <div class="form-group">
-                    <label for="facebook">Facebook Profile ID or Username</label>
-                    <input type="text" id="facebook" name="facebook" value="{{ profile.facebook if profile else '' }}">
-                </div>
-                <div class="form-group">
-                    <label for="line_id">Line ID</label>
-                    <input type="text" id="line_id" name="line_id" value="{{ profile.line_id if profile else '' }}">
-                </div>
-                <div class="form-group">
-                    <label for="height">Height (cm)</label>
-                    <input type="number" id="height" name="height" min="100" max="250" value="{{ profile.height if profile else '' }}">
-                </div>
-                <div class="form-group">
-                    <label for="weight">Weight (kg)</label>
-                    <input type="number" id="weight" name="weight" min="30" max="200" step="0.1" value="{{ profile.weight if profile else '' }}">
-                </div>
-                
-                <button type="submit">{{ "Update Profile" if edit_mode else "Create Profile" }}</button>
-            </form>
-            <div id="form-response" class="hidden"></div>
-        </div>
-    </div>
+<div class="page-header">
+  <h2>{{ 'Edit Profile' if edit_mode else 'New Profile' }}</h2>
 </div>
+
+<div class="card">
+  <div class="card-body">
+    <div id="form-response" class="alert hidden"></div>
+
+    <form id="profileForm"
+          data-mode="{{ 'edit' if edit_mode else 'create' }}"
+          {% if edit_mode %} data-id="{{ profile.id }}"{% endif %}
+          enctype="multipart/form-data"
+          novalidate>
+
+      <!-- Identity -->
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label for="nickname">Nickname <span style="color:#d33">*</span></label>
+          <input type="text" id="nickname" name="nickname" required
+                 value="{{ profile.nickname if edit_mode else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="admin_mama_name">Managed By</label>
+          <select id="admin_mama_name" name="admin_mama_name">
+            <option value="">-- Select --</option>
+            {% for a in admins %}
+            <option value="{{ a }}" {% if edit_mode and profile.admin_mama_name==a %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label for="first_name">First name</label>
+          <input type="text" id="first_name" name="first_name"
+                 value="{{ profile.first_name if edit_mode else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="last_name">Last name</label>
+          <input type="text" id="last_name" name="last_name"
+                 value="{{ profile.last_name if edit_mode else '' }}">
+        </div>
+      </div>
+
+      <!-- Contacts -->
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label for="phone">Phone</label>
+          <input type="text" id="phone" name="phone"
+                 value="{{ profile.phone if edit_mode else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="line_id">LINE ID</label>
+          <input type="text" id="line_id" name="line_id"
+                 value="{{ profile.line_id if edit_mode else '' }}">
+        </div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label for="instagram">Instagram</label>
+          <input type="text" id="instagram" name="instagram"
+                 value="{{ profile.instagram if edit_mode else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="facebook">Facebook</label>
+          <input type="text" id="facebook" name="facebook"
+                 value="{{ profile.facebook if edit_mode else '' }}">
+        </div>
+      </div>
+
+      <!-- DOB -->
+      <div class="form-grid-3">
+        <div class="form-group">
+          <label for="dob_day">DOB Day</label>
+          <select id="dob_day" name="dob_day">
+            {% for d in days %}
+            {% set sel = (edit_mode and profile.dob and profile.dob.day == d) %}
+            <option value="{{ d }}" {% if sel %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="dob_month">DOB Month</label>
+          <select id="dob_month" name="dob_month">
+            {% for m in months %}
+            {% set sel = (edit_mode and profile.dob and profile.dob.month == m) %}
+            <option value="{{ m }}" {% if sel %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="dob_year">DOB Year</label>
+          <select id="dob_year" name="dob_year">
+            {% for y in years %}
+            {% set sel = (edit_mode and profile.dob and profile.dob.year == y) %}
+            <option value="{{ y }}" {% if sel %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label for="height">Height (cm)</label>
+          <input type="number" id="height" name="height" min="120" max="220"
+                 value="{{ profile.height if edit_mode and profile.height else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="weight">Weight (kg)</label>
+          <input type="number" id="weight" name="weight" step="0.1" min="35" max="120"
+                 value="{{ profile.weight if edit_mode and profile.weight else '' }}">
+        </div>
+      </div>
+
+      <!-- Photo -->
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label for="photo">Photo</label>
+          <input type="file" id="photo" name="photo" accept="image/*">
+          <small class="muted">Choose a JPG/PNG (max a few MB)</small>
+        </div>
+
+        <div class="form-group">
+          <label>Preview</label>
+          <div class="photo-preview">
+            <img id="photoPreview"
+                 src="{{ profile.photo_url if edit_mode and profile.photo_url else '' }}"
+                 alt="Preview"
+                 {% if not (edit_mode and profile.photo_url) %}class="hidden"{% endif %}>
+            <div id="photoPlaceholder" class="{% if edit_mode and profile.photo_url %}hidden{% else %}placeholder{% endif %}">
+              No photo selected
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <a href="/staff" class="button button-secondary" type="button">Cancel</a>
+        <button id="profileSubmitBtn" type="submit" class="button button-primary">
+          {{ 'Update Profile' if edit_mode else 'Create Profile' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  .form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+  .form-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; }
+  .form-group label { display:block; margin-bottom:.35rem; }
+  .form-group input, .form-group select { width:100%; }
+
+  /* Preview carrée et cadrée */
+  .photo-preview { width:140px; height:140px; border:1px dashed #ccc; padding:0; display:flex; align-items:center; justify-content:center; }
+  .photo-preview img { width:100%; height:100%; object-fit:cover; border-radius:8px; display:block; }
+
+  .placeholder { color:#888; }
+  .hidden { display:none; }
+  .alert { margin-bottom:1rem; padding:.5rem .75rem; border-radius:4px; }
+  .alert.success { background:#e8f7ee; color:#0b6b2e; }
+  .alert.error { background:#fdecea; color:#b3261e; }
+</style>
+
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('profileForm');
+  const submitBtn = document.getElementById('profileSubmitBtn');
+  const formResponseDiv = document.getElementById('form-response');
+
+  // --- Photo preview
+  const photoInput = document.getElementById('photo');
+  const photoPreview = document.getElementById('photoPreview');
+  const photoPlaceholder = document.getElementById('photoPlaceholder');
+
+  if (photoInput) {
+    photoInput.addEventListener('change', (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        photoPreview.src = e.target.result;
+        photoPreview.classList.remove('hidden');
+        photoPlaceholder.classList.add('hidden');
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // --- Submit AJAX
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    formResponseDiv.classList.remove('hidden', 'success', 'error');
+
+    const nickname = document.getElementById('nickname').value.trim();
+    if (!nickname) {
+      formResponseDiv.textContent = 'Nickname is required.';
+      formResponseDiv.classList.add('error');
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
+
+    const mode = form.dataset.mode;          // 'create' | 'edit'
+    const profileId = form.dataset.id;       // only in edit
+    const url = (mode === 'edit') ? `/api/profile/${profileId}` : '/api/profile';
+
+    const fd = new FormData(form);
+
+    try {
+      const res = await fetch(url, { method: 'POST', body: fd });
+      const data = await res.json();
+
+      if (res.ok && data.status === 'success') {
+        formResponseDiv.textContent = data.message || 'Saved.';
+        formResponseDiv.classList.add('success');
+        setTimeout(() => {
+          if (mode === 'edit') {
+            window.location.href = `/profile/${profileId}`;
+          } else {
+            window.location.href = '/staff';
+          }
+        }, 900);
+      } else {
+        formResponseDiv.textContent = (data && data.message) ? data.message : 'An error occurred.';
+        formResponseDiv.classList.add('error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = (mode === 'edit') ? 'Update Profile' : 'Create Profile';
+      }
+    } catch (err) {
+      formResponseDiv.textContent = 'Network error. Please try again.';
+      formResponseDiv.classList.add('error');
+      submitBtn.disabled = false;
+      submitBtn.textContent = (mode === 'edit') ? 'Update Profile' : 'Create Profile';
+    }
+  });
+});
+</script>
 {% endblock %}

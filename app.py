@@ -364,6 +364,38 @@ def create_assignment():
     db.session.commit()
     return jsonify({"status": "success", "assignment": new_a.to_dict()}), 201
 
+# === Assignment management: end now & delete ===
+
+@app.route('/api/assignment/<int:assignment_id>/end', methods=['POST'])
+def end_assignment_now(assignment_id):
+    """Mark an ongoing assignment as completed today."""
+    a = Assignment.query.get_or_404(assignment_id)
+
+    if a.status != 'ongoing':
+        return jsonify({"status": "error", "message": "Assignment is not ongoing."}), 400
+
+    today = date.today()
+    # end_date ne doit pas être avant start_date
+    a.end_date = today if today >= a.start_date else a.start_date
+    a.status = 'completed'
+    db.session.commit()
+
+    return jsonify({"status": "success", "assignment": a.to_dict()}), 200
+
+
+@app.route('/api/assignment/<int:assignment_id>', methods=['DELETE'])
+def delete_assignment(assignment_id):
+    """Delete an assignment and its performance records (cascade)."""
+    a = Assignment.query.get_or_404(assignment_id)
+
+    # Optionnel: interdire la suppression si déjà complété → à adapter si besoin
+    # if a.status == 'completed':
+    #     return jsonify({"status": "error", "message": "Cannot delete a completed assignment."}), 400
+
+    db.session.delete(a)  # performance_records supprimés via cascade="all, delete-orphan"
+    db.session.commit()
+    return jsonify({"status": "success"}), 200
+
 
 # =========================
 # Performance API (by assignment_id + date)

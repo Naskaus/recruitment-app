@@ -63,7 +63,12 @@
             <td>{{ a.start_date.strftime("%d/%m/%Y") }} → {{ a.end_date.strftime("%d/%m/%Y") }}</td>
             <td>{{ '%.0f'|format(a.base_salary or 0) }}</td>
             <td>
-              <button class="button button-primary manage-performance-btn">Manage performance</button>
+              <div class="actions" style="display:flex; gap:.5rem; flex-wrap:wrap;">
+                <button class="button button-primary manage-performance-btn">Manage performance</button>
+                <!-- New buttons (wired in next step) -->
+                <button class="button button-secondary end-contract-btn">End now</button>
+                <button class="button button-danger delete-contract-btn">Delete</button>
+              </div>
             </td>
           </tr>
         {% endfor %}

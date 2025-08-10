@@ -105,10 +105,13 @@
         <input type="hidden" id="contractEnd" name="contract_end">
 
         <div class="form-group">
-          <label for="recordDate"><strong>Select date (within contract period)</strong></label>
-          <input type="date" id="recordDate" name="record_date">
-          <small class="muted">Contract period: <span id="periodText"></span></small>
-        </div>
+  <label for="recordDate"><strong>Select date (within contract period)</strong></label>
+  <div style="display:flex; gap:12px; align-items:center;">
+    <input type="date" id="recordDate" name="record_date" style="flex:1;">
+    <button type="button" id="addDayBtn" class="button button-secondary">Add / Edit Day</button>
+  </div>
+  <small class="muted">Contract period: <span id="periodText"></span></small>
+</div>
 
         <div class="form-grid-2">
           <div class="form-group">

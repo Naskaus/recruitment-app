@@ -341,6 +341,7 @@ def create_assignment():
     if not staff:
         return jsonify({"status": "error", "message": "Staff not found."}), 404
 
+    # Prevent overlapping ongoing contracts for same staff
     overlapping = Assignment.query.filter(
         Assignment.staff_id == staff_id,
         Assignment.status == 'ongoing',
@@ -361,8 +362,13 @@ def create_assignment():
         status='ongoing'
     )
     db.session.add(new_a)
+
+    # 🚀 IMPORTANT: keep legacy dispatch board in sync
+    staff.current_venue = venue
+
     db.session.commit()
     return jsonify({"status": "success", "assignment": new_a.to_dict()}), 201
+
 
 # === Assignment management: end now & delete ===
 
@@ -375,7 +381,7 @@ def end_assignment_now(assignment_id):
         return jsonify({"status": "error", "message": "Assignment is not ongoing."}), 400
 
     today = date.today()
-    # end_date ne doit pas être avant start_date
+    # end_date should not be before start_date
     a.end_date = today if today >= a.start_date else a.start_date
     a.status = 'completed'
     db.session.commit()
@@ -388,17 +394,17 @@ def delete_assignment(assignment_id):
     """Delete an assignment and its performance records (cascade)."""
     a = Assignment.query.get_or_404(assignment_id)
 
-    # Optionnel: interdire la suppression si déjà complété → à adapter si besoin
+    # Optional: forbid deleting a completed assignment (business-dependent)
     # if a.status == 'completed':
     #     return jsonify({"status": "error", "message": "Cannot delete a completed assignment."}), 400
 
-    db.session.delete(a)  # performance_records supprimés via cascade="all, delete-orphan"
+    db.session.delete(a)  # performance_records removed via cascade
     db.session.commit()
     return jsonify({"status": "success"}), 200
 
 
 # =========================
-# Performance API (by assignment_id + date)
+# Performance API
 # =========================
 
 def _get_or_create_daily_record(assignment_id: int, ymd: date) -> 'PerformanceRecord':
@@ -424,6 +430,76 @@ def get_performance(assignment_id, ymd):
         PerformanceRecord.id != rec.id
     ).order_by(PerformanceRecord.record_date.desc()).limit(5).all()
     return jsonify({"status": "success", "record": rec.to_dict(), "history": [h.to_dict() for h in history]}), 200
+
+@app.route('/api/performance/<int:assignment_id>', methods=['GET'])
+def list_performance_for_assignment(assignment_id):
+    """
+    Return all saved daily records for a given assignment (most recent first).
+    This lets the UI render a persistent history list.
+    """
+    a = Assignment.query.get(assignment_id)
+    if not a:
+        return jsonify({"status": "error", "message": "Assignment not found."}), 404
+
+    records = (PerformanceRecord.query
+               .filter_by(assignment_id=assignment_id)
+               .order_by(PerformanceRecord.record_date.desc())
+               .all())
+
+    return jsonify({
+        "status": "success",
+        "records": [r.to_dict() for r in records],
+        # contract meta (useful for client-side calculations)
+        "contract": {
+            "start_date": a.start_date.isoformat(),
+            "end_date": a.end_date.isoformat(),
+            "base_salary": a.base_salary,
+            "contract_days": (a.end_date - a.start_date).days + 1
+        }
+    }), 200
+
+# --- NEW: Full history with optional ?days filter ---
+@app.route('/api/performance-history/<int:assignment_id>', methods=['GET'])
+def performance_history(assignment_id):
+    """
+    Return performance history for an assignment, optionally limited to the last N days.
+
+    Querystring:
+      - days (optional, int): number of days to look back from today (inclusive).
+        If omitted or invalid, defaults to 120. Values <1 are ignored.
+    """
+    a = Assignment.query.get(assignment_id)
+    if not a:
+        return jsonify({"status": "error", "message": "Assignment not found."}), 404
+
+    # Parse and clamp 'days'
+    days = request.args.get('days', default=120, type=int)
+    if days is None or days < 1:
+        days = 120
+
+    since = date.today() - timedelta(days=days - 1)
+
+    q = PerformanceRecord.query.filter_by(assignment_id=assignment_id)
+    # Only apply time window if 'days' is provided (here it always is, with default 120)
+    q = q.filter(PerformanceRecord.record_date >= since)
+
+    records = q.order_by(PerformanceRecord.record_date.desc()).all()
+
+    return jsonify({
+        "status": "success",
+        "records": [r.to_dict() for r in records],
+        "contract": {
+            "start_date": a.start_date.isoformat(),
+            "end_date": a.end_date.isoformat(),
+            "base_salary": a.base_salary,
+            "contract_days": (a.end_date - a.start_date).days + 1
+        },
+        "window": {
+            "days": days,
+            "since": since.isoformat(),
+            "today": date.today().isoformat()
+        }
+    }), 200
 
 @app.route('/api/performance', methods=['POST'])
 def upsert_performance():

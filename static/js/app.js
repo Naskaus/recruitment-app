@@ -194,3 +194,250 @@
     });
   });
 })();
+// ---------- Payroll page (Manage Performance par assignment + date) ----------
+document.addEventListener("DOMContentLoaded", function () {
+  const table = document.querySelector(".payroll-table");
+  if (!table) return;
+
+  console.log("🔧 Payroll init");
+
+  // Modal & champs
+  const modal = document.getElementById("editRecordModal");
+  const form = document.getElementById("editRecordForm");
+  const closeBtn = document.getElementById("closeModalBtn");
+  const cancelBtn = document.getElementById("cancelModalBtn");
+
+  const assignmentIdInput = document.getElementById("assignmentId");
+  const contractDaysInput = document.getElementById("contractDays");
+  const contractBaseSalaryInput = document.getElementById("contractBaseSalary");
+  const contractStartInput = document.getElementById("contractStart");
+  const contractEndInput = document.getElementById("contractEnd");
+
+  const modalStaffName = document.getElementById("modalStaffName");
+  const recordDateInput = document.getElementById("recordDate");
+  const periodText = document.getElementById("periodText");
+
+  const arrivalInput = document.getElementById("arrivalTime");
+  const departureInput = document.getElementById("departureTime");
+  const drinksInput = document.getElementById("drinksSold");
+  const specialInput = document.getElementById("specialCommissions");
+  const bonusInput = document.getElementById("bonus");
+  const malusInput = document.getElementById("malus");
+
+  const latenessPenaltyInput = document.getElementById("latenessPenalty");
+  const commissionPaidInput = document.getElementById("commissionPaid");
+  const proratedBaseInput = document.getElementById("proratedBase");
+  const salaryPaidInput = document.getElementById("salaryPaid");
+  const barProfitInput = document.getElementById("barProfit");
+
+  const historyBox = document.getElementById("recordHistory");
+
+  function openModal() { modal.classList.remove("hidden"); }
+  function closeModal() { modal.classList.add("hidden"); }
+  closeBtn?.addEventListener("click", closeModal);
+  cancelBtn?.addEventListener("click", closeModal);
+
+  // règles métier
+  const DRINK_STAFF = 100; // commission staff/drink
+  const DRINK_BAR = 120;   // part bar/drink
+  const LATE_CUTOFF = "19:30"; // retard à partir de 19:31
+
+  function computePenalty(arrival) {
+    if (!arrival) return 0;
+    const cutoff = new Date(`1970-01-01T${LATE_CUTOFF}:00`);
+    const when = new Date(`1970-01-01T${arrival}:00`);
+    if (when <= cutoff) return 0;
+    const minutes = Math.round((when - cutoff) / 60000);
+    return minutes * 5; // 5 THB/min
+  }
+
+  function recompute() {
+    const drinks = parseFloat(drinksInput.value) || 0;
+    const special = parseFloat(specialInput.value) || 0;
+    const bonus = parseFloat(bonusInput.value) || 0;
+    const malus = parseFloat(malusInput.value) || 0;
+
+    const contractDays = parseInt(contractDaysInput.value || "1", 10);
+    const baseSalary = parseFloat(contractBaseSalaryInput.value || "0");
+    const baseDaily = contractDays > 0 ? (baseSalary / contractDays) : 0;
+
+    const penalty = computePenalty(arrivalInput.value);
+    latenessPenaltyInput.value = penalty.toFixed(0);
+
+    const commissionStaff = drinks * DRINK_STAFF;
+    commissionPaidInput.value = commissionStaff.toFixed(0);
+
+    proratedBaseInput.value = baseDaily.toFixed(0);
+
+    // Salary paid = Base daily + bonus - malus - lateness penalty
+    const salaryPaid = baseDaily + bonus - malus - penalty;
+    salaryPaidInput.value = salaryPaid.toFixed(0);
+
+    // Bar Profit = (drinks x 120 + special) - salary paid
+    const profit = (drinks * DRINK_BAR + special) - salaryPaid;
+    barProfitInput.value = profit.toFixed(0);
+  }
+
+  [arrivalInput, departureInput, drinksInput, specialInput, bonusInput, malusInput].forEach(el => {
+    el?.addEventListener("input", recompute);
+  });
+
+  async function loadRecord(assignmentId, ymd) {
+    historyBox.innerHTML = "";
+    try {
+      const res = await fetch(`/api/performance/${assignmentId}/${ymd}`);
+      const data = await res.json();
+
+      if (data && data.record) {
+        const r = data.record;
+        arrivalInput.value = r.arrival_time || "";
+        departureInput.value = r.departure_time || "";
+        drinksInput.value = r.drinks_sold ?? 0;
+        specialInput.value = r.special_commissions ?? 0;
+        bonusInput.value = r.bonus ?? 0;
+        malusInput.value = r.malus ?? 0;
+        latenessPenaltyInput.value = r.lateness_penalty ?? 0;
+      } else {
+        // reset si aucun record
+        arrivalInput.value = "";
+        departureInput.value = "";
+        drinksInput.value = 0;
+        specialInput.value = 0;
+        bonusInput.value = 0;
+        malusInput.value = 0;
+        latenessPenaltyInput.value = 0;
+      }
+
+      // petite histoire (5 derniers jours du même assignment)
+      (data.history || []).forEach(h => {
+        const d = new Date(h.record_date + "T00:00:00");
+        const div = document.createElement("div");
+        div.className = "history-item";
+        div.innerHTML = `
+          <div><span>Date:</span> <strong>${d.toLocaleDateString('en-GB')}</strong></div>
+          <div><span>Drinks:</span> <strong>${h.drinks_sold}</strong></div>
+          <div><span>Penalty:</span> <strong>${(h.lateness_penalty || 0)} THB</strong></div>
+        `;
+        historyBox.appendChild(div);
+      });
+
+    } catch (e) {
+      console.error("loadRecord error", e);
+      historyBox.innerHTML = `<p class="text-center" style="padding:.5rem;">Could not load history.</p>`;
+    }
+
+    // Après chargement, recalcule les totaux live
+    recompute();
+  }
+
+  // Ouvrir le modal depuis la ligne du tableau
+table.addEventListener("click", (e) => {
+  const btn = e.target.closest(".manage-performance-btn");
+  if (!btn) return;
+
+  const tr = btn.closest("tr");
+  const aId = tr.dataset.assignmentId;
+  const staffName = tr.dataset.staffName;
+  const startIso = tr.dataset.startDate;
+  const endIso = tr.dataset.endDate;
+  const baseSalary = parseFloat(tr.dataset.baseSalary || "0");
+  const contractDays = parseInt(tr.dataset.contractDays || "1", 10);
+  const contractType = (tr.dataset.contractType || "").trim(); // ✅
+
+  // remplir les hidden (utiles pour calculs)
+  assignmentIdInput.value = aId;
+  contractDaysInput.value = contractDays;
+  contractBaseSalaryInput.value = baseSalary.toString();
+  contractStartInput.value = startIso;
+  contractEndInput.value = endIso;
+
+  modalStaffName.textContent = staffName || "";
+
+  // borne du sélecteur de date
+  recordDateInput.min = startIso;
+  recordDateInput.max = endIso;
+  recordDateInput.value = startIso;
+  periodText.textContent = `${startIso} → ${endIso}`;
+
+  // ===== Nouveau : style + badge contrat sur la modale =====
+  const card = document.getElementById("performanceModalCard");
+  const badge = document.getElementById("modalContractBadge");
+
+  // reset classes
+  card.classList.remove("contract-1jour", "contract-10jours", "contract-1mois");
+  badge.classList.remove("badge-1jour", "badge-10jours", "badge-1mois");
+
+  // applique la bonne classe si valide
+  if (["1jour", "10jours", "1mois"].includes(contractType)) {
+    card.classList.add(`contract-${contractType}`);
+    badge.classList.add(`badge-${contractType}`);
+    badge.textContent = contractType; // affiche "1jour" / "10jours" / "1mois"
+  } else {
+    badge.textContent = "—";
+  }
+  // =========================================================
+
+  openModal();
+  loadRecord(aId, recordDateInput.value);
+});
+
+  // Changer de date => recharger ce jour
+  recordDateInput.addEventListener("change", () => {
+    const aId = assignmentIdInput.value;
+    const day = recordDateInput.value;
+    if (!aId || !day) return;
+    loadRecord(aId, day);
+  });
+
+  // Save = upsert
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const payload = {
+      assignment_id: parseInt(assignmentIdInput.value, 10),
+      record_date: recordDateInput.value,
+      arrival_time: arrivalInput.value || null,
+      departure_time: departureInput.value || null,
+      drinks_sold: parseInt(drinksInput.value || "0", 10),
+      special_commissions: parseFloat(specialInput.value || "0"),
+      bonus: parseFloat(bonusInput.value || "0"),
+      malus: parseFloat(malusInput.value || "0"),
+    };
+
+    try {
+      const res = await fetch("/api/performance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Server error");
+      const d = new Date(recordDateInput.value + "T00:00:00");
+const drinks = parseInt(drinksInput.value || "0", 10);
+const penalty = parseInt(latenessPenaltyInput.value || "0", 10);
+
+// crée (ou met à jour) l’item du jour courant en tête
+const existingToday = historyBox.querySelector('.history-item[data-date="' + recordDateInput.value + '"]');
+const html = `
+  <div><span>Date:</span> <strong>${d.toLocaleDateString('en-GB')}</strong></div>
+  <div><span>Drinks:</span> <strong>${drinks}</strong></div>
+  <div><span>Penalty:</span> <strong>${penalty} THB</strong></div>
+`;
+
+if (existingToday) {
+  existingToday.innerHTML = html;
+  existingToday.classList.add('updated-item');
+} else {
+  const div = document.createElement("div");
+  div.className = "history-item new-item";
+  div.setAttribute("data-date", recordDateInput.value);
+  div.innerHTML = html;
+  historyBox.prepend(div);
+}
+      //closeModal();
+      // Option: showToast("Saved!");
+    } catch (err) {
+      alert(err.message || "Network error");
+    }
+  });
+});

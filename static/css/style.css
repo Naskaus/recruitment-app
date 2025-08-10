@@ -952,3 +952,164 @@ button:disabled {
         transform: translateY(0);
     }
 }
+/* === Payroll History Highlights === */
+.history-item.new-item {
+  outline: 2px solid #4caf50; /* vert */
+  padding: 2px;
+}
+.history-item.updated-item {
+  outline: 2px solid #2196f3; /* bleu */
+  padding: 2px;
+}
+/* ===== Contract color scheme ===== */
+/* 1 jour */
+.contract-1jour {
+  background-color: #FFF8E1;   /* light amber */
+  border: 2px solid #FFC107;   /* amber */
+}
+
+/* 10 jours */
+.contract-10jours {
+  background-color: #E8F5E9;   /* light green */
+  border: 2px solid #4CAF50;   /* green */
+}
+
+/* 1 mois */
+.contract-1mois {
+  background-color: #E3F2FD;   /* light blue */
+  border: 2px solid #2196F3;   /* blue */
+}
+
+/* Optional: make colored rows look like cards inside the table */
+.payroll-table tr[class^="contract-"] td {
+  border-top: none;
+  border-bottom: none;
+}
+.payroll-table tr[class^="contract-"] {
+  outline: 0;               /* remove default outline */
+}
+.payroll-table tr[class^="contract-"] td:first-child {
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
+}
+.payroll-table tr[class^="contract-"] td:last-child {
+  border-top-right-radius: 10px;
+  border-bottom-right-radius: 10px;
+}
+/* ===== Contract badges (déjà utilisés en tableau) ===== */
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* Palette douce + bordures foncées */
+.badge-1jour   { background: #E8F2FF; color: #0B4A99; border: 1px solid #0B4A99; }
+.badge-10jours { background: #EFFFF5; color: #166534; border: 1px solid #166534; }
+.badge-1mois   { background: #FFF4EA; color: #9A3412; border: 1px solid #9A3412; }
+
+/* Carte de modale teintée selon contrat (fond clair + bordure gauche foncée) */
+#performanceModalCard.contract-1jour {
+  background: #F6FAFF;
+  border-left: 6px solid #0B4A99;
+}
+#performanceModalCard.contract-10jours {
+  background: #F4FFF8;
+  border-left: 6px solid #166534;
+}
+#performanceModalCard.contract-1mois {
+  background: #FFF7F0;
+  border-left: 6px solid #9A3412;
+}
+/* === Header coloré par type de contrat === */
+.modal-content { position: relative; }
+
+/* Défaut (si pas de type) */
+.modal-content .modal-header {
+  background: var(--color-surface);
+}
+
+/* 1 jour */
+.modal-content.contract-1jour .modal-header {
+  background: var(--contract-1jour-bg, #eaf4ff);
+  border-top: 6px solid var(--contract-1jour-border, #3a6ea5);
+}
+
+/* 10 jours */
+.modal-content.contract-10jours .modal-header {
+  background: var(--contract-10jours-bg, #ecfff2);
+  border-top: 6px solid var(--contract-10jours-border, #2b8a3e);
+}
+
+/* 1 mois */
+.modal-content.contract-1mois .modal-header {
+  background: var(--contract-1mois-bg, #f7efff);
+  border-top: 6px solid var(--contract-1mois-border, #5b21b6);
+}
+
+/* Petit badge du type de contrat */
+.contract-chip {
+  margin-left: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-block;
+  line-height: 1;
+  user-select: none;
+}
+.modal-content.contract-1jour  .contract-chip { background: var(--contract-1jour-border,  #3a6ea5);  color:#fff; }
+.modal-content.contract-10jours .contract-chip { background: var(--contract-10jours-border,#2b8a3e); color:#fff; }
+.modal-content.contract-1mois   .contract-chip { background: var(--contract-1mois-border,  #5b21b6); color:#fff; }
+/* — Contrats: couleurs des lignes — */
+.contract-row { transition: background-color .2s ease; }
+.contract-1jour   { background: #F5FAFF; }   /* bleu très clair */
+.contract-10jours { background: #F7FFF5; }   /* vert très clair */
+.contract-1mois   { background: #FFF9F5; }   /* orange très clair */
+
+/* Badges (table + modal) */
+.badge {
+  display:inline-block; padding:2px 10px; border-radius:999px;
+  font-size:.8rem; font-weight:600;
+  border:1px solid rgba(0,0,0,.08); background:#eef2f7; color:#334155;
+}
+.badge-1jour   { background:#E8F2FF; border-color:#BBD7FF; color:#1e40af; }
+.badge-10jours { background:#E9F8EF; border-color:#BCEACD; color:#065f46; }
+.badge-1mois   { background:#FFF0E2; border-color:#FFD9BE; color:#9a3412; }
+
+/* Carte du modal teintée selon le contrat (app.js bascule la classe) */
+#performanceModalCard.contract-1jour   { border-top:6px solid #3b82f6; }
+#performanceModalCard.contract-10jours { border-top:6px solid #22c55e; }
+#performanceModalCard.contract-1mois   { border-top:6px solid #f59e0b; }
+/* Contract row tints (light bg + darker left border) */
+.row-contract-1jour   { background: #FFF8E6; border-left: 4px solid #F0B429; }
+.row-contract-10jours { background: #ECF8EE; border-left: 4px solid #2E7D32; }
+.row-contract-1mois   { background: #EAF5FF; border-left: 4px solid #1565C0; }
+
+/* Compact contract pill used in table and modal header */
+.contract-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: .85rem;
+  line-height: 1.2;
+  border: 1px solid transparent;
+  vertical-align: middle;
+}
+
+/* Pill themes keyed by contract_type value */
+.badge-1jour {
+  background: #FFF3CD;   color: #8B6B00;   border-color: #FFD56B;
+}
+.badge-10jours {
+  background: #DFF5E4;   color: #1E6B24;   border-color: #BFE8C6;
+}
+.badge-1mois {
+  background: #DDEEFF;   color: #0D47A1;   border-color: #C3DAFF;
+}
+
+/* Align badge nicely in modal header */
+#performanceModalCard .modal-header .contract-badge { margin-left: .5rem; }

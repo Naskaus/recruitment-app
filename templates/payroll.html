@@ -37,7 +37,7 @@
                         else '1-month' %}
           <tr
             id="assignment-row-{{ a.id }}"
-            class="row-contract-{{ a.contract_type }}"
+            class="row-contract-{{ a.contract_type }} status-{{ a.status }}"
             data-assignment-id="{{ a.id }}"
             data-staff-name="{{ a.staff.nickname }}"
             data-start-date="{{ a.start_date.isoformat() }}"
@@ -45,6 +45,7 @@
             data-base-salary="{{ a.base_salary or 0 }}"
             data-contract-days="{{ row.contract_days or 1 }}"
             data-contract-type="{{ a.contract_type }}"
+            data-current-status="{{ a.status }}"
           >
             <td>
               <div class="staff-cell">
@@ -63,10 +64,16 @@
             <td>{{ a.start_date.strftime("%d/%m/%Y") }} → {{ a.end_date.strftime("%d/%m/%Y") }}</td>
             <td>{{ '%.0f'|format(a.base_salary or 0) }}</td>
             <td>
-              <div class="actions" style="display:flex; gap:.5rem; flex-wrap:wrap;">
-                <button class="button button-primary manage-performance-btn">Manage performance</button>
-                <button class="button button-secondary end-contract-btn">End now</button>
-                <button class="button button-danger delete-contract-btn">Delete</button>
+              <!-- MODIFIED: "on_hold" case removed -->
+              <div class="actions" style="display:flex; gap:.5rem; flex-wrap:wrap; align-items: center;">
+                {% if a.status == 'ongoing' %}
+                  <button class="button button-primary manage-performance-btn">Manage performance</button>
+                  <button class="button button-secondary end-contract-btn">End now</button>
+                  <button class="button button-danger delete-contract-btn">Delete</button>
+                {% elif a.status == 'archived' %}
+                  <span class="status-badge status-badge-archived">Archived</span>
+                  <button class="button button-secondary manage-performance-btn">View Details</button>
+                {% endif %}
               </div>
             </td>
           </tr>
@@ -74,7 +81,7 @@
       {% else %}
         <tr>
           <td colspan="6" class="text-center">
-            No ongoing contracts. Use the <a href="/dispatch">Dispatch Board</a> to create one.
+            No contracts found. Use the <a href="/dispatch">Dispatch Board</a> to create one.
           </td>
         </tr>
       {% endif %}
@@ -188,7 +195,7 @@
   </div>
 </div>
 
-<!-- NEW: Contract Completion Summary Modal -->
+<!-- Contract Completion Summary Modal -->
 <div id="contractSummaryModal" class="modal-overlay hidden">
   <div class="modal-content">
     <div class="modal-header">
@@ -211,10 +218,10 @@
       <hr style="margin-top: 1.5rem;">
 
       <h4>Final Actions</h4>
+      <!-- MODIFIED: "On Hold" button removed -->
       <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
         <button id="summaryPdfBtn" class="button button-secondary">Download PDF</button>
         <div style="display: flex; gap: 0.5rem;">
-          <button id="summaryOnHoldBtn" class="button button-warning">Need to Pay (On Hold)</button>
           <button id="summaryArchiveBtn" class="button button-primary">Salary Already Paid (Archive)</button>
         </div>
       </div>

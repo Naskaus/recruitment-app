@@ -121,6 +121,23 @@
     const staffIdInput = document.getElementById("assignmentStaffId");
     const venueInput = document.getElementById("assignmentVenue");
     const startDateInput = document.getElementById("startDate");
+    const contractTypeInput = document.getElementById("contractType");
+    const baseSalaryInput = document.getElementById("baseSalary");
+
+    const SALARY_DEFAULTS = {
+        '1jour': 1000,
+        '10jours': 10000,
+        '1mois': 30000
+    };
+
+    function updateDefaultSalary() {
+        const selectedType = contractTypeInput.value;
+        if (SALARY_DEFAULTS[selectedType]) {
+            baseSalaryInput.value = SALARY_DEFAULTS[selectedType];
+        }
+    }
+
+    contractTypeInput?.addEventListener('change', updateDefaultSalary);
 
     function openModal(staffId, staffName, venue) {
       staffIdInput.value = staffId;
@@ -128,6 +145,7 @@
       venueInput.value = venue;
       startDateInput.value = new Date().toISOString().split("T")[0];
       assignmentModal?.classList.remove("hidden");
+      updateDefaultSalary(); 
     }
     function closeModal() { assignmentModal?.classList.add("hidden"); }
 
@@ -145,9 +163,9 @@
       const payload = {
         staff_id: staffIdInput.value,
         venue: venueInput.value,
-        contract_type: document.getElementById("contractType").value,
+        contract_type: contractTypeInput.value,
         start_date: startDateInput.value,
-        base_salary: document.getElementById("baseSalary").value,
+        base_salary: baseSalaryInput.value,
       };
 
       try {
@@ -207,7 +225,7 @@
     const barProfitInput = document.getElementById("barProfit");
     const historyBox = document.getElementById("recordHistory");
 
-    // --- NEW: Summary Modal Elements ---
+    // --- Summary Modal Elements ---
     const summaryModal = document.getElementById("contractSummaryModal");
     const closeSummaryBtn = document.getElementById("closeSummaryModalBtn");
     const summaryStaffName = document.getElementById("summaryStaffName");
@@ -220,7 +238,6 @@
     const summaryTotalProfit = document.getElementById("summaryTotalProfit");
     
     const summaryPdfBtn = document.getElementById("summaryPdfBtn");
-    const summaryOnHoldBtn = document.getElementById("summaryOnHoldBtn");
     const summaryArchiveBtn = document.getElementById("summaryArchiveBtn");
 
 
@@ -292,8 +309,6 @@
           bonusInput.value = r.bonus ?? 0;
           malusInput.value = r.malus ?? 0;
         } else {
-          // BUG FIX: Don't reset the whole form. Just clear daily fields.
-          // This preserves the selected date.
           arrivalInput.value = "";
           departureInput.value = "";
           drinksInput.value = 0;
@@ -304,7 +319,7 @@
       } catch (e) {
         console.error("loadRecord error", e);
       }
-      recomputeDailySummary(); // This recomputes summary fields like salary, profit, etc.
+      recomputeDailySummary();
     }
     
     async function loadPerformanceHistory(assignmentId) {
@@ -403,11 +418,11 @@
         openSummaryModal();
     }
 
-    async function finalizeContract(assignmentId, status) {
+        async function finalizeContract(assignmentId, status) {
         const row = document.getElementById(`assignment-row-${assignmentId}`);
         const name = row ? (row.dataset.staffName || 'this contract') : 'this contract';
 
-        if (!confirm(`This will finalize the contract for "${name}" with status "${status}". Continue?`)) return;
+        if (!confirm(`This will finalize the contract for "${name}" as ${status}. Continue?`)) return;
 
         try {
             const res = await fetch(`/api/assignment/${assignmentId}/finalize`, {
@@ -420,10 +435,19 @@
 
             closeSummaryModal();
             closePerformanceModal();
+            
             if (row) {
-                row.style.transition = "opacity .25s ease";
-                row.style.opacity = "0";
-                setTimeout(() => row.remove(), 250);
+                row.classList.remove('status-ongoing');
+                row.classList.add(`status-${status}`);
+                row.dataset.currentStatus = status;
+
+                const actionsCell = row.querySelector('.actions');
+                if(actionsCell) {
+                    actionsCell.innerHTML = `
+                        <span class="status-badge status-badge-archived">Archived</span>
+                        <button class="button button-secondary manage-performance-btn">View Details</button>
+                    `;
+                }
             }
             alert(`Contract for ${name} has been ${status}.`);
 
@@ -432,11 +456,7 @@
         }
     }
     
-    summaryOnHoldBtn?.addEventListener('click', () => {
-        const assignmentId = summaryAssignmentIdInput.value;
-        finalizeContract(assignmentId, 'on_hold');
-    });
-
+    // MODIFIED: 'on_hold' button logic removed
     summaryArchiveBtn?.addEventListener('click', () => {
         const assignmentId = summaryAssignmentIdInput.value;
         finalizeContract(assignmentId, 'archived');
@@ -483,22 +503,26 @@
         return;
       }
 
-      // End now
+           // End now
       if (e.target.closest(".end-contract-btn")) {
-        if (!confirm(`End this contract now for "${staffName}"?`)) return;
+        if (!confirm(`This will end the contract for "${staffName}" today and open the final summary. Continue?`)) return;
         try {
           const res = await fetch(`/api/assignment/${assignmentId}/end`, { method: "POST" });
           const data = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(data.message || "Server error");
-          tr.style.transition = "opacity .25s ease";
-          tr.style.opacity = "0";
-          setTimeout(() => tr.remove(), 250);
+
+          // Simule un clic sur le bouton "Manage" pour ouvrir la modale
+          const manageBtn = tr.querySelector('.manage-performance-btn');
+          if(manageBtn) {
+              manageBtn.click();
+          } else {
+              alert("Error: Could not find the manage button to proceed.");
+          }
         } catch (err) {
           alert(err.message || "Network error");
         }
         return;
       }
-
       // Delete
       if (e.target.closest(".delete-contract-btn")) {
         if (!confirm(`Delete this contract for "${staffName}"? This cannot be undone.`)) return;
@@ -550,7 +574,8 @@
         alert("Saved successfully");
         await loadRecord(payload.assignment_id, payload.record_date);
         await loadPerformanceHistory(payload.assignment_id);
-      } catch (err) {
+      } catch (err)
+ {
         alert(err.message || "Network error");
       } finally {
         submitBtn.disabled = false;

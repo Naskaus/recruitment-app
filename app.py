@@ -49,11 +49,9 @@ class StaffProfile(db.Model):
     status = db.Column(db.String(50), nullable=False, default='Active')
     photo_url = db.Column(db.String(200), default='/static/images/default_avatar.png')
     admin_mama_name = db.Column(db.String(80))
-    # NOTE: kept for legacy dispatch UI
     current_venue = db.Column(db.String(80), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # New contract relationship
     assignments = db.relationship('Assignment', backref='staff', lazy=True, cascade="all, delete-orphan")
 
     @property
@@ -66,16 +64,15 @@ class StaffProfile(db.Model):
 
 # --- Contract system ---
 
-CONTRACT_TYPES = {"1jour": 1, "10jours": 10, "1mois": 30}  # inclusive number of days
+CONTRACT_TYPES = {"1jour": 1, "10jours": 10, "1mois": 30}
 
 def compute_end_date(start_date: date, contract_type: str) -> date:
     days = CONTRACT_TYPES.get(contract_type)
     if not days:
         raise ValueError("Invalid contract_type")
-    return start_date + timedelta(days=days - 1)  # inclusive
+    return start_date + timedelta(days=days - 1)
 
 def calc_lateness_penalty(arrival_time):
-    """Late after 19:30 => 5 THB per minute."""
     if not arrival_time:
         return 0
     cutoff = dt_time(19, 30)
@@ -89,11 +86,10 @@ class Assignment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     staff_id = db.Column(db.Integer, db.ForeignKey('staff_profile.id'), nullable=False)
     venue = db.Column(db.String(80), nullable=False)
-    contract_type = db.Column(db.String(20), nullable=False)  # '1jour' | '10jours' | '1mois'
+    contract_type = db.Column(db.String(20), nullable=False)
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
     base_salary = db.Column(db.Float, nullable=False, default=0.0)
-    # NEW: expanded statuses 'ongoing' | 'completed' | 'canceled' | 'on_hold' | 'archived'
     status = db.Column(db.String(20), nullable=False, default='ongoing')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -106,13 +102,9 @@ class Assignment(db.Model):
 
     def to_dict(self):
         return {
-            "id": self.id,
-            "staff_id": self.staff_id,
-            "venue": self.venue,
-            "contract_type": self.contract_type,
-            "start_date": self.start_date.isoformat(),
-            "end_date": self.end_date.isoformat(),
-            "base_salary": self.base_salary,
+            "id": self.id, "staff_id": self.staff_id, "venue": self.venue,
+            "contract_type": self.contract_type, "start_date": self.start_date.isoformat(),
+            "end_date": self.end_date.isoformat(), "base_salary": self.base_salary,
             "status": self.status,
         }
 
@@ -121,34 +113,23 @@ class PerformanceRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     assignment_id = db.Column(db.Integer, db.ForeignKey('assignment.id'), nullable=False)
     record_date = db.Column(db.Date, nullable=False, default=date.today)
-
     arrival_time = db.Column(db.Time, nullable=True)
     departure_time = db.Column(db.Time, nullable=True)
-
-    drinks_sold = db.Column(db.Integer, default=0)           # 100 to staff, 120 to bar per drink
-    special_commissions = db.Column(db.Float, default=0.0)   # extra bar revenue
-    bonus = db.Column(db.Float, default=0.0)                 # + staff
-    malus = db.Column(db.Float, default=0.0)                 # - staff
-    lateness_penalty = db.Column(db.Float, default=0.0)      # auto from arrival
-
+    drinks_sold = db.Column(db.Integer, default=0)
+    special_commissions = db.Column(db.Float, default=0.0)
+    bonus = db.Column(db.Float, default=0.0)
+    malus = db.Column(db.Float, default=0.0)
+    lateness_penalty = db.Column(db.Float, default=0.0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    __table_args__ = (
-        db.UniqueConstraint('assignment_id', 'record_date', name='uq_assignment_date'),
-    )
+    __table_args__ = (db.UniqueConstraint('assignment_id', 'record_date', name='uq_assignment_date'),)
 
     def to_dict(self):
         return {
-            "id": self.id,
-            "assignment_id": self.assignment_id,
-            "record_date": self.record_date.isoformat(),
+            "id": self.id, "assignment_id": self.assignment_id, "record_date": self.record_date.isoformat(),
             "arrival_time": self.arrival_time.strftime('%H:%M') if self.arrival_time else None,
             "departure_time": self.departure_time.strftime('%H:%M') if self.departure_time else None,
-            "drinks_sold": self.drinks_sold,
-            "special_commissions": self.special_commissions,
-            "bonus": self.bonus,
-            "malus": self.malus,
-            "lateness_penalty": self.lateness_penalty,
+            "drinks_sold": self.drinks_sold, "special_commissions": self.special_commissions,
+            "bonus": self.bonus, "malus": self.malus, "lateness_penalty": self.lateness_penalty,
         }
 
 # =========================
@@ -159,12 +140,10 @@ class PerformanceRecord(db.Model):
 @app.route('/staff')
 def staff_list():
     all_profiles = StaffProfile.query.order_by(StaffProfile.created_at.desc()).all()
-    statuses = ["Active", "On assignment", "Quiet (recent)", "Moderately active", "On holiday", "Inactive (long time)"]
-    return render_template('staff_list.html', profiles=all_profiles, statuses=statuses)
+    return render_template('staff_list.html', profiles=all_profiles)
 
 @app.route('/dispatch')
 def dispatch_board():
-    # Legacy: still uses current_venue to render columns
     all_staff = StaffProfile.query.all()
     available_staff = [s for s in all_staff if not s.current_venue]
     dispatched_staff = {venue: [s for s in all_staff if s.current_venue == venue] for venue in VENUE_LIST}
@@ -172,16 +151,15 @@ def dispatch_board():
 
 @app.route('/payroll')
 def payroll_page_new():
-    """New payroll lists ongoing assignments; template will be updated next."""
     venue = request.args.get('venue')
-    q = Assignment.query.filter_by(status='ongoing')
+    statuses_to_show = ['ongoing', 'archived']
+    q = Assignment.query.filter(Assignment.status.in_(statuses_to_show))
     if venue:
         q = q.filter(Assignment.venue == venue)
-    ongoing = q.order_by(Assignment.start_date.asc()).all()
-    rows = [{"assignment": a, "contract_days": (a.end_date - a.start_date).days + 1} for a in ongoing]
+    status_order = db.case((Assignment.status == 'ongoing', 1), (Assignment.status == 'archived', 2), else_=3).label("status_order")
+    all_assignments = q.order_by(status_order, Assignment.start_date.asc()).all()
+    rows = [{"assignment": a, "contract_days": (a.end_date - a.start_date).days + 1} for a in all_assignments]
     return render_template('payroll.html', assignments=rows, venues=VENUE_LIST, selected_venue=venue)
-
-# ---------- Profile pages (NEW: restored) ----------
 
 @app.route('/profile/new', methods=['GET'])
 def new_profile_form():
@@ -189,12 +167,7 @@ def new_profile_form():
     years = range(current_year - 18, current_year - 60, -1)
     months = range(1, 13)
     days = range(1, 32)
-    return render_template(
-        'profile_form.html',
-        years=years, months=months, days=days,
-        admins=ADMIN_LIST,
-        edit_mode=False
-    )
+    return render_template('profile_form.html', years=years, months=months, days=days, admins=ADMIN_LIST, edit_mode=False)
 
 @app.route('/profile/<int:profile_id>')
 def profile_detail(profile_id):
@@ -208,14 +181,7 @@ def edit_profile_form(profile_id):
     years = range(current_year - 18, current_year - 60, -1)
     months = range(1, 13)
     days = range(1, 32)
-    return render_template(
-        'profile_form.html',
-        profile=profile,
-        years=years, months=months, days=days,
-        admins=ADMIN_LIST,
-        edit_mode=True
-    )
-
+    return render_template('profile_form.html', profile=profile, years=years, months=months, days=days, admins=ADMIN_LIST, edit_mode=True)
 
 # =========================
 # Profiles API
@@ -230,7 +196,6 @@ def create_profile():
         dob_date = date(int(data.get('dob_year')), int(data.get('dob_month')), int(data.get('dob_day')))
     except Exception:
         return jsonify({'status': 'error', 'message': 'A valid Date of Birth is required.'}), 400
-
     photo_url = '/static/images/default_avatar.png'
     if 'photo' in request.files and request.files['photo'].filename != '':
         photo = request.files['photo']
@@ -239,7 +204,6 @@ def create_profile():
         save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
         photo.save(save_path)
         photo_url = f'/uploads/{unique_filename}'
-
     new_profile = StaffProfile(
         nickname=data.get('nickname'), dob=dob_date, first_name=data.get('first_name'),
         last_name=data.get('last_name'), phone=data.get('phone'), instagram=data.get('instagram'),
@@ -260,7 +224,6 @@ def update_profile(profile_id):
         dob_date = date(int(data.get('dob_year')), int(data.get('dob_month')), int(data.get('dob_day')))
     except Exception:
         return jsonify({'status': 'error', 'message': 'A valid Date of Birth is required.'}), 400
-
     if 'photo' in request.files and request.files['photo'].filename != '':
         photo = request.files['photo']
         filename = secure_filename(photo.filename)
@@ -268,7 +231,6 @@ def update_profile(profile_id):
         save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
         photo.save(save_path)
         profile.photo_url = f'/uploads/{unique_filename}'
-
     profile.nickname = data.get('nickname')
     profile.dob = dob_date
     profile.first_name = data.get('first_name')
@@ -280,7 +242,6 @@ def update_profile(profile_id):
     profile.height = data.get('height') or None
     profile.weight = data.get('weight') or None
     profile.admin_mama_name = data.get('admin_mama_name')
-
     db.session.commit()
     return jsonify({'status': 'success', 'message': 'Profile updated successfully!'}), 200
 
@@ -302,21 +263,6 @@ def delete_profile(profile_id):
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-# Legacy dispatch API
-@app.route('/api/profile/<int:profile_id>/dispatch', methods=['POST'])
-def dispatch_staff(profile_id):
-    profile = StaffProfile.query.get_or_404(profile_id)
-    data = request.json
-    new_venue = data.get('venue')
-    if new_venue == 'available':
-        profile.current_venue = None
-    elif new_venue in VENUE_LIST:
-        profile.current_venue = new_venue
-    else:
-        return jsonify({'status': 'error', 'message': 'Invalid venue specified.'}), 400
-    db.session.commit()
-    return jsonify({'status': 'success', 'message': f'{profile.nickname} dispatched to {new_venue}.'})
-
 # =========================
 # Assignment API
 # =========================
@@ -332,95 +278,69 @@ def create_assignment():
         base_salary = float(data.get('base_salary', 0))
     except Exception:
         return jsonify({"status": "error", "message": "Invalid payload."}), 400
-
-    if venue not in VENUE_LIST:
-        return jsonify({"status": "error", "message": "Invalid venue."}), 400
-    if contract_type not in CONTRACT_TYPES:
-        return jsonify({"status": "error", "message": "Invalid contract_type."}), 400
-
+    if venue not in VENUE_LIST: return jsonify({"status": "error", "message": "Invalid venue."}), 400
+    if contract_type not in CONTRACT_TYPES: return jsonify({"status": "error", "message": "Invalid contract_type."}), 400
     staff = StaffProfile.query.get(staff_id)
-    if not staff:
-        return jsonify({"status": "error", "message": "Staff not found."}), 404
-
-    # Prevent overlapping ongoing contracts for same staff
-    overlapping = Assignment.query.filter(
-        Assignment.staff_id == staff_id,
-        Assignment.status == 'ongoing',
-        Assignment.start_date <= start_date,
-        Assignment.end_date >= start_date
-    ).first()
-    if overlapping:
-        return jsonify({"status": "error", "message": "Staff already has an ongoing contract overlapping this start date."}), 409
-
+    if not staff: return jsonify({"status": "error", "message": "Staff not found."}), 404
+    overlapping = Assignment.query.filter(Assignment.staff_id == staff_id, Assignment.status == 'ongoing', Assignment.start_date <= start_date, Assignment.end_date >= start_date).first()
+    if overlapping: return jsonify({"status": "error", "message": "Staff already has an ongoing contract overlapping this start date."}), 409
     end_date = compute_end_date(start_date, contract_type)
-    new_a = Assignment(
-        staff_id=staff_id,
-        venue=venue,
-        contract_type=contract_type,
-        start_date=start_date,
-        end_date=end_date,
-        base_salary=base_salary,
-        status='ongoing'
-    )
+    new_a = Assignment(staff_id=staff_id, venue=venue, contract_type=contract_type, start_date=start_date, end_date=end_date, base_salary=base_salary, status='ongoing')
     db.session.add(new_a)
-
-    # 🚀 IMPORTANT: persist to legacy dispatch board
     staff.current_venue = venue
-
     db.session.commit()
     return jsonify({"status": "success", "assignment": new_a.to_dict()}), 201
 
-
-# === Assignment management: end now & delete ===
-
 @app.route('/api/assignment/<int:assignment_id>/end', methods=['POST'])
 def end_assignment_now(assignment_id):
-    """Mark an ongoing assignment as completed today."""
     a = Assignment.query.get_or_404(assignment_id)
-
     if a.status != 'ongoing':
         return jsonify({"status": "error", "message": "Assignment is not ongoing."}), 400
-
     today = date.today()
-    # end_date must not be before start_date
     a.end_date = today if today >= a.start_date else a.start_date
-    a.status = 'completed'
+    a.status = 'completed' # This status is temporary until finalized
     db.session.commit()
-
-    return jsonify({"status": "success", "assignment": a.to_dict()}), 200
-
+    # MODIFIED: Return the updated assignment data
+    return jsonify({
+        "status": "success", 
+        "assignment": a.to_dict(),
+        "contract_days": (a.end_date - a.start_date).days + 1
+    }), 200
 
 @app.route('/api/assignment/<int:assignment_id>', methods=['DELETE'])
 def delete_assignment(assignment_id):
-    """Delete an assignment and its performance records (cascade)."""
+    """MODIFIED: Deletes an assignment and ensures the staff is made available again."""
     a = Assignment.query.get_or_404(assignment_id)
-    db.session.delete(a)  # performance_records removed via cascade
+    
+    # NEW: Free up the staff member
+    if a.staff:
+        a.staff.current_venue = None
+        
+    db.session.delete(a)
     db.session.commit()
     return jsonify({"status": "success"}), 200
 
-# === NEW: Finalize Contract API ===
 @app.route('/api/assignment/<int:assignment_id>/finalize', methods=['POST'])
 def finalize_assignment(assignment_id):
-    """Finalizes a contract by setting its status to 'on_hold' or 'archived'."""
+    """Finalizes a contract by setting its status to 'archived'."""
     a = Assignment.query.get_or_404(assignment_id)
     data = request.get_json() or {}
     final_status = data.get('status')
 
-    if a.status != 'ongoing':
-        return jsonify({"status": "error", "message": "Only ongoing assignments can be finalized."}), 400
+    # Accepte de finaliser les contrats 'ongoing' ET ceux qui viennent d'être terminés
+    if a.status not in ['ongoing', 'completed']:
+        return jsonify({"status": "error", "message": f"Assignment cannot be finalized from its current state ({a.status})."}), 400
     
-    if final_status not in ['on_hold', 'archived']:
-        return jsonify({"status": "error", "message": "Invalid final status. Must be 'on_hold' or 'archived'."}), 400
+    if final_status != 'archived':
+        return jsonify({"status": "error", "message": "Invalid final status. Must be 'archived'."}), 400
 
-    a.status = final_status
+    a.status = 'archived'
     
-    # Also remove staff from active dispatch view
     if a.staff:
         a.staff.current_venue = None
 
     db.session.commit()
     return jsonify({"status": "success", "message": f"Assignment finalized as {final_status}.", "assignment": a.to_dict()}), 200
-
 
 # =========================
 # Performance API
@@ -428,8 +348,7 @@ def finalize_assignment(assignment_id):
 
 def _get_or_create_daily_record(assignment_id: int, ymd: date) -> 'PerformanceRecord':
     rec = PerformanceRecord.query.filter_by(assignment_id=assignment_id, record_date=ymd).first()
-    if rec:
-        return rec
+    if rec: return rec
     rec = PerformanceRecord(assignment_id=assignment_id, record_date=ymd)
     db.session.add(rec)
     db.session.commit()
@@ -443,67 +362,22 @@ def get_performance(assignment_id, ymd):
         return jsonify({"status": "error", "message": "Invalid date."}), 400
     rec = PerformanceRecord.query.filter_by(assignment_id=assignment_id, record_date=day).first()
     if not rec:
-        return jsonify({"status": "success", "record": None, "history": []}), 200
-    history = PerformanceRecord.query.filter(
-        PerformanceRecord.assignment_id == assignment_id,
-        PerformanceRecord.id != rec.id
-    ).order_by(PerformanceRecord.record_date.desc()).limit(5).all()
-    return jsonify({"status": "success", "record": rec.to_dict(), "history": [h.to_dict() for h in history]}), 200
+        return jsonify({"status": "success", "record": None}), 200
+    return jsonify({"status": "success", "record": rec.to_dict()}), 200
 
 @app.route('/api/performance/<int:assignment_id>', methods=['GET'])
 def list_performance_for_assignment(assignment_id):
-    """
-    Return all saved daily records for a given assignment (most recent first).
-    This lets the UI render a persistent history list.
-    """
     a = Assignment.query.get(assignment_id)
     if not a:
         return jsonify({"status": "error", "message": "Assignment not found."}), 404
-
-    records = (PerformanceRecord.query
-               .filter_by(assignment_id=assignment_id)
-               .order_by(PerformanceRecord.record_date.desc())
-               .all())
-
+    records = PerformanceRecord.query.filter_by(assignment_id=assignment_id).order_by(PerformanceRecord.record_date.desc()).all()
     return jsonify({
         "status": "success",
         "records": [r.to_dict() for r in records],
         "contract": {
-            "start_date": a.start_date.isoformat(),
-            "end_date": a.end_date.isoformat(),
-            "base_salary": a.base_salary,
-            "contract_days": (a.end_date - a.start_date).days + 1
+            "start_date": a.start_date.isoformat(), "end_date": a.end_date.isoformat(),
+            "base_salary": a.base_salary, "contract_days": (a.end_date - a.start_date).days + 1
         }
-    }), 200
-
-# ✅ NEW: history endpoint used by parts of the front/README
-@app.route('/api/performance-history/<int:assignment_id>', methods=['GET'])
-def performance_history(assignment_id):
-    """
-    Return recent history for an assignment.
-    Query param:
-      - days (int, optional): only records within the last N days (capped 365).
-    Response: { status, records: [ ... ] }
-    """
-    a = Assignment.query.get(assignment_id)
-    if not a:
-        return jsonify({"status": "error", "message": "Assignment not found."}), 404
-
-    try:
-        days_param = int(request.args.get('days', '0') or 0)
-    except ValueError:
-        days_param = 0
-
-    days = max(0, min(days_param, 365))
-    q = PerformanceRecord.query.filter_by(assignment_id=assignment_id)
-    if days > 0:
-        since = date.today() - timedelta(days=days)
-        q = q.filter(PerformanceRecord.record_date >= since)
-
-    records = q.order_by(PerformanceRecord.record_date.desc()).all()
-    return jsonify({
-        "status": "success",
-        "records": [r.to_dict() for r in records]
     }), 200
 
 @app.route('/api/performance', methods=['POST'])
@@ -514,23 +388,16 @@ def upsert_performance():
         ymd = datetime.fromisoformat(data.get('record_date')).date()
     except Exception:
         return jsonify({"status": "error", "message": "Invalid assignment_id or record_date"}), 400
-
     a = Assignment.query.get(assignment_id)
     if not a or a.status != 'ongoing':
-        return jsonify({"status": "error", "message": "Assignment not found or not ongoing."}), 404
+        return jsonify({"status": "error", "message": "Performance can only be added to ongoing assignments."}), 400
     if not (a.start_date <= ymd <= a.end_date):
         return jsonify({"status": "error", "message": "Date outside contract period."}), 400
-
     rec = _get_or_create_daily_record(assignment_id, ymd)
-
     def time_or_none(s):
-        if not s:
-            return None
-        try:
-            return dt_time.fromisoformat(s)
-        except Exception:
-            return None
-
+        if not s: return None
+        try: return dt_time.fromisoformat(s)
+        except Exception: return None
     rec.arrival_time = time_or_none(data.get('arrival_time'))
     rec.departure_time = time_or_none(data.get('departure_time'))
     rec.drinks_sold = int(data.get('drinks_sold') or 0)
@@ -538,10 +405,8 @@ def upsert_performance():
     rec.bonus = float(data.get('bonus') or 0.0)
     rec.malus = float(data.get('malus') or 0.0)
     rec.lateness_penalty = float(calc_lateness_penalty(rec.arrival_time))
-
     db.session.commit()
     return jsonify({"status": "success", "record": rec.to_dict()}), 200
-
 
 # =========================
 # Main

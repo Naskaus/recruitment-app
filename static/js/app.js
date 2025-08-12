@@ -74,7 +74,7 @@
     }
   });
 
-  // -----------------------------
+    // -----------------------------
   // Dispatch board: DnD + Create assignment modal
   // -----------------------------
   document.addEventListener("DOMContentLoaded", () => {
@@ -131,6 +131,9 @@
     const startDateInput = document.getElementById("startDate");
     const contractTypeInput = document.getElementById("contractType");
     const baseSalaryInput = document.getElementById("baseSalary");
+    // NEW: Get the role select input
+    const roleInput = document.getElementById("assignmentRole");
+
 
     const SALARY_DEFAULTS = {
         '1jour': 1000,
@@ -153,6 +156,10 @@
       venueInput.value = venue;
       startDateInput.value = new Date().toISOString().split("T")[0];
       assignmentModal?.classList.remove("hidden");
+      // NEW: Set a default role if available
+      if (roleInput && roleInput.options.length > 0) {
+        roleInput.selectedIndex = 0;
+      }
       updateDefaultSalary(); 
     }
     function closeModal() { assignmentModal?.classList.add("hidden"); }
@@ -171,10 +178,20 @@
       const payload = {
         staff_id: staffIdInput.value,
         venue: venueInput.value,
+        // NEW: Add role to the payload
+        role: roleInput.value,
         contract_type: contractTypeInput.value,
         start_date: startDateInput.value,
         base_salary: baseSalaryInput.value,
       };
+
+      // NEW: Simple validation for the role
+      if (!payload.role) {
+          alert("Please select a role.");
+          submitBtn.disabled = false;
+          submitBtn.textContent = prev;
+          return;
+      }
 
       try {
         const res = await fetch("/api/assignment", {
@@ -185,7 +202,8 @@
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.message || "Server error");
         closeModal();
-        location.reload();
+        // NEW: Redirect to payroll to see the new contract, instead of just reloading.
+        window.location.href = '/payroll';
       } catch (err) {
         alert(err.message || "Network error.");
       } finally {
@@ -216,6 +234,7 @@
 
     const modalStaffName = document.getElementById("modalStaffName");
     const modalContractBadge = document.getElementById("modalContractBadge");
+    const modalRoleBadge = document.getElementById("modalRoleBadge"); 
     const recordDateInput = document.getElementById("recordDate");
     const periodText = document.getElementById("periodText");
 
@@ -238,7 +257,7 @@
     const closeSummaryBtn = document.getElementById("closeSummaryModalBtn");
     const summaryStaffName = document.getElementById("summaryStaffName");
     const summaryAssignmentIdInput = document.getElementById("summaryAssignmentId");
-
+    const summaryTotalDaysWorked = document.getElementById("summaryTotalDaysWorked");
     const summaryTotalDrinks = document.getElementById("summaryTotalDrinks");
     const summaryTotalSpecialComm = document.getElementById("summaryTotalSpecialComm");
     const summaryTotalCommission = document.getElementById("summaryTotalCommission");
@@ -405,8 +424,7 @@
       }
     }
     
-    // >>> SIGNATURE CORRIGÉE (ajout du 4e paramètre) <<<
-    function calculateAndShowSummary(assignmentId, records, contract, baseDailyFromCaller) {
+                function calculateAndShowSummary(assignmentId, records, contract, baseDailyFromCaller) {
         let totalDrinks = 0, totalSpecial = 0, totalCommission = 0, totalSalary = 0, totalProfit = 0;
 
         // On privilégie le baseDaily calculé en amont (plus fiable si contrat raccourci).
@@ -445,11 +463,24 @@
 
         summaryAssignmentIdInput.value = assignmentId;
         summaryStaffName.textContent = modalStaffName.textContent;
+        
+        summaryTotalDaysWorked.textContent = `${records.length} days`;
+        
         summaryTotalDrinks.textContent = totalDrinks;
         summaryTotalSpecialComm.textContent = `${totalSpecial.toFixed(0)}฿`;
         summaryTotalCommission.textContent = `${totalCommission.toFixed(0)}฿`;
         summaryTotalSalary.textContent = `${totalSalary.toFixed(0)}฿`;
         summaryTotalProfit.textContent = `${totalProfit.toFixed(0)}฿`;
+
+        // --- NEW: Apply color class based on profit value ---
+        const profitEl = summaryTotalProfit;
+        profitEl.classList.remove('profit-positive', 'profit-negative'); // Reset classes first
+        if (totalProfit > 0) {
+            profitEl.classList.add('profit-positive');
+        } else if (totalProfit < 0) {
+            profitEl.classList.add('profit-negative');
+        }
+        // --- END NEW ---
         
         openSummaryModal();
     }
@@ -510,13 +541,15 @@
       const assignmentId = tr.dataset.assignmentId;
       const staffName = tr.dataset.staffName;
 
-      // Manage performance
+            // Manage performance
       if (e.target.closest(".manage-performance-btn")) {
         const startIso = tr.dataset.startDate;
         const endIso = tr.dataset.endDate;
         const baseSalary = parseFloat(tr.dataset.baseSalary || "0");
         const contractDays = parseInt(tr.dataset.contractDays || "1", 10);
         const cType = (tr.dataset.contractType || "").trim();
+        // NEW: Get the role from the data-attribute
+        const role = tr.dataset.role || "";
 
         assignmentIdInput.value = assignmentId;
         contractDaysInput.value = String(contractDays);
@@ -526,6 +559,14 @@
         modalStaffName.textContent = staffName || "";
         modalContractBadge.textContent = cType === "1jour" ? "1-day" : (cType === "10jours" ? "10-days" : "1-month");
         modalContractBadge.className = "contract-badge badge-" + cType;
+        
+        // NEW: Populate the role badge in the modal
+        if (modalRoleBadge) {
+          modalRoleBadge.textContent = role;
+          // Show or hide the badge depending on whether a role is present
+          modalRoleBadge.style.display = role ? 'inline-block' : 'none';
+        }
+
         recordDateInput.min = startIso;
         recordDateInput.max = endIso;
         recordDateInput.value = startIso;

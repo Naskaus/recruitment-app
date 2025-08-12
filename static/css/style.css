@@ -843,12 +843,16 @@ button:disabled {
     border-bottom: 1px solid var(--color-border);
 }
 
+/* --- MODIFICATIONS CI-DESSOUS --- */
 .modal-header h3 {
     margin: 0;
-    font-size: 1.4rem;
+    font-size: 1.6rem; /* MODIFIED: Increased font size */
+    display: flex;       /* NEW: Ensures vertical alignment of items inside */
+    align-items: center; /* NEW: Aligns text and badges vertically */
+    gap: 0.5rem;         /* NEW: Adds a little space between name and badges */
 }
 
-.modal-header h3 span {
+.modal-header h3 span#modalStaffName { /* Target the name specifically */
     color: var(--color-accent-primary);
 }
 .modal-header h3 strong {
@@ -905,7 +909,6 @@ button:disabled {
         padding: 16px;
     }
 }
-
 /* ---------------------------------- */
 /* 17. Base Contract Colors (Variables) */
 /* This is our single source of truth for contract colors. */
@@ -1050,4 +1053,32 @@ button:disabled {
 .button.button-success:hover {
     background-color: #157347;
     border-color: #146c43;
+}
+/* ---------------------------------- */
+/* 23. Role Badge (NEW)               */
+/* ---------------------------------- */
+.role-badge {
+    display: inline-block;
+    margin-top: 4px; /* Space between name and badge */
+    padding: 2px 8px;
+    font-size: 0.95rem; /* Make it smaller than main text */
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--color-text-secondary);
+    background-color: var(--color-main-bg); /* Use the light page background */
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    text-transform: capitalize;
+}
+/* ---------------------------------- */
+/* 24. Financial Text Styling (NEW)   */
+/* ---------------------------------- */
+.profit-positive {
+    color: #28a745; /* A clear, friendly green */
+    font-weight: 700;
+}
+
+.profit-negative {
+    color: #dc3545; /* A standard, soft red */
+    font-weight: 700;
 }

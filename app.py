@@ -23,6 +23,9 @@ migrate = Migrate(app, db)
 # --- Hardcoded Data (for now) ---
 ADMIN_LIST = ["Admin 1", "Mama Rose", "Mama Joy", "Khun Somchai"]
 VENUE_LIST = ["Red Dragon", "Mandarin", "Shark"]
+# NEW: Define roles
+ROLE_LIST = ["Dancer", "Hostess"]
+
 
 # Ensure an 'uploads' directory exists
 if not os.path.exists(UPLOAD_FOLDER):
@@ -86,6 +89,8 @@ class Assignment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     staff_id = db.Column(db.Integer, db.ForeignKey('staff_profile.id'), nullable=False)
     venue = db.Column(db.String(80), nullable=False)
+    # MODIFIED: Added server_default to handle existing rows during migration
+    role = db.Column(db.String(50), nullable=False, server_default='Dancer')
     contract_type = db.Column(db.String(20), nullable=False)
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
@@ -103,6 +108,7 @@ class Assignment(db.Model):
     def to_dict(self):
         return {
             "id": self.id, "staff_id": self.staff_id, "venue": self.venue,
+            "role": self.role,
             "contract_type": self.contract_type, "start_date": self.start_date.isoformat(),
             "end_date": self.end_date.isoformat(), "base_salary": self.base_salary,
             "status": self.status,
@@ -147,7 +153,8 @@ def dispatch_board():
     all_staff = StaffProfile.query.all()
     available_staff = [s for s in all_staff if not s.current_venue]
     dispatched_staff = {venue: [s for s in all_staff if s.current_venue == venue] for venue in VENUE_LIST}
-    return render_template('dispatch.html', available_staff=available_staff, dispatched_staff=dispatched_staff, venues=VENUE_LIST)
+    # NEW: Pass roles to the template
+    return render_template('dispatch.html', available_staff=available_staff, dispatched_staff=dispatched_staff, venues=VENUE_LIST, roles=ROLE_LIST)
 
 @app.route('/payroll')
 def payroll_page_new():
@@ -273,20 +280,30 @@ def create_assignment():
     try:
         staff_id = int(data.get('staff_id'))
         venue = data.get('venue')
+        # NEW: Get role from payload
+        role = data.get('role')
         contract_type = data.get('contract_type')
         start_date = datetime.fromisoformat(data.get('start_date')).date()
         base_salary = float(data.get('base_salary', 0))
     except Exception:
         return jsonify({"status": "error", "message": "Invalid payload."}), 400
+    
+    # NEW: Validate the role
+    if role not in ROLE_LIST: return jsonify({"status": "error", "message": f"Invalid role. Must be one of {ROLE_LIST}"}), 400
     if venue not in VENUE_LIST: return jsonify({"status": "error", "message": "Invalid venue."}), 400
     if contract_type not in CONTRACT_TYPES: return jsonify({"status": "error", "message": "Invalid contract_type."}), 400
+    
     staff = StaffProfile.query.get(staff_id)
     if not staff: return jsonify({"status": "error", "message": "Staff not found."}), 404
+    
     overlapping = Assignment.query.filter(Assignment.staff_id == staff_id, Assignment.status == 'ongoing', Assignment.start_date <= start_date, Assignment.end_date >= start_date).first()
     if overlapping: return jsonify({"status": "error", "message": "Staff already has an ongoing contract overlapping this start date."}), 409
+    
     end_date = compute_end_date(start_date, contract_type)
-    new_a = Assignment(staff_id=staff_id, venue=venue, contract_type=contract_type, start_date=start_date, end_date=end_date, base_salary=base_salary, status='ongoing')
+    # NEW: Add role to the constructor
+    new_a = Assignment(staff_id=staff_id, venue=venue, role=role, contract_type=contract_type, start_date=start_date, end_date=end_date, base_salary=base_salary, status='ongoing')
     db.session.add(new_a)
+    
     staff.current_venue = venue
     db.session.commit()
     return jsonify({"status": "success", "assignment": new_a.to_dict()}), 201
@@ -300,7 +317,6 @@ def end_assignment_now(assignment_id):
     a.end_date = today if today >= a.start_date else a.start_date
     a.status = 'completed'
     db.session.commit()
-    # On renvoie les nouvelles données pour que le JS puisse les utiliser
     return jsonify({
         "status": "success", 
         "assignment": a.to_dict(),
@@ -309,36 +325,25 @@ def end_assignment_now(assignment_id):
 
 @app.route('/api/assignment/<int:assignment_id>', methods=['DELETE'])
 def delete_assignment(assignment_id):
-    """MODIFIED: Deletes an assignment and ensures the staff is made available again."""
     a = Assignment.query.get_or_404(assignment_id)
-    
-    # NEW: Free up the staff member
     if a.staff:
         a.staff.current_venue = None
-        
     db.session.delete(a)
     db.session.commit()
     return jsonify({"status": "success"}), 200
 
 @app.route('/api/assignment/<int:assignment_id>/finalize', methods=['POST'])
 def finalize_assignment(assignment_id):
-    """Finalizes a contract by setting its status to 'archived'."""
     a = Assignment.query.get_or_404(assignment_id)
     data = request.get_json() or {}
     final_status = data.get('status')
-
-    # Accepte de finaliser les contrats 'ongoing' ET ceux qui viennent d'être terminés
     if a.status not in ['ongoing', 'completed']:
         return jsonify({"status": "error", "message": f"Assignment cannot be finalized from its current state ({a.status})."}), 400
-    
     if final_status != 'archived':
         return jsonify({"status": "error", "message": "Invalid final status. Must be 'archived'."}), 400
-
     a.status = 'archived'
-    
     if a.staff:
         a.staff.current_venue = None
-
     db.session.commit()
     return jsonify({"status": "success", "message": f"Assignment finalized as {final_status}.", "assignment": a.to_dict()}), 200
 
@@ -370,13 +375,9 @@ def list_performance_for_assignment(assignment_id):
     a = Assignment.query.get(assignment_id)
     if not a:
         return jsonify({"status": "error", "message": "Assignment not found."}), 404
-
     records = PerformanceRecord.query.filter_by(assignment_id=assignment_id) \
                                      .order_by(PerformanceRecord.record_date.desc()).all()
-
-    # NEW: durée d’origine fiable (1/10/30) à partir du type
     original_days = CONTRACT_TYPES.get(a.contract_type)
-
     return jsonify({
         "status": "success",
         "records": [r.to_dict() for r in records],
@@ -384,10 +385,10 @@ def list_performance_for_assignment(assignment_id):
             "start_date": a.start_date.isoformat(),
             "end_date": a.end_date.isoformat(),
             "base_salary": a.base_salary,
-            "contract_days": (a.end_date - a.start_date).days + 1,   # durée actuelle (peut être raccourcie)
-            "contract_type": a.contract_type,                        # NEW
-            "original_days": original_days,                          # NEW (1, 10, 30)
-            "status": a.status                                       # (optionnel mais utile)
+            "contract_days": (a.end_date - a.start_date).days + 1,
+            "contract_type": a.contract_type,
+            "original_days": original_days,
+            "status": a.status
         }
     }), 200
 

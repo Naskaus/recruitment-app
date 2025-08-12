@@ -298,9 +298,9 @@ def end_assignment_now(assignment_id):
         return jsonify({"status": "error", "message": "Assignment is not ongoing."}), 400
     today = date.today()
     a.end_date = today if today >= a.start_date else a.start_date
-    a.status = 'completed' # This status is temporary until finalized
+    a.status = 'completed'
     db.session.commit()
-    # MODIFIED: Return the updated assignment data
+    # On renvoie les nouvelles données pour que le JS puisse les utiliser
     return jsonify({
         "status": "success", 
         "assignment": a.to_dict(),
@@ -370,15 +370,27 @@ def list_performance_for_assignment(assignment_id):
     a = Assignment.query.get(assignment_id)
     if not a:
         return jsonify({"status": "error", "message": "Assignment not found."}), 404
-    records = PerformanceRecord.query.filter_by(assignment_id=assignment_id).order_by(PerformanceRecord.record_date.desc()).all()
+
+    records = PerformanceRecord.query.filter_by(assignment_id=assignment_id) \
+                                     .order_by(PerformanceRecord.record_date.desc()).all()
+
+    # NEW: durée d’origine fiable (1/10/30) à partir du type
+    original_days = CONTRACT_TYPES.get(a.contract_type)
+
     return jsonify({
         "status": "success",
         "records": [r.to_dict() for r in records],
         "contract": {
-            "start_date": a.start_date.isoformat(), "end_date": a.end_date.isoformat(),
-            "base_salary": a.base_salary, "contract_days": (a.end_date - a.start_date).days + 1
+            "start_date": a.start_date.isoformat(),
+            "end_date": a.end_date.isoformat(),
+            "base_salary": a.base_salary,
+            "contract_days": (a.end_date - a.start_date).days + 1,   # durée actuelle (peut être raccourcie)
+            "contract_type": a.contract_type,                        # NEW
+            "original_days": original_days,                          # NEW (1, 10, 30)
+            "status": a.status                                       # (optionnel mais utile)
         }
     }), 200
+
 
 @app.route('/api/performance', methods=['POST'])
 def upsert_performance():

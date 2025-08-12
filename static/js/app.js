@@ -22,6 +22,14 @@
     return { btn, id, name };
   }
 
+  // --- Mapping robuste pour convertir contract_type -> nombre de jours
+  const TYPE_TO_DAYS = {
+    '1jour': 1, '1day': 1,
+    '10jours': 10, '10days': 10,
+    '1mois': 30, '1month': 30
+  };
+  const toTypeKey = (v) => String(v || '').trim().toLowerCase();
+
   // -----------------------------
   // Profile delete (list + detail)
   // -----------------------------
@@ -240,7 +248,6 @@
     const summaryPdfBtn = document.getElementById("summaryPdfBtn");
     const summaryArchiveBtn = document.getElementById("summaryArchiveBtn");
 
-
     // --- Constants ---
     const DRINK_STAFF = 100;
     const DRINK_BAR = 120;
@@ -336,6 +343,19 @@
         const list = data.records;
         const contract = data.contract;
 
+        // --- LA CORRECTION EST ICI ---
+        // Déterminer la durée ORIGINALE à partir du type (robuste) ou champs backend si dispo.
+        const typeKey = toTypeKey(contract.contract_type);
+        let originalContractDays =
+          contract.original_days ||
+          contract.contract_days_original ||
+          TYPE_TO_DAYS[typeKey] ||
+          contract.contract_days || 1;
+
+        // VRAI salaire journalier basé sur la durée originale.
+        const baseDaily = originalContractDays > 0 ? (contract.base_salary / originalContractDays) : 0;
+        // --- FIN DE LA CORRECTION ---
+
         if (list.length === 0) {
           historyBox.innerHTML = `<p class="text-center" style="padding:.5rem;">No history yet.</p>`;
         } else {
@@ -348,7 +368,6 @@
             
             list.forEach(r => {
                 const tr = document.createElement("tr");
-                const baseDaily = contract.contract_days > 0 ? (contract.base_salary / contract.contract_days) : 0;
                 const penalty = r.lateness_penalty || 0;
                 const bonus = r.bonus || 0;
                 const malus = r.malus || 0;
@@ -374,8 +393,10 @@
             historyBox.appendChild(tableEl);
         }
 
+        // La condition de complétion utilise la durée ACTUELLE (qui peut être raccourcie)
         if (list.length >= contract.contract_days) {
-            calculateAndShowSummary(assignmentId, list, contract);
+            // On passe le baseDaily correct à la fonction de calcul (signature corrigée).
+            calculateAndShowSummary(assignmentId, list, contract, baseDaily);
         }
 
       } catch (e) {
@@ -384,10 +405,25 @@
       }
     }
     
-    function calculateAndShowSummary(assignmentId, records, contract) {
+    // >>> SIGNATURE CORRIGÉE (ajout du 4e paramètre) <<<
+    function calculateAndShowSummary(assignmentId, records, contract, baseDailyFromCaller) {
         let totalDrinks = 0, totalSpecial = 0, totalCommission = 0, totalSalary = 0, totalProfit = 0;
-        
-        const baseDaily = contract.contract_days > 0 ? (contract.base_salary / contract.contract_days) : 0;
+
+        // On privilégie le baseDaily calculé en amont (plus fiable si contrat raccourci).
+        let baseDaily = (typeof baseDailyFromCaller === 'number' && !Number.isNaN(baseDailyFromCaller))
+          ? baseDailyFromCaller
+          : null;
+
+        if (baseDaily == null) {
+          // Fallback sûr si la fonction est utilisée ailleurs sans 4e paramètre.
+          const typeKey = toTypeKey(contract.contract_type);
+          const originalDays =
+            contract.original_days ||
+            contract.contract_days_original ||
+            TYPE_TO_DAYS[typeKey] ||
+            contract.contract_days || 1;
+          baseDaily = originalDays > 0 ? (contract.base_salary / originalDays) : 0;
+        }
 
         records.forEach(r => {
             const dailyDrinks = r.drinks_sold || 0;
@@ -418,7 +454,7 @@
         openSummaryModal();
     }
 
-        async function finalizeContract(assignmentId, status) {
+    async function finalizeContract(assignmentId, status) {
         const row = document.getElementById(`assignment-row-${assignmentId}`);
         const name = row ? (row.dataset.staffName || 'this contract') : 'this contract';
 
@@ -466,7 +502,6 @@
         alert('PDF generation will be implemented in a future step.');
     });
 
-
     // --- Event Delegation for Payroll Table ---
     table.addEventListener("click", async (e) => {
       const tr = e.target.closest("tr[data-assignment-id]");
@@ -503,15 +538,20 @@
         return;
       }
 
-           // End now
+      // End now
       if (e.target.closest(".end-contract-btn")) {
         if (!confirm(`This will end the contract for "${staffName}" today and open the final summary. Continue?`)) return;
         try {
+          // Étape 1: Appeler l'API pour terminer le contrat
           const res = await fetch(`/api/assignment/${assignmentId}/end`, { method: "POST" });
           const data = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(data.message || "Server error");
 
-          // Simule un clic sur le bouton "Manage" pour ouvrir la modale
+          // Étape 2: Mettre à jour les données sur la ligne HTML elle-même !
+          tr.dataset.endDate = data.assignment.end_date;
+          tr.dataset.contractDays = data.contract_days;
+
+          // Étape 3: Simuler le clic sur "Manage"
           const manageBtn = tr.querySelector('.manage-performance-btn');
           if(manageBtn) {
               manageBtn.click();
@@ -523,6 +563,7 @@
         }
         return;
       }
+
       // Delete
       if (e.target.closest(".delete-contract-btn")) {
         if (!confirm(`Delete this contract for "${staffName}"? This cannot be undone.`)) return;
@@ -574,8 +615,7 @@
         alert("Saved successfully");
         await loadRecord(payload.assignment_id, payload.record_date);
         await loadPerformanceHistory(payload.assignment_id);
-      } catch (err)
- {
+      } catch (err) {
         alert(err.message || "Network error");
       } finally {
         submitBtn.disabled = false;

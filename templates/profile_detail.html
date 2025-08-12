@@ -79,5 +79,82 @@
 
         </div>
     </div>
+            <!-- ============================================= -->
+        <!-- NEW: Performance History Section              -->
+        <!-- ============================================= -->
+        <hr style="margin: 48px 0; border-color: var(--color-border);">
+
+        <div class="performance-history-section">
+            <div class="profile-detail-header" style="margin-bottom: 24px;">
+                <h4>Performance History</h4>
+                <!-- The filter will go here in the next step -->
+            </div>
+
+            <!-- KPIs Summary Grid -->
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <span class="kpi-label">Total Days Worked</span>
+                    <span class="kpi-value">{{ history_stats.total_days_worked }}</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Total Drinks Sold</span>
+                    <span class="kpi-value">{{ history_stats.total_drinks_sold }}</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Total Salary Paid</span>
+                    <span class="kpi-value">{{ '%.0f'|format(history_stats.total_salary_paid) }} ฿</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Total Commission Paid</span>
+                    <span class="kpi-value">{{ '%.0f'|format(history_stats.total_commission_paid) }} ฿</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Total Special Comm</span>
+                    <span class="kpi-value">{{ '%.0f'|format(history_stats.total_special_comm) }} ฿</span>
+                </div>
+                <div class="kpi-card {% if history_stats.total_bar_profit > 0 %}profit-positive-bg{% elif history_stats.total_bar_profit < 0 %}profit-negative-bg{% endif %}">
+                    <span class="kpi-label">Total Bar Profit</span>
+                    <span class="kpi-value">{{ '%.0f'|format(history_stats.total_bar_profit) }} ฿</span>
+                </div>
+            </div>
+
+            <!-- Assignments History Table -->
+            <h5 style="margin-top: 32px; margin-bottom: 16px;">Assignments History</h5>
+            <div class="table-responsive">
+                <table class="payroll-table">
+                    <thead>
+                        <tr>
+                            <th>Period</th>
+                            <th>Venue</th>
+                            <th>Contract</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if assignments %}
+                            {% for a in assignments %}
+                                <tr>
+                                    <td>{{ a.start_date.strftime('%d %b %Y') }}</td>
+                                    <td>{{ a.venue }}</td>
+                                    <td>{{ a.contract_type }} ({{ a.role }})</td>
+                                    <td>
+                                      <span class="status-badge status-badge-{{ a.status }}">{{ a.status }}</span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('payroll_page_new') }}#assignment-row-{{ a.id }}" class="button button-secondary" style="padding: 4px 8px; font-size: 0.8rem;">View</a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center">No assignment history found.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
 </div>
 {% endblock %}

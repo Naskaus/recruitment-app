@@ -1082,3 +1082,82 @@ button:disabled {
     color: #dc3545; /* A standard, soft red */
     font-weight: 700;
 }
+/* ---------------------------------- */
+/* 25. Progress Bar Styles (NEW)      */
+/* ---------------------------------- */
+.progress-text {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 4px;
+    text-align: center;
+}
+
+.progress-bar-container {
+    height: 8px;
+    width: 100%;
+    background-color: var(--color-border);
+    border-radius: 4px;
+    overflow: hidden; /* Ensures the inner bar respects the radius */
+}
+
+.progress-bar {
+    height: 100%;
+    background-color: var(--color-accent-primary);
+    border-radius: 4px;
+    transition: width 0.4s ease-in-out;
+}
+/* ---------------------------------- */
+/* 26. Profile History KPIs (NEW)     */
+/* ---------------------------------- */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.kpi-card {
+    background-color: var(--color-main-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-sm);
+    padding: 16px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.kpi-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+}
+
+.kpi-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    line-height: 1.2;
+}
+
+/* Background colors for the profit KPI card */
+.kpi-card.profit-positive-bg {
+    background-color: #d4edda; /* Light green */
+    border-color: #c3e6cb;
+}
+.kpi-card.profit-positive-bg .kpi-label {
+    color: #155724;
+}
+.kpi-card.profit-positive-bg .kpi-value {
+    color: #155724;
+}
+
+.kpi-card.profit-negative-bg {
+    background-color: #f8d7da; /* Light pink/red */
+    border-color: #f5c6cb;
+}
+.kpi-card.profit-negative-bg .kpi-label {
+    color: #721c24;
+}
+.kpi-card.profit-negative-bg .kpi-value {
+    color: #721c24;
+}

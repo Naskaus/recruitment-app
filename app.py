@@ -160,12 +160,31 @@ def dispatch_board():
 def payroll_page_new():
     venue = request.args.get('venue')
     statuses_to_show = ['ongoing', 'archived']
-    q = Assignment.query.filter(Assignment.status.in_(statuses_to_show))
+    
+    # Preload staff and performance_records to avoid N+1 query issues
+    q = Assignment.query.options(db.joinedload(Assignment.staff), db.subqueryload(Assignment.performance_records)).filter(Assignment.status.in_(statuses_to_show))
+    
     if venue:
         q = q.filter(Assignment.venue == venue)
+        
     status_order = db.case((Assignment.status == 'ongoing', 1), (Assignment.status == 'archived', 2), else_=3).label("status_order")
     all_assignments = q.order_by(status_order, Assignment.start_date.asc()).all()
-    rows = [{"assignment": a, "contract_days": (a.end_date - a.start_date).days + 1} for a in all_assignments]
+    
+    rows = []
+    for a in all_assignments:
+        # Get the original duration from our hardcoded dictionary
+        original_duration = CONTRACT_TYPES.get(a.contract_type, 1)
+        # Get the number of days worked by counting the performance records
+        days_worked = len(a.performance_records)
+        
+        rows.append({
+            "assignment": a,
+            "contract_days": (a.end_date - a.start_date).days + 1,
+            # --- NEW DATA FOR PROGRESS BAR ---
+            "days_worked": days_worked,
+            "original_duration": original_duration
+        })
+        
     return render_template('payroll.html', assignments=rows, venues=VENUE_LIST, selected_venue=venue)
 
 @app.route('/profile/new', methods=['GET'])
@@ -176,10 +195,74 @@ def new_profile_form():
     days = range(1, 32)
     return render_template('profile_form.html', years=years, months=months, days=days, admins=ADMIN_LIST, edit_mode=False)
 
+# --- NEW CONSTANTS FOR CALCULATIONS ---
+# We should centralize these if they are used in multiple places.
+DRINK_STAFF_COMMISSION = 100
+DRINK_BAR_PRICE = 120
+
 @app.route('/profile/<int:profile_id>')
 def profile_detail(profile_id):
-    profile = StaffProfile.query.get_or_404(profile_id)
-    return render_template('profile_detail.html', profile=profile)
+    profile = StaffProfile.query.options(
+        db.joinedload(StaffProfile.assignments).subqueryload(Assignment.performance_records)
+    ).get_or_404(profile_id)
+
+    # --- START: History and Stats Calculation ---
+    
+    # 1. Initialize counters for the KPIs
+    total_days_worked = 0
+    total_drinks_sold = 0
+    total_special_comm = 0
+    total_salary_paid = 0
+    total_commission_paid = 0
+    total_bar_profit = 0
+
+    # Sort assignments from newest to oldest
+    # The relationship 'profile.assignments' is already loaded thanks to the query options
+    sorted_assignments = sorted(profile.assignments, key=lambda a: a.start_date, reverse=True)
+
+    # 2. Loop through each assignment to calculate stats
+    for assignment in sorted_assignments:
+        # We need the original duration to calculate the daily base salary correctly
+        original_duration = CONTRACT_TYPES.get(assignment.contract_type, 1)
+        base_daily_salary = (assignment.base_salary / original_duration) if original_duration > 0 else 0
+
+        # Loop through each performance record of the assignment
+        for record in assignment.performance_records:
+            total_days_worked += 1
+            total_drinks_sold += record.drinks_sold or 0
+            total_special_comm += record.special_commissions or 0
+            
+            # Calculate salary for that specific day
+            daily_salary = (base_daily_salary + (record.bonus or 0) - (record.malus or 0) - (record.lateness_penalty or 0))
+            total_salary_paid += daily_salary
+            
+            # Calculate commission for that day
+            daily_commission = (record.drinks_sold or 0) * DRINK_STAFF_COMMISSION
+            total_commission_paid += daily_commission
+            
+            # Calculate bar profit for that day
+            bar_revenue = ((record.drinks_sold or 0) * DRINK_BAR_PRICE) + (record.special_commissions or 0)
+            daily_bar_profit = bar_revenue - daily_salary
+            total_bar_profit += daily_bar_profit
+
+    # 3. Prepare the history data dictionary to be sent to the template
+    history_stats = {
+        "total_days_worked": total_days_worked,
+        "total_drinks_sold": total_drinks_sold,
+        "total_special_comm": total_special_comm,
+        "total_salary_paid": total_salary_paid,
+        "total_commission_paid": total_commission_paid,
+        "total_bar_profit": total_bar_profit
+    }
+    
+    # --- END: History and Stats Calculation ---
+
+    return render_template(
+        'profile_detail.html', 
+        profile=profile,
+        assignments=sorted_assignments, # Pass the sorted list of contracts
+        history_stats=history_stats     # Pass the calculated KPIs
+    )
 
 @app.route('/profile/<int:profile_id>/edit', methods=['GET'])
 def edit_profile_form(profile_id):

@@ -23,8 +23,8 @@
         <th>Staff</th>
         <th>Venue</th>
         <th>Contract</th>
+        <th>Progress</th> <!-- NEW: Add Progress column header -->
         <th>Period</th>
-        <th>Base Salary (THB)</th>
         <th>Actions</th>
       </tr>
       </thead>
@@ -35,8 +35,9 @@
           {% set label = '1-day' if a.contract_type == '1jour'
                         else '10-days' if a.contract_type == '10jours'
                         else '1-month' %}
+          
+          <!-- Fix: Remove duplicated <tr> tag -->
           <tr
-            <tr
             id="assignment-row-{{ a.id }}"
             class="row-contract-{{ a.contract_type }} status-{{ a.status }}"
             data-assignment-id="{{ a.id }}"
@@ -47,15 +48,13 @@
             data-contract-days="{{ row.contract_days or 1 }}"
             data-contract-type="{{ a.contract_type }}"
             data-current-status="{{ a.status }}"
-            data-role="{{ a.role }}" <!-- NEW: Add role to data attributes -->
+            data-role="{{ a.role }}"
           >
             <td>
               <div class="staff-cell">
                 <img src="{{ a.staff.photo_url }}" alt="{{ a.staff.nickname }}">
                 <div class="staff-cell-info">
                   <strong>{{ a.staff.nickname }}</strong>
-                  <span>{{ a.staff.first_name or '' }}</span>
-                  <!-- NEW: Display role as a badge -->
                   <span class="role-badge">{{ a.role }}</span>
                 </div>
               </div>
@@ -63,20 +62,37 @@
             <td>{{ a.venue }}</td>
             <td>
               <span class="contract-badge badge-{{ a.contract_type }}">{{ label }}</span>
-              <small class="muted">({{ row.contract_days }} days)</small>
+              <small class="muted">({{ '%.0f'|format(a.base_salary or 0) }}฿)</small>
             </td>
-            <td>{{ a.start_date.strftime("%d/%m/%Y") }} → {{ a.end_date.strftime("%d/%m/%Y") }}</td>
-            <td>{{ '%.0f'|format(a.base_salary or 0) }}</td>
+
+            <!-- NEW: Progress Bar Cell -->
             <td>
-              <!-- MODIFIED: "on_hold" case removed -->
+              {% if a.status == 'ongoing' %}
+                {% set worked = row.days_worked|int %}
+                {% set total = row.original_duration|int %}
+                {% set percentage = (worked * 100 / total) if total > 0 else 0 %}
+                
+                <div class="progress-text">{{ worked }} / {{ total }} days</div>
+                <div class="progress-bar-container">
+                  <div class="progress-bar" style="width: {{ percentage }}%;"></div>
+                </div>
+              {% else %}
+                <span class="muted">—</span>
+              {% endif %}
+            </td>
+            <!-- END NEW -->
+
+            <td>{{ a.start_date.strftime("%d/%m") }} → {{ a.end_date.strftime("%d/%m") }}</td>
+            
+            <td>
               <div class="actions" style="display:flex; gap:.5rem; flex-wrap:wrap; align-items: center;">
                 {% if a.status == 'ongoing' %}
-                  <button class="button button-primary manage-performance-btn">Manage performance</button>
-                  <button class="button button-secondary end-contract-btn">End now</button>
-                  <button class="button button-danger delete-contract-btn">Delete</button>
+                  <button class="button button-primary manage-performance-btn">Manage</button>
+                  <button class="button button-secondary end-contract-btn">End</button>
+                  <button class="button button-danger delete-contract-btn">Del</button>
                 {% elif a.status == 'archived' %}
                   <span class="status-badge status-badge-archived">Archived</span>
-                  <button class="button button-secondary manage-performance-btn">View Details</button>
+                  <button class="button button-secondary manage-performance-btn">Details</button>
                 {% endif %}
               </div>
             </td>
@@ -84,7 +100,8 @@
         {% endfor %}
       {% else %}
         <tr>
-          <td colspan="6" class="text-center">
+          <!-- MODIFIED: colspan increased to 7 -->
+          <td colspan="7" class="text-center">
             No contracts found. Use the <a href="/dispatch">Dispatch Board</a> to create one.
           </td>
         </tr>

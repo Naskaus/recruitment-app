@@ -93,7 +93,8 @@ class Assignment(db.Model):
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
     base_salary = db.Column(db.Float, nullable=False, default=0.0)
-    status = db.Column(db.String(20), nullable=False, default='ongoing')  # ongoing | completed | canceled
+    # NEW: expanded statuses 'ongoing' | 'completed' | 'canceled' | 'on_hold' | 'archived'
+    status = db.Column(db.String(20), nullable=False, default='ongoing')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     performance_records = db.relationship(
@@ -363,7 +364,7 @@ def create_assignment():
     )
     db.session.add(new_a)
 
-    # 🚀 IMPORTANT: keep legacy dispatch board in sync
+    # 🚀 IMPORTANT: persist to legacy dispatch board
     staff.current_venue = venue
 
     db.session.commit()
@@ -381,7 +382,7 @@ def end_assignment_now(assignment_id):
         return jsonify({"status": "error", "message": "Assignment is not ongoing."}), 400
 
     today = date.today()
-    # end_date should not be before start_date
+    # end_date must not be before start_date
     a.end_date = today if today >= a.start_date else a.start_date
     a.status = 'completed'
     db.session.commit()
@@ -393,14 +394,32 @@ def end_assignment_now(assignment_id):
 def delete_assignment(assignment_id):
     """Delete an assignment and its performance records (cascade)."""
     a = Assignment.query.get_or_404(assignment_id)
-
-    # Optional: forbid deleting a completed assignment (business-dependent)
-    # if a.status == 'completed':
-    #     return jsonify({"status": "error", "message": "Cannot delete a completed assignment."}), 400
-
     db.session.delete(a)  # performance_records removed via cascade
     db.session.commit()
     return jsonify({"status": "success"}), 200
+
+# === NEW: Finalize Contract API ===
+@app.route('/api/assignment/<int:assignment_id>/finalize', methods=['POST'])
+def finalize_assignment(assignment_id):
+    """Finalizes a contract by setting its status to 'on_hold' or 'archived'."""
+    a = Assignment.query.get_or_404(assignment_id)
+    data = request.get_json() or {}
+    final_status = data.get('status')
+
+    if a.status != 'ongoing':
+        return jsonify({"status": "error", "message": "Only ongoing assignments can be finalized."}), 400
+    
+    if final_status not in ['on_hold', 'archived']:
+        return jsonify({"status": "error", "message": "Invalid final status. Must be 'on_hold' or 'archived'."}), 400
+
+    a.status = final_status
+    
+    # Also remove staff from active dispatch view
+    if a.staff:
+        a.staff.current_venue = None
+
+    db.session.commit()
+    return jsonify({"status": "success", "message": f"Assignment finalized as {final_status}.", "assignment": a.to_dict()}), 200
 
 
 # =========================
@@ -449,7 +468,6 @@ def list_performance_for_assignment(assignment_id):
     return jsonify({
         "status": "success",
         "records": [r.to_dict() for r in records],
-        # contract meta (useful for client-side calculations)
         "contract": {
             "start_date": a.start_date.isoformat(),
             "end_date": a.end_date.isoformat(),
@@ -458,47 +476,34 @@ def list_performance_for_assignment(assignment_id):
         }
     }), 200
 
-# --- NEW: Full history with optional ?days filter ---
+# ✅ NEW: history endpoint used by parts of the front/README
 @app.route('/api/performance-history/<int:assignment_id>', methods=['GET'])
 def performance_history(assignment_id):
     """
-    Return performance history for an assignment, optionally limited to the last N days.
-
-    Querystring:
-      - days (optional, int): number of days to look back from today (inclusive).
-        If omitted or invalid, defaults to 120. Values <1 are ignored.
+    Return recent history for an assignment.
+    Query param:
+      - days (int, optional): only records within the last N days (capped 365).
+    Response: { status, records: [ ... ] }
     """
     a = Assignment.query.get(assignment_id)
     if not a:
         return jsonify({"status": "error", "message": "Assignment not found."}), 404
 
-    # Parse and clamp 'days'
-    days = request.args.get('days', default=120, type=int)
-    if days is None or days < 1:
-        days = 120
+    try:
+        days_param = int(request.args.get('days', '0') or 0)
+    except ValueError:
+        days_param = 0
 
-    since = date.today() - timedelta(days=days - 1)
-
+    days = max(0, min(days_param, 365))
     q = PerformanceRecord.query.filter_by(assignment_id=assignment_id)
-    # Only apply time window if 'days' is provided (here it always is, with default 120)
-    q = q.filter(PerformanceRecord.record_date >= since)
+    if days > 0:
+        since = date.today() - timedelta(days=days)
+        q = q.filter(PerformanceRecord.record_date >= since)
 
     records = q.order_by(PerformanceRecord.record_date.desc()).all()
-
     return jsonify({
         "status": "success",
-        "records": [r.to_dict() for r in records],
-        "contract": {
-            "start_date": a.start_date.isoformat(),
-            "end_date": a.end_date.isoformat(),
-            "base_salary": a.base_salary,
-            "contract_days": (a.end_date - a.start_date).days + 1
-        },
-        "window": {
-            "days": days,
-            "since": since.isoformat(),
-            "today": date.today().isoformat()
-        }
+        "records": [r.to_dict() for r in records]
     }), 200
 
 @app.route('/api/performance', methods=['POST'])
@@ -536,6 +541,7 @@ def upsert_performance():
 
     db.session.commit()
     return jsonify({"status": "success", "record": rec.to_dict()}), 200
+
 
 # =========================
 # Main

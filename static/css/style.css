@@ -1113,3 +1113,25 @@ button:disabled {
 
 /* Align badge nicely in modal header */
 #performanceModalCard .modal-header .contract-badge { margin-left: .5rem; }
+/* Table recent history */
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem; /* police un peu plus grande */
+  text-align: center;
+}
+
+.history-table th,
+.history-table td {
+  border: 1px solid #ddd;
+  padding: 4px 6px;
+}
+
+.history-table th {
+  background-color: #f5f5f5;
+  font-weight: bold;
+}
+
+.history-table tr:nth-child(even) {
+  background-color: #fafafa;
+}

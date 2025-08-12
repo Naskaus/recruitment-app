@@ -1,15 +1,12 @@
-// ===== static/js/app.js (FULL REPLACEMENT) =====
-(function () {
+// ===== static/js/app.js (CLEAN & DEDUPED) =====
+(() => {
   console.log("✅ app.js loaded");
 
-  // ----------------------------------------------
-  // Small helpers
-  // ----------------------------------------------
-  const $ = (sel, root = document) => root.querySelector(sel);
-  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+  // -----------------------------
+  // Helpers
+  // -----------------------------
   const showToast = (msg) => alert(msg);
 
-  // Extract id/name from delete targets (trash icon or red button)
   function getTargetData(el) {
     const btn = el.closest(".card-delete-button, .button.button-danger");
     if (!btn) return null;
@@ -25,34 +22,27 @@
     return { btn, id, name };
   }
 
-  // ----------------------------------------------
-  // Staff List: delete profile (trash icon + red button on detail)
-  // ----------------------------------------------
-  document.addEventListener("click", function (e) {
+  // -----------------------------
+  // Profile delete (list + detail)
+  // -----------------------------
+  document.addEventListener("click", (e) => {
     const info = getTargetData(e.target);
     if (!info) return;
 
     e.preventDefault();
     const { id, name } = info;
-    if (!id) return console.warn("⚠️ Delete: missing data-id");
+    if (!id) return;
 
     if (!confirm(`Delete "${name || "this profile"}"? This cannot be undone.`)) return;
 
     fetch(`/api/profile/${id}/delete`, { method: "POST" })
       .then(async (r) => {
-        let data = {};
-        try { data = await r.json(); } catch {}
-        return { ok: r.ok, data };
-      })
-      .then(({ ok, data }) => {
-        if (!ok || data.status !== "success") throw new Error(data.message || "Server error");
-
-        // If we are on the profile detail page, go back to list
-        if (window.location.pathname === `/profile/${id}` || window.location.pathname === `/profile/${id}/`) {
-          window.location.href = "/staff";
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok || data.status !== "success") throw new Error(data.message || "Server error");
+        if (location.pathname === `/profile/${id}` || location.pathname === `/profile/${id}/`) {
+          location.href = "/staff";
           return;
         }
-        // Otherwise fade out the card in the grid
         const card = document.querySelector(`.staff-card[data-id="${id}"]`);
         if (card) {
           card.style.transition = "opacity .25s ease";
@@ -66,35 +56,34 @@
       });
   });
 
-  // ----------------------------------------------
-  // Staff List: Sortable grid (purely cosmetic for now)
-  // ----------------------------------------------
-  document.addEventListener("DOMContentLoaded", function () {
-    const grid = $(".staff-grid");
+  // -----------------------------
+  // Staff list: Sortable (optional)
+  // -----------------------------
+  document.addEventListener("DOMContentLoaded", () => {
+    const grid = document.querySelector(".staff-grid");
     if (grid && window.Sortable) {
       new Sortable(grid, { animation: 150, ghostClass: "sortable-ghost", dragClass: "sortable-drag" });
     }
   });
 
-  // ----------------------------------------------
-  // Dispatch Board: DnD → open assignment modal → create assignment
-  // ----------------------------------------------
-  document.addEventListener("DOMContentLoaded", function () {
-    const lists = $$(".dispatch-list");
-    if (!lists.length) return;
-    if (!window.Sortable) {
-      console.warn("⚠️ SortableJS not found on dispatch page.");
-      return;
-    }
+  // -----------------------------
+  // Dispatch board: DnD + Create assignment modal
+  // -----------------------------
+  document.addEventListener("DOMContentLoaded", () => {
+    const lists = document.querySelectorAll(".dispatch-list");
+    if (!lists.length || !window.Sortable) return;
 
     let originalList = null;
+
     lists.forEach((list) => {
       new Sortable(list, {
         group: "dispatch",
         animation: 150,
         ghostClass: "dispatch-card-ghost",
         dragClass: "dispatch-card-drag",
-        onStart(evt) { originalList = evt.from; },
+        onStart(evt) {
+          originalList = evt.from;
+        },
         onEnd(evt) {
           const item = evt.item;
           const profileId = item?.dataset?.id;
@@ -102,12 +91,13 @@
           const staffName = item?.querySelector("strong")?.textContent || "Staff";
 
           if (!profileId || !newVenue) {
-            if (originalList) originalList.appendChild(item);
+            originalList?.appendChild(item);
             return;
           }
           if (newVenue === "available") {
-            if (originalList) originalList.appendChild(item);
-            alert("De-assignment will be added later. You cannot move back to 'Available' yet.");
+            // Not supported yet, revert:
+            originalList?.appendChild(item);
+            alert("De-assignment will be added later. For now, you cannot move back to 'Available'.");
             return;
           }
 
@@ -116,48 +106,48 @@
           } else {
             alert("Assignment modal not found.");
           }
-          if (originalList) originalList.appendChild(item); // revert UI; page will reload on create
+          // revert visually; the page will reload after creation
+          originalList?.appendChild(item);
         },
       });
     });
 
-    // Modal fields
-    const assignmentModal = $("#assignmentModal");
-    if (!assignmentModal) return; // not on this page
-
-    const form = $("#assignmentForm");
-    const closeBtn = $("#closeAssignmentModalBtn");
-    const cancelBtn = $("#cancelAssignmentModalBtn");
-    const staffNameSpan = $("#assignmentStaffName");
-    const staffIdInput = $("#assignmentStaffId");
-    const venueInput = $("#assignmentVenue");
-    const startDateInput = $("#startDate");
+    // Modal elements (Dispatch)
+    const assignmentModal = document.getElementById("assignmentModal");
+    const form = document.getElementById("assignmentForm");
+    const closeBtn = document.getElementById("closeAssignmentModalBtn");
+    const cancelBtn = document.getElementById("cancelAssignmentModalBtn");
+    const staffNameSpan = document.getElementById("assignmentStaffName");
+    const staffIdInput = document.getElementById("assignmentStaffId");
+    const venueInput = document.getElementById("assignmentVenue");
+    const startDateInput = document.getElementById("startDate");
 
     function openModal(staffId, staffName, venue) {
       staffIdInput.value = staffId;
       staffNameSpan.textContent = staffName;
       venueInput.value = venue;
       startDateInput.value = new Date().toISOString().split("T")[0];
-      assignmentModal.classList.remove("hidden");
+      assignmentModal?.classList.remove("hidden");
     }
-    function closeModal() { assignmentModal.classList.add("hidden"); }
+    function closeModal() { assignmentModal?.classList.add("hidden"); }
 
     window.openAssignmentModal = openModal;
     closeBtn?.addEventListener("click", closeModal);
     cancelBtn?.addEventListener("click", closeModal);
 
-    form?.addEventListener("submit", async function (e) {
+    form?.addEventListener("submit", async (e) => {
       e.preventDefault();
       const submitBtn = form.querySelector('button[type="submit"]');
       submitBtn.disabled = true;
+      const prev = submitBtn.textContent;
       submitBtn.textContent = "Creating...";
 
       const payload = {
         staff_id: staffIdInput.value,
         venue: venueInput.value,
-        contract_type: $("#contractType").value,
+        contract_type: document.getElementById("contractType").value,
         start_date: startDateInput.value,
-        base_salary: $("#baseSalary").value,
+        base_salary: document.getElementById("baseSalary").value,
       };
 
       try {
@@ -169,75 +159,97 @@
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.message || "Server error");
         closeModal();
-        window.location.reload();
+        location.reload();
       } catch (err) {
         alert(err.message || "Network error.");
       } finally {
         submitBtn.disabled = false;
-        submitBtn.textContent = "Create Assignment";
+        submitBtn.textContent = prev;
       }
     });
   });
 
-  // ----------------------------------------------
-  // Payroll page: Manage Performance modal + End/Delete
-  // ----------------------------------------------
-  document.addEventListener("DOMContentLoaded", function () {
-    const table = $(".payroll-table");
-    if (!table) return; // not on payroll page
+  // -----------------------------
+  // Payroll: Manage Performance + End/Delete
+  // -----------------------------
+  document.addEventListener("DOMContentLoaded", () => {
+    const table = document.querySelector(".payroll-table");
+    if (!table) return;
 
-    // Modal elements (IDs must match payroll.html)
-    const modal = $("#editRecordModal");
-    const form = $("#editRecordForm");
-    const closeBtn = $("#closeModalBtn");
-    const cancelBtn = $("#cancelModalBtn");
+    // --- Performance Modal Elements ---
+    const performanceModal = document.getElementById("editRecordModal");
+    const performanceForm = document.getElementById("editRecordForm");
+    const closePerfBtn = document.getElementById("closeModalBtn");
+    const cancelPerfBtn = document.getElementById("cancelModalBtn");
 
-    const assignmentIdInput = $("#assignmentId");
-    const contractDaysInput = $("#contractDays");
-    const contractBaseSalaryInput = $("#contractBaseSalary");
-    const contractStartInput = $("#contractStart");
-    const contractEndInput = $("#contractEnd");
+    const assignmentIdInput = document.getElementById("assignmentId");
+    const contractDaysInput = document.getElementById("contractDays");
+    const contractBaseSalaryInput = document.getElementById("contractBaseSalary");
+    const contractStartInput = document.getElementById("contractStart");
+    const contractEndInput = document.getElementById("contractEnd");
 
-    const modalStaffName = $("#modalStaffName");
-    const modalContractBadge = $("#modalContractBadge");
+    const modalStaffName = document.getElementById("modalStaffName");
+    const modalContractBadge = document.getElementById("modalContractBadge");
+    const recordDateInput = document.getElementById("recordDate");
+    const periodText = document.getElementById("periodText");
 
-    const recordDateInput = $("#recordDate");
-    const periodText = $("#periodText");
+    const arrivalInput = document.getElementById("arrivalTime");
+    const departureInput = document.getElementById("departureTime");
+    const drinksInput = document.getElementById("drinksSold");
+    const specialInput = document.getElementById("specialCommissions");
+    const bonusInput = document.getElementById("bonus");
+    const malusInput = document.getElementById("malus");
 
-    const arrivalInput = $("#arrivalTime");
-    const departureInput = $("#departureTime");
-    const drinksInput = $("#drinksSold");
-    const specialInput = $("#specialCommissions");
-    const bonusInput = $("#bonus");
-    const malusInput = $("#malus");
+    const latenessPenaltyInput = document.getElementById("latenessPenalty");
+    const commissionPaidInput = document.getElementById("commissionPaid");
+    const proratedBaseInput = document.getElementById("proratedBase");
+    const salaryPaidInput = document.getElementById("salaryPaid");
+    const barProfitInput = document.getElementById("barProfit");
+    const historyBox = document.getElementById("recordHistory");
 
-    const latenessPenaltyInput = $("#latenessPenalty");
-    const commissionPaidInput = $("#commissionPaid");
-    const proratedBaseInput = $("#proratedBase");
-    const salaryPaidInput = $("#salaryPaid");
-    const barProfitInput = $("#barProfit");
+    // --- NEW: Summary Modal Elements ---
+    const summaryModal = document.getElementById("contractSummaryModal");
+    const closeSummaryBtn = document.getElementById("closeSummaryModalBtn");
+    const summaryStaffName = document.getElementById("summaryStaffName");
+    const summaryAssignmentIdInput = document.getElementById("summaryAssignmentId");
 
-    const historyBox = $("#recordHistory");
+    const summaryTotalDrinks = document.getElementById("summaryTotalDrinks");
+    const summaryTotalSpecialComm = document.getElementById("summaryTotalSpecialComm");
+    const summaryTotalCommission = document.getElementById("summaryTotalCommission");
+    const summaryTotalSalary = document.getElementById("summaryTotalSalary");
+    const summaryTotalProfit = document.getElementById("summaryTotalProfit");
+    
+    const summaryPdfBtn = document.getElementById("summaryPdfBtn");
+    const summaryOnHoldBtn = document.getElementById("summaryOnHoldBtn");
+    const summaryArchiveBtn = document.getElementById("summaryArchiveBtn");
 
+
+    // --- Constants ---
     const DRINK_STAFF = 100;
     const DRINK_BAR = 120;
     const LATE_CUTOFF = "19:30";
 
-    function openModal() { modal.classList.remove("hidden"); }
-    function closeModal() { modal.classList.add("hidden"); }
-    closeBtn?.addEventListener("click", closeModal);
-    cancelBtn?.addEventListener("click", closeModal);
+    // --- Modal Controls ---
+    function openPerformanceModal() { performanceModal?.classList.remove("hidden"); }
+    function closePerformanceModal() { performanceModal?.classList.add("hidden"); }
+    function openSummaryModal() { summaryModal?.classList.remove("hidden"); }
+    function closeSummaryModal() { summaryModal?.classList.add("hidden"); }
 
+    closePerfBtn?.addEventListener("click", closePerformanceModal);
+    cancelPerfBtn?.addEventListener("click", closePerformanceModal);
+    closeSummaryBtn?.addEventListener("click", closeSummaryModal);
+
+    // --- Daily Calculation Logic ---
     function computePenalty(arrival) {
       if (!arrival) return 0;
       const cutoff = new Date(`1970-01-01T${LATE_CUTOFF}:00`);
       const when = new Date(`1970-01-01T${arrival}:00`);
       if (when <= cutoff) return 0;
       const minutes = Math.round((when - cutoff) / 60000);
-      return minutes * 5; // 5 THB/min
+      return minutes * 5;
     }
 
-    function recompute() {
+    function recomputeDailySummary() {
       const drinks = parseFloat(drinksInput.value) || 0;
       const special = parseFloat(specialInput.value) || 0;
       const bonus = parseFloat(bonusInput.value) || 0;
@@ -261,14 +273,12 @@
       const profit = (drinks * DRINK_BAR + special) - salaryPaid;
       barProfitInput.value = profit.toFixed(0);
     }
-
     [arrivalInput, departureInput, drinksInput, specialInput, bonusInput, malusInput].forEach(el => {
-      el?.addEventListener("input", recompute);
+      el?.addEventListener("input", recomputeDailySummary);
     });
 
-    // --- API: load one day + short history (server already limits)
+    // --- Data Loading ---
     async function loadRecord(assignmentId, ymd) {
-      historyBox.innerHTML = "";
       try {
         const res = await fetch(`/api/performance/${assignmentId}/${ymd}`);
         const data = await res.json();
@@ -281,201 +291,233 @@
           specialInput.value = r.special_commissions ?? 0;
           bonusInput.value = r.bonus ?? 0;
           malusInput.value = r.malus ?? 0;
-          latenessPenaltyInput.value = r.lateness_penalty ?? 0;
         } else {
+          // BUG FIX: Don't reset the whole form. Just clear daily fields.
+          // This preserves the selected date.
           arrivalInput.value = "";
           departureInput.value = "";
           drinksInput.value = 0;
           specialInput.value = 0;
           bonusInput.value = 0;
           malusInput.value = 0;
-          latenessPenaltyInput.value = 0;
         }
-
-        (data.history || []).forEach(h => {
-          const d = new Date(h.record_date + "T00:00:00");
-          const div = document.createElement("div");
-          div.className = "history-item";
-          div.innerHTML = `
-            <div><span>Date:</span> <strong>${d.toLocaleDateString('en-GB')}</strong></div>
-            <div><span>Drinks:</span> <strong>${h.drinks_sold ?? 0}</strong></div>
-            <div><span>Penalty:</span> <strong>${(h.lateness_penalty ?? 0)} THB</strong></div>
-            <div><span>—</span> <strong>&nbsp;</strong></div>
-          `;
-          historyBox.appendChild(div);
-        });
       } catch (e) {
         console.error("loadRecord error", e);
-        historyBox.innerHTML = `<p class="text-center" style="padding:.5rem;">Could not load history.</p>`;
       }
-      recompute();
+      recomputeDailySummary(); // This recomputes summary fields like salary, profit, etc.
     }
-    window.loadRecord = loadRecord; // optional global
-
-    // --- API: load full history for the assignment (stable endpoint)
-    async function loadFullHistory(assignmentId) {
+    
+    async function loadPerformanceHistory(assignmentId) {
       try {
         historyBox.innerHTML = "";
         const res = await fetch(`/api/performance/${assignmentId}`);
         const data = await res.json();
-        if (!res.ok) throw new Error(data.message || "Server error");
-        renderHistoryList(data.records || [], data.contract);
-      } catch (err) {
-        console.error("loadFullHistory error", err);
+        
+        if (!data || !data.records || !data.contract) {
+            historyBox.innerHTML = `<p class="text-center" style="padding:.5rem;">Could not load contract data.</p>`;
+            return;
+        }
+
+        const list = data.records;
+        const contract = data.contract;
+
+        if (list.length === 0) {
+          historyBox.innerHTML = `<p class="text-center" style="padding:.5rem;">No history yet.</p>`;
+        } else {
+            const tableEl = document.createElement("table");
+            tableEl.className = 'history-table';
+            tableEl.innerHTML = `<thead><tr><th>Date</th><th>Dr</th><th>Sp.</th><th>Sal.</th><th>Com.</th><th>Profit</th></tr></thead><tbody></tbody>`;
+            const tbody = tableEl.querySelector("tbody");
+            
+            list.sort((a, b) => (a.record_date > b.record_date ? 1 : -1));
+            
+            list.forEach(r => {
+                const tr = document.createElement("tr");
+                const baseDaily = contract.contract_days > 0 ? (contract.base_salary / contract.contract_days) : 0;
+                const penalty = r.lateness_penalty || 0;
+                const bonus = r.bonus || 0;
+                const malus = r.malus || 0;
+                
+                const commission = (r.drinks_sold || 0) * DRINK_STAFF;
+                const salary = baseDaily + bonus - malus - penalty;
+                const profit = ((r.drinks_sold || 0) * DRINK_BAR + (r.special_commissions || 0)) - salary;
+                
+                tr.innerHTML = `
+                    <td>${new Date(r.record_date + 'T00:00:00').toLocaleDateString('en-GB', {day:'2-digit', month:'2-digit'})}</td>
+                    <td>${r.drinks_sold || 0}</td>
+                    <td>${(r.special_commissions || 0).toFixed(0)}฿</td>
+                    <td>${salary.toFixed(0)}฿</td>
+                    <td>${commission.toFixed(0)}฿</td>
+                    <td>${profit.toFixed(0)}฿</td>
+                `;
+                tr.addEventListener("click", () => {
+                  recordDateInput.value = r.record_date;
+                  loadRecord(assignmentId, r.record_date);
+                });
+                tbody.appendChild(tr);
+            });
+            historyBox.appendChild(tableEl);
+        }
+
+        if (list.length >= contract.contract_days) {
+            calculateAndShowSummary(assignmentId, list, contract);
+        }
+
+      } catch (e) {
+        console.error(e);
         historyBox.innerHTML = `<p class="text-center" style="padding:.5rem;">Could not load history.</p>`;
       }
     }
-    window.loadFullHistory = loadFullHistory; // optional global
+    
+    function calculateAndShowSummary(assignmentId, records, contract) {
+        let totalDrinks = 0, totalSpecial = 0, totalCommission = 0, totalSalary = 0, totalProfit = 0;
+        
+        const baseDaily = contract.contract_days > 0 ? (contract.base_salary / contract.contract_days) : 0;
 
-    function renderHistoryList(records, contract) {
-      historyBox.innerHTML = "";
-      if (!records || records.length === 0) {
-        historyBox.innerHTML = `<p class="text-center" style="padding:.5rem;">No history yet.</p>`;
-        return;
-      }
-      // sort ascending by date for readability
-      records.sort((a, b) => (a.record_date > b.record_date ? 1 : -1));
+        records.forEach(r => {
+            const dailyDrinks = r.drinks_sold || 0;
+            const dailySpecial = r.special_commissions || 0;
+            const dailyPenalty = r.lateness_penalty || 0;
+            const dailyBonus = r.bonus || 0;
+            const dailyMalus = r.malus || 0;
 
-      const frag = document.createDocumentFragment();
-      records.forEach(r => {
-        const d = new Date(r.record_date + "T00:00:00");
-        const div = document.createElement("div");
-        div.className = "history-item";
-        div.dataset.date = r.record_date;
-        div.innerHTML = `
-          <div><span>Date:</span> <strong>${d.toLocaleDateString('en-GB', {day:'2-digit', month:'2-digit'})}</strong></div>
-          <div><span>Drinks:</span> <strong>${r.drinks_sold ?? 0}</strong></div>
-          <div><span>Penalty:</span> <strong>${(r.lateness_penalty ?? 0)} THB</strong></div>
-          <div><span>Commission:</span> <strong>${((r.drinks_sold ?? 0) * 100).toFixed(0)} THB</strong></div>
-        `;
-        // click → load that day in the form
-        div.addEventListener("click", () => {
-          recordDateInput.value = r.record_date;
-          loadRecord(assignmentIdInput.value, r.record_date);
+            const dailyCommission = dailyDrinks * DRINK_STAFF;
+            const dailySalary = baseDaily + dailyBonus - dailyMalus - dailyPenalty;
+            const dailyProfit = (dailyDrinks * DRINK_BAR + dailySpecial) - dailySalary;
+
+            totalDrinks += dailyDrinks;
+            totalSpecial += dailySpecial;
+            totalCommission += dailyCommission;
+            totalSalary += dailySalary;
+            totalProfit += dailyProfit;
         });
-        frag.appendChild(div);
-      });
-      historyBox.appendChild(frag);
 
-      // Add/Add-Edit Day helper button next to the date field (JS-only)
-      ensureAddEditDayButton(contract);
+        summaryAssignmentIdInput.value = assignmentId;
+        summaryStaffName.textContent = modalStaffName.textContent;
+        summaryTotalDrinks.textContent = totalDrinks;
+        summaryTotalSpecialComm.textContent = `${totalSpecial.toFixed(0)}฿`;
+        summaryTotalCommission.textContent = `${totalCommission.toFixed(0)}฿`;
+        summaryTotalSalary.textContent = `${totalSalary.toFixed(0)}฿`;
+        summaryTotalProfit.textContent = `${totalProfit.toFixed(0)}฿`;
+        
+        openSummaryModal();
     }
 
-    function ensureAddEditDayButton(contract) {
-      let btn = $("#addEditDayBtn");
-      if (!btn) {
-        btn = document.createElement("button");
-        btn.id = "addEditDayBtn";
-        btn.type = "button";
-        btn.className = "button button-secondary";
-        btn.style.marginLeft = "12px";
-        btn.textContent = "Add / Edit Day";
-        recordDateInput.insertAdjacentElement("afterend", btn);
-      }
-      btn.onclick = () => {
-        const val = recordDateInput.value;
-        if (!val) return alert("Please pick a date inside the contract period.");
-        const today = new Date().toISOString().slice(0, 10);
-        if (val > today) return alert("Future dates are not allowed.");
-        if (val < contract.start_date || val > contract.end_date) {
-          return alert(`Date must be within ${contract.start_date} → ${contract.end_date}.`);
+    async function finalizeContract(assignmentId, status) {
+        const row = document.getElementById(`assignment-row-${assignmentId}`);
+        const name = row ? (row.dataset.staffName || 'this contract') : 'this contract';
+
+        if (!confirm(`This will finalize the contract for "${name}" with status "${status}". Continue?`)) return;
+
+        try {
+            const res = await fetch(`/api/assignment/${assignmentId}/finalize`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: status })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.message || "Server error");
+
+            closeSummaryModal();
+            closePerformanceModal();
+            if (row) {
+                row.style.transition = "opacity .25s ease";
+                row.style.opacity = "0";
+                setTimeout(() => row.remove(), 250);
+            }
+            alert(`Contract for ${name} has been ${status}.`);
+
+        } catch (err) {
+            alert(`Error: ${err.message || "Network error"}`);
         }
-        loadRecord(assignmentIdInput.value, val);
-      };
     }
+    
+    summaryOnHoldBtn?.addEventListener('click', () => {
+        const assignmentId = summaryAssignmentIdInput.value;
+        finalizeContract(assignmentId, 'on_hold');
+    });
 
-    // --- Row actions (one delegation for all buttons)
-    table.addEventListener("click", (e) => {
+    summaryArchiveBtn?.addEventListener('click', () => {
+        const assignmentId = summaryAssignmentIdInput.value;
+        finalizeContract(assignmentId, 'archived');
+    });
+
+    summaryPdfBtn?.addEventListener('click', () => {
+        alert('PDF generation will be implemented in a future step.');
+    });
+
+
+    // --- Event Delegation for Payroll Table ---
+    table.addEventListener("click", async (e) => {
       const tr = e.target.closest("tr[data-assignment-id]");
       if (!tr) return;
 
-      // “Manage performance”
+      const assignmentId = tr.dataset.assignmentId;
+      const staffName = tr.dataset.staffName;
+
+      // Manage performance
       if (e.target.closest(".manage-performance-btn")) {
-        const aId = tr.dataset.assignmentId;
-        const staffName = tr.dataset.staffName;
         const startIso = tr.dataset.startDate;
         const endIso = tr.dataset.endDate;
         const baseSalary = parseFloat(tr.dataset.baseSalary || "0");
         const contractDays = parseInt(tr.dataset.contractDays || "1", 10);
-        const cType = (tr.dataset.contractType || "").trim(); // "1jour" | "10jours" | "1mois"
+        const cType = (tr.dataset.contractType || "").trim();
 
-        assignmentIdInput.value = aId;
-        contractDaysInput.value = contractDays;
-        contractBaseSalaryInput.value = baseSalary.toString();
+        assignmentIdInput.value = assignmentId;
+        contractDaysInput.value = String(contractDays);
+        contractBaseSalaryInput.value = String(baseSalary);
         contractStartInput.value = startIso;
         contractEndInput.value = endIso;
-
         modalStaffName.textContent = staffName || "";
-
-        // Badge (supports your CSS classes)
-        if (modalContractBadge) {
-          modalContractBadge.textContent =
-            cType === "1jour" ? "1-day" : (cType === "10jours" ? "10-days" : "1-month");
-          modalContractBadge.className = "contract-badge badge-" + cType;
-        }
-
-        // Date bounds
+        modalContractBadge.textContent = cType === "1jour" ? "1-day" : (cType === "10jours" ? "10-days" : "1-month");
+        modalContractBadge.className = "contract-badge badge-" + cType;
         recordDateInput.min = startIso;
         recordDateInput.max = endIso;
         recordDateInput.value = startIso;
         periodText.textContent = `${startIso} → ${endIso}`;
 
-        openModal();
-        // Load both: full history (persistent list) + the selected day
-        loadFullHistory(aId);
-        loadRecord(aId, recordDateInput.value);
+        openPerformanceModal();
+        
+        await loadRecord(assignmentId, recordDateInput.value);
+        await loadPerformanceHistory(assignmentId);
         return;
       }
 
-      // End now (support two possible class names)
-      if (e.target.closest(".assignment-finish-btn, .end-contract-btn")) {
-        const name = tr.dataset.staffName || "this staff";
-        if (!confirm(`End this contract now for "${name}"?`)) return;
-
-        const id = tr.dataset.assignmentId;
-        fetch(`/api/assignment/${id}/end`, { method: "POST" })
-          .then(async (r) => {
-            let data = {};
-            try { data = await r.json(); } catch {}
-            if (!r.ok) throw new Error(data.message || "Server error");
-            tr.style.transition = "opacity .25s ease";
-            tr.style.opacity = "0";
-            setTimeout(() => tr.remove(), 250);
-          })
-          .catch((err) => alert(err.message || "Network error"));
+      // End now
+      if (e.target.closest(".end-contract-btn")) {
+        if (!confirm(`End this contract now for "${staffName}"?`)) return;
+        try {
+          const res = await fetch(`/api/assignment/${assignmentId}/end`, { method: "POST" });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.message || "Server error");
+          tr.style.transition = "opacity .25s ease";
+          tr.style.opacity = "0";
+          setTimeout(() => tr.remove(), 250);
+        } catch (err) {
+          alert(err.message || "Network error");
+        }
         return;
       }
 
-      // Delete (support two possible class names)
-      if (e.target.closest(".assignment-delete-btn, .delete-contract-btn")) {
-        const name = tr.dataset.staffName || "this staff";
-        if (!confirm(`Delete this contract for "${name}"? This cannot be undone.`)) return;
-
-        const id = tr.dataset.assignmentId;
-        fetch(`/api/assignment/${id}`, { method: "DELETE" })
-          .then(async (r) => {
-            let data = {};
-            try { data = await r.json(); } catch {}
-            if (!r.ok) throw new Error(data.message || "Server error");
-            tr.style.transition = "opacity .25s ease";
-            tr.style.opacity = "0";
-            setTimeout(() => tr.remove(), 250);
-          })
-          .catch((err) => alert(err.message || "Network error"));
+      // Delete
+      if (e.target.closest(".delete-contract-btn")) {
+        if (!confirm(`Delete this contract for "${staffName}"? This cannot be undone.`)) return;
+        try {
+          const res = await fetch(`/api/assignment/${assignmentId}`, { method: "DELETE" });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.message || "Server error");
+          tr.style.transition = "opacity .25s ease";
+          tr.style.opacity = "0";
+          setTimeout(() => tr.remove(), 250);
+        } catch (err) {
+          alert(err.message || "Network error");
+        }
         return;
       }
     });
 
-    // Change date → reload that day
-    recordDateInput?.addEventListener("change", () => {
-      const aId = assignmentIdInput.value;
-      const day = recordDateInput.value;
-      if (!aId || !day) return;
-      loadRecord(aId, day);
-    });
-
-    // Save = upsert the day, then refresh record + full history
-    form?.addEventListener("submit", async (e) => {
+    // Save (upsert) performance
+    performanceForm?.addEventListener("submit", async (e) => {
       e.preventDefault();
 
       const payload = {
@@ -489,7 +531,7 @@
         malus: parseFloat(malusInput.value || "0"),
       };
 
-      const submitBtn = form.querySelector('button[type="submit"]');
+      const submitBtn = performanceForm.querySelector('button[type="submit"]');
       submitBtn.disabled = true;
       const oldText = submitBtn.textContent;
       submitBtn.textContent = "Saving…";
@@ -506,16 +548,22 @@
         if (!res.ok) throw new Error(data.message || "Server error");
 
         alert("Saved successfully");
-        // 1) refresh the selected day fields
-        await loadRecord(assignmentIdInput.value, recordDateInput.value);
-        // 2) refresh the persistent history list (handles “first day” case)
-        await loadFullHistory(assignmentIdInput.value);
+        await loadRecord(payload.assignment_id, payload.record_date);
+        await loadPerformanceHistory(payload.assignment_id);
       } catch (err) {
         alert(err.message || "Network error");
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = oldText;
       }
+    });
+
+    // Change date -> reload that day's record
+    recordDateInput?.addEventListener("change", () => {
+      const aId = assignmentIdInput.value;
+      const day = recordDateInput.value;
+      if (!aId || !day) return;
+      loadRecord(aId, day);
     });
   });
 })();

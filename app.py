@@ -289,8 +289,9 @@ def payroll_page_new():
     selected_contract_type = request.args.get('contract_type')
     selected_status = request.args.get('status')
     search_nickname = request.args.get('nickname')
+    # NEW: Get selected manager from URL query parameters
+    selected_manager_id = request.args.get('manager_id', type=int)
 
-    # MODIFIED: Added joinedload for Assignment.manager to efficiently get the manager's name
     q = Assignment.query.options(
         db.joinedload(Assignment.staff), 
         db.joinedload(Assignment.manager), 
@@ -310,6 +311,10 @@ def payroll_page_new():
 
     if search_nickname:
         q = q.join(StaffProfile).filter(StaffProfile.nickname.ilike(f'%{search_nickname}%'))
+    
+    # NEW: Apply manager filter if a manager is selected
+    if selected_manager_id:
+        q = q.filter(Assignment.managed_by_user_id == selected_manager_id)
     
     status_order = db.case((Assignment.status == 'ongoing', 1), (Assignment.status == 'archived', 2), else_=3).label("status_order")
     all_assignments = q.order_by(status_order, Assignment.start_date.asc()).all()
@@ -342,17 +347,23 @@ def payroll_page_new():
             "contract_stats": contract_stats
         })
         
+    # NEW: Get all users to populate the filter dropdown
+    all_managers = User.query.order_by(User.username).all()
+
     filter_data = {
         "venues": VENUE_LIST,
         "contract_types": CONTRACT_TYPES.keys(),
         "statuses": ['ongoing', 'archived'],
+        "managers": all_managers, # NEW: Pass managers to the template
         "selected_venue": selected_venue,
         "selected_contract_type": selected_contract_type,
         "selected_status": selected_status,
-        "search_nickname": search_nickname
+        "search_nickname": search_nickname,
+        "selected_manager_id": selected_manager_id # NEW: Pass selected manager ID back to template
     }
 
     return render_template('payroll.html', assignments=rows, filters=filter_data)
+
 
 
 @app.route('/profile/new', methods=['GET'])

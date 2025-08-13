@@ -40,6 +40,18 @@
           {% endfor %}
         </select>
       </div>
+
+      <!-- NEW: Manager Filter Dropdown -->
+      <div class="filter-group">
+        <label for="manager_id">Managed by</label>
+        <select id="manager_id" name="manager_id">
+          <option value="">All Managers</option>
+          {% for manager in filters.managers %}
+            <option value="{{ manager.id }}" {% if filters.selected_manager_id == manager.id %}selected{% endif %}>{{ manager.username }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
       <div class="filter-actions">
         <button type="submit" class="button button-primary">Apply Filters</button>
         <a href="{{ url_for('payroll_page_new') }}" class="button button-secondary">Clear</a>
@@ -55,7 +67,6 @@
       <tr>
         <th>Staff</th>
         <th>Venue</th>
-        <!-- NEW: Added header for manager -->
         <th>Managed by</th>
         <th>Contract</th>
         <th>Progress</th>
@@ -96,7 +107,6 @@
               </div>
             </td>
             <td>{{ a.venue }}</td>
-            <!-- NEW: Added cell for manager's name -->
             <td>
                 {% if a.manager %}
                     {{ a.manager.username }}
@@ -124,7 +134,6 @@
               {% endif %}
             </td>
 
-            <!-- NEW: Profit Cell with Tooltip -->
             <td class="profit-cell">
                 <div class="tooltip-container">
                     <span class="{% if stats.profit > 0 %}profit-positive{% elif stats.profit < 0 %}profit-negative{% endif %}">
@@ -150,7 +159,6 @@
                 {% elif a.status == 'archived' %}
                   <span class="status-badge status-badge-archived">Archived</span>
                   <button class="button button-secondary manage-performance-btn">Details</button>
-                  <!-- NEW: Delete button for archived contracts -->
                   <button 
                     class="button button-danger delete-contract-btn" 
                     data-assignment-id="{{ a.id }}" 
@@ -166,7 +174,6 @@
         {% endfor %}
       {% else %}
         <tr>
-          <!-- MODIFIED: colspan increased to 9 -->
           <td colspan="9" class="text-center">
             No contracts found. Use the <a href="/dispatch">Dispatch Board</a> to create one.
           </td>
@@ -184,7 +191,6 @@
           <h3>
         Manage performance for <span id="modalStaffName"></span>
         <span id="modalContractBadge" class="contract-badge">—</span>
-        <!-- NEW: Add a placeholder for the role badge -->
         <span id="modalRoleBadge" class="role-badge" style="vertical-align: middle;"></span>
       </h3>
       <button id="closeModalBtn" class="modal-close-btn">&times;</button>
@@ -297,7 +303,6 @@
       
       <h4 style="margin-top: 1rem;">Final Summary</h4>
             <div class="summary-grid" style="font-size: 1.1em; grid-template-columns: 1fr 1fr; gap: 0.5rem 1.5rem;">
-          <!-- NEW: Added total days worked -->
           <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding-bottom: 0.5rem;"><label>Total Days Worked:</label> <strong id="summaryTotalDaysWorked"></strong></div>
           <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding-bottom: 0.5rem;"><label>Total Drinks Sold:</label> <strong id="summaryTotalDrinks"></strong></div>
           <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding-bottom: 0.5rem;"><label>Total Special Comm:</label> <strong id="summaryTotalSpecialComm"></strong></div>
@@ -309,7 +314,6 @@
       <hr style="margin-top: 1.5rem;">
 
       <h4>Final Actions</h4>
-      <!-- MODIFIED: "On Hold" button removed -->
       <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
         <button id="summaryPdfBtn" class="button button-secondary">Download PDF</button>
         <div style="display: flex; gap: 0.5rem;">

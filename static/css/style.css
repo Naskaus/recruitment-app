@@ -77,11 +77,19 @@ h1, h2, h3, h4, h5, h6 {
 /* ---------------------------------- */
 /* 4. Sidebar Components              */
 /* ---------------------------------- */
+.sidebar-header {
+    padding: 2rem 1rem; /* More vertical space */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05); /* Subtle separator */
+}
+
 .sidebar-header h2 {
-    color: white;
+    font-size: 2.2rem;  /* SIGNIFICANTLY LARGER */
+    font-weight: 700;   /* Bolder font */
+    color: #FFFFFF;
     text-align: center;
-    letter-spacing: 1px;
-    margin-bottom: 40px;
+    text-transform: uppercase; /* Feels more like a brand logo */
+    letter-spacing: 2px;       /* Wider spacing for impact */
+    margin: 0;                 /* Reset margin */
 }
 
 .sidebar-nav {
@@ -1295,4 +1303,139 @@ button:disabled {
     padding: 8px 16px;
     font-size: 0.9rem;
     flex-grow: 1; /* Make buttons take available space */
+}
+/* ========================
+   30Sidebar Footer & User Info
+   ======================== */
+.sidebar-footer {
+    padding: 1rem;
+    margin-top: auto; /* Pushes footer to the bottom */
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    color: var(--text-color);
+}
+
+.user-info .user-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.user-info .user-role {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.logout-button {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    color: var(--text-muted);
+    border-radius: 4px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.logout-button:hover {
+    color: var(--primary-accent);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.logout-button svg {
+    margin-right: 0.5rem;
+}
+/* ===================================
+   31. User Management & Settings (NEW)
+   =================================== */
+
+/* --- Settings Dropdown in Sidebar --- */
+.sidebar-dropdown {
+    position: relative;
+}
+.sidebar-dropdown .dropdown-toggle {
+    cursor: pointer;
+}
+.sidebar-dropdown .dropdown-content {
+    display: none;
+    padding-left: 40px; /* Indent sub-menu */
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out;
+}
+.sidebar-dropdown:hover .dropdown-content {
+    display: block;
+    max-height: 100px; /* Animate opening */
+}
+.sidebar-dropdown .dropdown-content a {
+    font-size: 0.9rem;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+/* --- User Management Page Layout --- */
+.user-management-container {
+    max-width: 800px;
+    margin: 0 auto;
+    display: grid;
+    gap: 32px;
+}
+/* Style for the flash messages */
+.alert {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+    border-radius: var(--border-radius-sm);
+}
+.alert.alert-success {
+    color: var(--success-text, #0a3622);
+    background-color: var(--success-bg, #d1e7dd);
+    border-color: #a3cfbb;
+}
+.alert.alert-danger {
+    color: var(--error-text, #58151c);
+    background-color: var(--error-bg, #f8d7da);
+    border-color: #f1b0b7;
+}
+/* Style for the role badges in the table */
+.role-badge-table {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-align: center;
+}
+.role-badge-table.role-superadmin {
+    background-color: var(--color-danger, #F28B9E);
+    color: white;
+}
+.role-badge-table.role-admin {
+    background-color: var(--color-border, #E1E5EB);
+    color: var(--color-text-secondary, #7F8C99);
+}
+/* Style for the delete button in the user table */
+.button-table-delete {
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--border-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.button-table-delete svg {
+    stroke: var(--color-text-secondary);
+    transition: stroke 0.2s ease;
+}
+.button-table-delete:hover svg {
+    stroke: var(--color-danger);
 }

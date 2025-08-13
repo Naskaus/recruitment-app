@@ -1,9 +1,13 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory, redirect, url_for, flash, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import os
 from datetime import datetime, date, time as dt_time, timedelta
+from functools import wraps
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_bcrypt import Bcrypt
 
 # --- App Initialization ---
 app = Flask(__name__)
@@ -12,6 +16,7 @@ app = Flask(__name__)
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 
+app.config['SECRET_KEY'] = 'a-very-secret-and-hard-to-guess-key' # Replace with a real secret key
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(BASE_DIR, "recruitment.db")}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -19,6 +24,19 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # --- Database Setup ---
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+bcrypt = Bcrypt(app)
+login_manager = LoginManager(app)
+login_manager.login_view = 'login' # Redirect to this route if user is not logged in
+login_manager.login_message = "Please log in to access this page."
+login_manager.login_message_category = "info"
+
+def super_admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.role != 'Super-Admin':
+            abort(403) # Forbidden
+        return f(*args, **kwargs)
+    return decorated_function
 
 # --- Hardcoded Data (for now) ---
 ADMIN_LIST = ["Admin 1", "Mama Rose", "Mama Joy", "Khun Somchai"]
@@ -137,13 +155,92 @@ class PerformanceRecord(db.Model):
             "drinks_sold": self.drinks_sold, "special_commissions": self.special_commissions,
             "bonus": self.bonus, "malus": self.malus, "lateness_penalty": self.lateness_penalty,
         }
+# =========================
+# Auth Routes
+# =========================
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('staff_list'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        remember = True if request.form.get('remember') else False
+
+        user = User.query.filter_by(username=username).first()
+
+        if not user or not user.check_password(password):
+            flash('Invalid username or password.', 'danger')
+            return redirect(url_for('login'))
+        
+        login_user(user, remember=remember)
+        return redirect(url_for('staff_list'))
+        
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
+@app.route('/users', methods=['GET', 'POST'])
+@login_required
+@super_admin_required
+def manage_users():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        role = request.form.get('role')
+
+        # Basic validation
+        if not username or not password or not role:
+            flash('All fields are required.', 'danger')
+            return redirect(url_for('manage_users'))
+
+        if role not in ['Admin', 'Super-Admin']:
+            flash('Invalid role selected.', 'danger')
+            return redirect(url_for('manage_users'))
+            
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            flash(f'Username "{username}" already exists.', 'danger')
+            return redirect(url_for('manage_users'))
+
+        new_user = User(username=username, role=role)
+        new_user.set_password(password) # Hashes the password
+        db.session.add(new_user)
+        db.session.commit()
+        
+        flash(f'User "{username}" created successfully.', 'success')
+        return redirect(url_for('manage_users'))
+
+    # For GET request, list all users
+    all_users = User.query.order_by(User.id).all()
+    return render_template('users.html', users=all_users)
+@app.route('/users/delete/<int:user_id>', methods=['POST'])
+@login_required
+@super_admin_required
+def delete_user(user_id):
+    # Prevent a super admin from deleting themselves
+    if user_id == current_user.id:
+        flash("You cannot delete your own account.", 'danger')
+        return redirect(url_for('manage_users'))
+
+    user_to_delete = User.query.get_or_404(user_id)
+    db.session.delete(user_to_delete)
+    db.session.commit()
+    
+    flash(f'User "{user_to_delete.username}" has been deleted.', 'success')
+    return redirect(url_for('manage_users'))
 # =========================
 # Views
 # =========================
 
 @app.route('/')
 @app.route('/staff')
+@login_required
 def staff_list():
     all_profiles = StaffProfile.query.order_by(StaffProfile.created_at.desc()).all()
     return render_template('staff_list.html', profiles=all_profiles)
@@ -573,7 +670,53 @@ def upsert_performance():
     rec.lateness_penalty = float(calc_lateness_penalty(rec.arrival_time))
     db.session.commit()
     return jsonify({"status": "success", "record": rec.to_dict()}), 200
+# =========================
+# Models
+# =========================
 
+# ... (StaffProfile, Assignment, PerformanceRecord models are here) ...
+
+class User(db.Model, UserMixin):
+    __tablename__ = "user"
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    role = db.Column(db.String(80), nullable=False, default='Admin') # e.g., 'Admin', 'Super-Admin'
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def __repr__(self):
+        return f'<User {self.username}>'
+
+# --- Login Manager Setup ---
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+# =========================
+# CLI Commands
+# =========================
+@app.cli.command("create-user")
+def create_user():
+    """Creates a new user."""
+    import click
+    username = click.prompt("Enter username")
+    password = click.prompt("Enter password", hide_input=True, confirmation_prompt=True)
+    role = click.prompt("Enter role (Admin, Super-Admin)", default="Super-Admin")
+    
+    user = User.query.filter_by(username=username).first()
+    if user:
+        click.echo("User already exists.")
+        return
+        
+    new_user = User(username=username, role=role)
+    new_user.set_password(password)
+    db.session.add(new_user)
+    db.session.commit()
+    click.echo(f"User {username} created successfully with role {role}.")
 # =========================
 # Main
 # =========================

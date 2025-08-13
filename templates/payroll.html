@@ -137,9 +137,18 @@
                   <button class="button button-primary manage-performance-btn">Manage</button>
                   <button class="button button-secondary end-contract-btn">End</button>
                   <button class="button button-danger delete-contract-btn">Del</button>
-                {% elif a.status == 'archived' %}
+                                {% elif a.status == 'archived' %}
                   <span class="status-badge status-badge-archived">Archived</span>
                   <button class="button button-secondary manage-performance-btn">Details</button>
+                  <!-- NEW: Delete button for archived contracts -->
+                  <button 
+                    class="button button-danger delete-contract-btn" 
+                    data-assignment-id="{{ a.id }}" 
+                    data-staff-name="{{ a.staff.nickname }}"
+                    style="padding: 4px 8px; font-size: 0.8rem;"
+                    title="Permanently delete this contract">
+                    Del
+                  </button>
                 {% endif %}
               </div>
             </td>

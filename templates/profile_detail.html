@@ -85,9 +85,25 @@
         <hr style="margin: 48px 0; border-color: var(--color-border);">
 
         <div class="performance-history-section">
-            <div class="profile-detail-header" style="margin-bottom: 24px;">
+                        <div class="profile-detail-header" style="margin-bottom: 24px; align-items: flex-end;">
                 <h4>Performance History</h4>
-                <!-- The filter will go here in the next step -->
+                
+                <!-- NEW: Date Range Filter Form -->
+                <form method="GET" action="{{ url_for('profile_detail', profile_id=profile.id) }}" class="history-filter-form">
+                    <div class="form-group">
+                        <label for="start_date">From</label>
+                        <input type="date" id="start_date" name="start_date" value="{{ filter_start_date.isoformat() if filter_start_date else '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="end_date">To</label>
+                        <input type="date" id="end_date" name="end_date" value="{{ filter_end_date.isoformat() if filter_end_date else '' }}">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="button button-primary">Filter</button>
+                        <a href="{{ url_for('profile_detail', profile_id=profile.id) }}" class="button button-secondary">Clear</a>
+                    </div>
+                </form>
+                <!-- END NEW -->
             </div>
 
             <!-- KPIs Summary Grid -->
@@ -118,7 +134,7 @@
                 </div>
             </div>
 
-            <!-- Assignments History Table -->
+                        <!-- Assignments History Table -->
             <h5 style="margin-top: 32px; margin-bottom: 16px;">Assignments History</h5>
             <div class="table-responsive">
                 <table class="payroll-table">
@@ -128,12 +144,14 @@
                             <th>Venue</th>
                             <th>Contract</th>
                             <th>Status</th>
+                            <th>Profit</th> <!-- NEW: Profit column -->
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% if assignments %}
                             {% for a in assignments %}
+                                {% set stats = a.contract_stats %}
                                 <tr>
                                     <td>{{ a.start_date.strftime('%d %b %Y') }}</td>
                                     <td>{{ a.venue }}</td>
@@ -141,14 +159,29 @@
                                     <td>
                                       <span class="status-badge status-badge-{{ a.status }}">{{ a.status }}</span>
                                     </td>
+                                    <!-- NEW: Profit Cell with Tooltip -->
+                                    <td class="profit-cell">
+                                        <div class="tooltip-container">
+                                            <span class="{% if stats.profit > 0 %}profit-positive{% elif stats.profit < 0 %}profit-negative{% endif %}">
+                                                {{ '%.0f'|format(stats.profit) }} ฿
+                                            </span>
+                                            <div class="tooltip">
+                                                <div class="tooltip-item"><span>Drinks Sold:</span> <strong>{{ stats.drinks }}</strong></div>
+                                                <div class="tooltip-item"><span>Special Comm:</span> <strong>{{ '%.0f'|format(stats.special_comm) }} ฿</strong></div>
+                                                <div class="tooltip-item"><span>Salary Paid:</span> <strong>{{ '%.0f'|format(stats.salary) }} ฿</strong></div>
+                                                <div class="tooltip-item"><span>Commission Paid:</span> <strong>{{ '%.0f'|format(stats.commission) }} ฿</strong></div>
+                                            </div>
+                                        </div>
+                                    </td>
                                     <td>
                                         <a href="{{ url_for('payroll_page_new') }}#assignment-row-{{ a.id }}" class="button button-secondary" style="padding: 4px 8px; font-size: 0.8rem;">View</a>
                                     </td>
                                 </tr>
                             {% endfor %}
                         {% else %}
+                            <!-- MODIFIED: Colspan is now 6 -->
                             <tr>
-                                <td colspan="5" class="text-center">No assignment history found.</td>
+                                <td colspan="6" class="text-center">No assignment history found.</td>
                             </tr>
                         {% endif %}
                     </tbody>

@@ -1161,3 +1161,138 @@ button:disabled {
 .kpi-card.profit-negative-bg .kpi-value {
     color: #721c24;
 }
+/* ---------------------------------- */
+/* 27. Tooltip for History (NEW)      */
+/* ---------------------------------- */
+.profit-cell {
+    font-weight: 600;
+}
+
+.tooltip-container {
+    position: relative;
+    display: inline-block;
+    cursor: help; /* Change cursor to indicate there's more info */
+}
+
+.tooltip {
+    visibility: hidden; /* Hidden by default */
+    opacity: 0;
+    width: 240px; /* A fixed width for better layout */
+    background-color: var(--color-sidebar-bg);
+    color: var(--color-sidebar-text);
+    text-align: left;
+    border-radius: var(--border-radius-sm);
+    padding: 12px;
+    position: absolute;
+    z-index: 10;
+    bottom: 125%; /* Position above the text */
+    left: 50%;
+    margin-left: -120px; /* Use half of the width to center it */
+    transition: opacity 0.3s;
+    box-shadow: var(--shadow-card);
+    font-weight: 500; /* Reset font weight for tooltip text */
+}
+
+/* Arrow for the tooltip */
+.tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: var(--color-sidebar-bg) transparent transparent transparent;
+}
+
+/* Show the tooltip on hover */
+.tooltip-container:hover .tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+.tooltip-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 0.85rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.tooltip-item:last-child {
+    border-bottom: none;
+}
+.tooltip-item strong {
+    color: #fff;
+}
+/* ---------------------------------- */
+/* 28. Profile History Filter (NEW)   */
+/* ---------------------------------- */
+.history-filter-form {
+    display: flex;
+    align-items: flex-end; /* Aligns labels and inputs nicely */
+    gap: 16px;
+}
+
+.history-filter-form .form-group {
+    margin-bottom: 0; /* Override default form-group margin */
+}
+
+.history-filter-form .form-group label {
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+}
+
+.history-filter-form input[type="date"] {
+    padding: 8px 12px; /* Make inputs smaller */
+}
+
+.history-filter-form .form-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* Make filter buttons smaller */
+.history-filter-form .button {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+}
+/* ---------------------------------- */
+/* 29. Payroll Filter Form (NEW)      */
+/* ---------------------------------- */
+.payroll-filter-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+    align-items: flex-end;
+}
+
+.payroll-filter-form .filter-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.payroll-filter-form label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 4px;
+    color: var(--color-text-secondary);
+}
+
+.payroll-filter-form input,
+.payroll-filter-form select {
+    padding: 8px 12px;
+    font-size: 0.95rem;
+}
+
+.payroll-filter-form .filter-actions {
+    display: flex;
+    gap: 8px;
+    padding-bottom: 1px; /* Align buttons with inputs */
+}
+
+.payroll-filter-form .filter-actions .button {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    flex-grow: 1; /* Make buttons take available space */
+}

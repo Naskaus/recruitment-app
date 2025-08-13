@@ -158,34 +158,75 @@ def dispatch_board():
 
 @app.route('/payroll')
 def payroll_page_new():
-    venue = request.args.get('venue')
-    statuses_to_show = ['ongoing', 'archived']
+    # --- NEW: Read all filter parameters from the request URL ---
+    selected_venue = request.args.get('venue')
+    selected_contract_type = request.args.get('contract_type')
+    selected_status = request.args.get('status')
+    search_nickname = request.args.get('nickname')
+
+    # Base query with performance optimizations
+    q = Assignment.query.options(db.joinedload(Assignment.staff), db.subqueryload(Assignment.performance_records))
+
+    # --- NEW: Apply filters dynamically ---
+    if selected_venue:
+        q = q.filter(Assignment.venue == selected_venue)
     
-    # Preload staff and performance_records to avoid N+1 query issues
-    q = Assignment.query.options(db.joinedload(Assignment.staff), db.subqueryload(Assignment.performance_records)).filter(Assignment.status.in_(statuses_to_show))
-    
-    if venue:
-        q = q.filter(Assignment.venue == venue)
+    if selected_contract_type:
+        q = q.filter(Assignment.contract_type == selected_contract_type)
         
+    if selected_status:
+        q = q.filter(Assignment.status == selected_status)
+    else:
+        # Default behavior: show ongoing and archived if no specific status is chosen
+        q = q.filter(Assignment.status.in_(['ongoing', 'archived']))
+
+    if search_nickname:
+        # This requires a JOIN to search on the StaffProfile model
+        q = q.join(StaffProfile).filter(StaffProfile.nickname.ilike(f'%{search_nickname}%'))
+    
     status_order = db.case((Assignment.status == 'ongoing', 1), (Assignment.status == 'archived', 2), else_=3).label("status_order")
     all_assignments = q.order_by(status_order, Assignment.start_date.asc()).all()
     
     rows = []
     for a in all_assignments:
-        # Get the original duration from our hardcoded dictionary
+        contract_stats = {
+            "drinks": 0, "special_comm": 0, "salary": 0, "commission": 0, "profit": 0
+        }
         original_duration = CONTRACT_TYPES.get(a.contract_type, 1)
-        # Get the number of days worked by counting the performance records
-        days_worked = len(a.performance_records)
-        
+        base_daily_salary = (a.base_salary / original_duration) if original_duration > 0 else 0
+
+        for record in a.performance_records:
+            daily_salary = (base_daily_salary + (record.bonus or 0) - (record.malus or 0) - (record.lateness_penalty or 0))
+            daily_commission = (record.drinks_sold or 0) * DRINK_STAFF_COMMISSION
+            bar_revenue = ((record.drinks_sold or 0) * DRINK_BAR_PRICE) + (record.special_commissions or 0)
+            daily_profit = bar_revenue - daily_salary
+            
+            contract_stats["drinks"] += record.drinks_sold or 0
+            contract_stats["special_comm"] += record.special_commissions or 0
+            contract_stats["salary"] += daily_salary
+            contract_stats["commission"] += daily_commission
+            contract_stats["profit"] += daily_profit
+
         rows.append({
             "assignment": a,
             "contract_days": (a.end_date - a.start_date).days + 1,
-            # --- NEW DATA FOR PROGRESS BAR ---
-            "days_worked": days_worked,
-            "original_duration": original_duration
+            "days_worked": len(a.performance_records),
+            "original_duration": original_duration,
+            "contract_stats": contract_stats
         })
         
-    return render_template('payroll.html', assignments=rows, venues=VENUE_LIST, selected_venue=venue)
+    # --- NEW: Prepare data for the filter bar in the template ---
+    filter_data = {
+        "venues": VENUE_LIST,
+        "contract_types": CONTRACT_TYPES.keys(),
+        "statuses": ['ongoing', 'archived'],
+        "selected_venue": selected_venue,
+        "selected_contract_type": selected_contract_type,
+        "selected_status": selected_status,
+        "search_nickname": search_nickname
+    }
+
+    return render_template('payroll.html', assignments=rows, filters=filter_data)
 
 @app.route('/profile/new', methods=['GET'])
 def new_profile_form():
@@ -206,9 +247,33 @@ def profile_detail(profile_id):
         db.joinedload(StaffProfile.assignments).subqueryload(Assignment.performance_records)
     ).get_or_404(profile_id)
 
-    # --- START: History and Stats Calculation ---
+    # --- NEW: Date Filter Logic ---
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
     
-    # 1. Initialize counters for the KPIs
+    start_date, end_date = None, None
+    if start_date_str:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+    if end_date_str:
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+    all_assignments = sorted(profile.assignments, key=lambda a: a.start_date, reverse=True)
+    
+    # Filter assignments if dates are provided
+    if start_date or end_date:
+        filtered_assignments = []
+        for a in all_assignments:
+            # A contract is included if it overlaps with the selected date range.
+            contract_starts_before_range_ends = not end_date or a.start_date <= end_date
+            contract_ends_after_range_starts = not start_date or a.end_date >= start_date
+            if contract_starts_before_range_ends and contract_ends_after_range_starts:
+                filtered_assignments.append(a)
+        assignments_to_process = filtered_assignments
+    else:
+        assignments_to_process = all_assignments
+    # --- END: Date Filter Logic ---
+
+    # Initialize global KPI counters
     total_days_worked = 0
     total_drinks_sold = 0
     total_special_comm = 0
@@ -216,36 +281,41 @@ def profile_detail(profile_id):
     total_commission_paid = 0
     total_bar_profit = 0
 
-    # Sort assignments from newest to oldest
-    # The relationship 'profile.assignments' is already loaded thanks to the query options
-    sorted_assignments = sorted(profile.assignments, key=lambda a: a.start_date, reverse=True)
-
-    # 2. Loop through each assignment to calculate stats
-    for assignment in sorted_assignments:
-        # We need the original duration to calculate the daily base salary correctly
+    for assignment in assignments_to_process:
+        assignment.contract_stats = {
+            "drinks": 0, "special_comm": 0, "salary": 0, "commission": 0, "profit": 0
+        }
         original_duration = CONTRACT_TYPES.get(assignment.contract_type, 1)
         base_daily_salary = (assignment.base_salary / original_duration) if original_duration > 0 else 0
 
-        # Loop through each performance record of the assignment
-        for record in assignment.performance_records:
-            total_days_worked += 1
-            total_drinks_sold += record.drinks_sold or 0
-            total_special_comm += record.special_commissions or 0
-            
-            # Calculate salary for that specific day
-            daily_salary = (base_daily_salary + (record.bonus or 0) - (record.malus or 0) - (record.lateness_penalty or 0))
-            total_salary_paid += daily_salary
-            
-            # Calculate commission for that day
-            daily_commission = (record.drinks_sold or 0) * DRINK_STAFF_COMMISSION
-            total_commission_paid += daily_commission
-            
-            # Calculate bar profit for that day
-            bar_revenue = ((record.drinks_sold or 0) * DRINK_BAR_PRICE) + (record.special_commissions or 0)
-            daily_bar_profit = bar_revenue - daily_salary
-            total_bar_profit += daily_bar_profit
+        # Now, filter the performance records within the assignment based on the date range
+        records_to_process = assignment.performance_records
+        if start_date or end_date:
+            records_to_process = [
+                r for r in assignment.performance_records 
+                if (not start_date or r.record_date >= start_date) and \
+                   (not end_date or r.record_date <= end_date)
+            ]
 
-    # 3. Prepare the history data dictionary to be sent to the template
+        for record in records_to_process:
+            daily_salary = (base_daily_salary + (record.bonus or 0) - (record.malus or 0) - (record.lateness_penalty or 0))
+            daily_commission = (record.drinks_sold or 0) * DRINK_STAFF_COMMISSION
+            bar_revenue = ((record.drinks_sold or 0) * DRINK_BAR_PRICE) + (record.special_commissions or 0)
+            daily_profit = bar_revenue - daily_salary
+            
+            assignment.contract_stats["drinks"] += record.drinks_sold or 0
+            assignment.contract_stats["special_comm"] += record.special_commissions or 0
+            assignment.contract_stats["salary"] += daily_salary
+            assignment.contract_stats["commission"] += daily_commission
+            assignment.contract_stats["profit"] += daily_profit
+        
+        total_days_worked += len(records_to_process)
+        total_drinks_sold += assignment.contract_stats["drinks"]
+        total_special_comm += assignment.contract_stats["special_comm"]
+        total_salary_paid += assignment.contract_stats["salary"]
+        total_commission_paid += assignment.contract_stats["commission"]
+        total_bar_profit += assignment.contract_stats["profit"]
+
     history_stats = {
         "total_days_worked": total_days_worked,
         "total_drinks_sold": total_drinks_sold,
@@ -255,15 +325,15 @@ def profile_detail(profile_id):
         "total_bar_profit": total_bar_profit
     }
     
-    # --- END: History and Stats Calculation ---
-
     return render_template(
         'profile_detail.html', 
         profile=profile,
-        assignments=sorted_assignments, # Pass the sorted list of contracts
-        history_stats=history_stats     # Pass the calculated KPIs
+        assignments=assignments_to_process, # Pass the (potentially filtered) list
+        history_stats=history_stats,
+        # NEW: Pass filter dates back to the template
+        filter_start_date=start_date,
+        filter_end_date=end_date
     )
-
 @app.route('/profile/<int:profile_id>/edit', methods=['GET'])
 def edit_profile_form(profile_id):
     profile = StaffProfile.query.get_or_404(profile_id)

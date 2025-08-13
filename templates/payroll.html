@@ -3,27 +3,61 @@
 {% block content %}
 <div class="page-header">
   <h2>Payroll & Performance (Contracts)</h2>
+</div>
 
-  <form method="get" action="/payroll" class="filter-bar">
-    <label for="venueFilter"><strong>Filter by venue:</strong></label>
-    <select id="venueFilter" name="venue" onchange="this.form.submit()">
-      <option value="">All venues</option>
-      {% for v in venues %}
-        <option value="{{ v }}" {% if selected_venue == v %}selected{% endif %}>{{ v }}</option>
-      {% endfor %}
-    </select>
-  </form>
+<!-- NEW: Advanced Filter Bar -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-body" style="padding: 24px;">
+    <form method="GET" action="{{ url_for('payroll_page_new') }}" class="payroll-filter-form">
+      <div class="filter-group">
+        <label for="nickname">Staff Name</label>
+        <input type="text" id="nickname" name="nickname" placeholder="Enter nickname..." value="{{ filters.search_nickname or '' }}">
+      </div>
+      <div class="filter-group">
+        <label for="venue">Venue</label>
+        <select id="venue" name="venue">
+          <option value="">All Venues</option>
+          {% for venue in filters.venues %}
+            <option value="{{ venue }}" {% if filters.selected_venue == venue %}selected{% endif %}>{{ venue }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="contract_type">Contract Type</label>
+        <select id="contract_type" name="contract_type">
+          <option value="">All Types</option>
+          {% for c_type in filters.contract_types %}
+            <option value="{{ c_type }}" {% if filters.selected_contract_type == c_type %}selected{% endif %}>{{ c_type }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          <option value="">All Statuses</option>
+          {% for status in filters.statuses %}
+            <option value="{{ status }}" {% if filters.selected_status == status %}selected{% endif %}>{{ status|capitalize }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="filter-actions">
+        <button type="submit" class="button button-primary">Apply Filters</button>
+        <a href="{{ url_for('payroll_page_new') }}" class="button button-secondary">Clear</a>
+      </div>
+    </form>
+  </div>
 </div>
 
 <div class="card">
   <div class="card-body">
-    <table class="payroll-table">
+        <table class="payroll-table">
       <thead>
       <tr>
         <th>Staff</th>
         <th>Venue</th>
         <th>Contract</th>
-        <th>Progress</th> <!-- NEW: Add Progress column header -->
+        <th>Progress</th>
+        <th>Profit (Total)</th> <!-- NEW: Profit column header -->
         <th>Period</th>
         <th>Actions</th>
       </tr>
@@ -32,11 +66,11 @@
       {% if assignments and assignments|length > 0 %}
         {% for row in assignments %}
           {% set a = row.assignment %}
+          {% set stats = row.contract_stats %}
           {% set label = '1-day' if a.contract_type == '1jour'
                         else '10-days' if a.contract_type == '10jours'
                         else '1-month' %}
           
-          <!-- Fix: Remove duplicated <tr> tag -->
           <tr
             id="assignment-row-{{ a.id }}"
             class="row-contract-{{ a.contract_type }} status-{{ a.status }}"
@@ -65,7 +99,6 @@
               <small class="muted">({{ '%.0f'|format(a.base_salary or 0) }}฿)</small>
             </td>
 
-            <!-- NEW: Progress Bar Cell -->
             <td>
               {% if a.status == 'ongoing' %}
                 {% set worked = row.days_worked|int %}
@@ -80,12 +113,26 @@
                 <span class="muted">—</span>
               {% endif %}
             </td>
-            <!-- END NEW -->
+
+            <!-- NEW: Profit Cell with Tooltip -->
+            <td class="profit-cell">
+                <div class="tooltip-container">
+                    <span class="{% if stats.profit > 0 %}profit-positive{% elif stats.profit < 0 %}profit-negative{% endif %}">
+                        {{ '%.0f'|format(stats.profit) }} ฿
+                    </span>
+                    <div class="tooltip">
+                        <div class="tooltip-item"><span>Drinks Sold:</span> <strong>{{ stats.drinks }}</strong></div>
+                        <div class="tooltip-item"><span>Special Comm:</span> <strong>{{ '%.0f'|format(stats.special_comm) }} ฿</strong></div>
+                        <div class="tooltip-item"><span>Salary Paid:</span> <strong>{{ '%.0f'|format(stats.salary) }} ฿</strong></div>
+                        <div class="tooltip-item"><span>Commission Paid:</span> <strong>{{ '%.0f'|format(stats.commission) }} ฿</strong></div>
+                    </div>
+                </div>
+            </td>
 
             <td>{{ a.start_date.strftime("%d/%m") }} → {{ a.end_date.strftime("%d/%m") }}</td>
             
             <td>
-              <div class="actions" style="display:flex; gap:.5rem; flex-wrap:wrap; align-items: center;">
+              <div class="actions">
                 {% if a.status == 'ongoing' %}
                   <button class="button button-primary manage-performance-btn">Manage</button>
                   <button class="button button-secondary end-contract-btn">End</button>
@@ -100,8 +147,8 @@
         {% endfor %}
       {% else %}
         <tr>
-          <!-- MODIFIED: colspan increased to 7 -->
-          <td colspan="7" class="text-center">
+          <!-- MODIFIED: colspan increased to 8 -->
+          <td colspan="8" class="text-center">
             No contracts found. Use the <a href="/dispatch">Dispatch Board</a> to create one.
           </td>
         </tr>

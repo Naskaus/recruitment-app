@@ -50,14 +50,16 @@
 
 <div class="card">
   <div class="card-body">
-        <table class="payroll-table">
+      <table class="payroll-table">
       <thead>
       <tr>
         <th>Staff</th>
         <th>Venue</th>
+        <!-- NEW: Added header for manager -->
+        <th>Managed by</th>
         <th>Contract</th>
         <th>Progress</th>
-        <th>Profit (Total)</th> <!-- NEW: Profit column header -->
+        <th>Profit (Total)</th>
         <th>Period</th>
         <th>Actions</th>
       </tr>
@@ -68,8 +70,8 @@
           {% set a = row.assignment %}
           {% set stats = row.contract_stats %}
           {% set label = '1-day' if a.contract_type == '1jour'
-                        else '10-days' if a.contract_type == '10jours'
-                        else '1-month' %}
+                         else '10-days' if a.contract_type == '10jours'
+                         else '1-month' %}
           
           <tr
             id="assignment-row-{{ a.id }}"
@@ -94,6 +96,14 @@
               </div>
             </td>
             <td>{{ a.venue }}</td>
+            <!-- NEW: Added cell for manager's name -->
+            <td>
+                {% if a.manager %}
+                    {{ a.manager.username }}
+                {% else %}
+                    <span class="muted">—</span>
+                {% endif %}
+            </td>
             <td>
               <span class="contract-badge badge-{{ a.contract_type }}">{{ label }}</span>
               <small class="muted">({{ '%.0f'|format(a.base_salary or 0) }}฿)</small>
@@ -137,7 +147,7 @@
                   <button class="button button-primary manage-performance-btn">Manage</button>
                   <button class="button button-secondary end-contract-btn">End</button>
                   <button class="button button-danger delete-contract-btn">Del</button>
-                                {% elif a.status == 'archived' %}
+                {% elif a.status == 'archived' %}
                   <span class="status-badge status-badge-archived">Archived</span>
                   <button class="button button-secondary manage-performance-btn">Details</button>
                   <!-- NEW: Delete button for archived contracts -->
@@ -156,8 +166,8 @@
         {% endfor %}
       {% else %}
         <tr>
-          <!-- MODIFIED: colspan increased to 8 -->
-          <td colspan="8" class="text-center">
+          <!-- MODIFIED: colspan increased to 9 -->
+          <td colspan="9" class="text-center">
             No contracts found. Use the <a href="/dispatch">Dispatch Board</a> to create one.
           </td>
         </tr>
@@ -171,7 +181,7 @@
 <div id="editRecordModal" class="modal-overlay hidden">
   <div class="modal-content" id="performanceModalCard">
     <div class="modal-header">
-            <h3>
+          <h3>
         Manage performance for <span id="modalStaffName"></span>
         <span id="modalContractBadge" class="contract-badge">—</span>
         <!-- NEW: Add a placeholder for the role badge -->

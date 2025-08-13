@@ -1,6 +1,23 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+  /* NEW: Grid layout styles for the assignment modal form */
+  .form-grid-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem 1.5rem; /* vertical horizontal */
+    align-items: start;
+  }
+  .form-grid-layout .form-group {
+    display: flex;
+    flex-direction: column;
+  }
+  .form-grid-layout .form-group-full-width {
+    grid-column: 1 / -1; /* Span across both columns */
+  }
+</style>
+
 <div class="page-header">
   <h2>Dispatch Board</h2>
 </div>
@@ -51,7 +68,8 @@
         <input type="hidden" id="assignmentStaffId">
         <input type="hidden" id="assignmentVenue">
 
-                <div class="form-grid-2">
+        <!-- MODIFIED: Restructured the form with a new grid layout class -->
+        <div class="form-grid-layout">
           <div class="form-group">
             <label for="contractType">Contract Type</label>
             <select id="contractType" required>
@@ -61,7 +79,6 @@
             </select>
           </div>
 
-          <!-- NEW: Role Selection Dropdown -->
           <div class="form-group">
             <label for="assignmentRole">Role</label>
             <select id="assignmentRole" required>
@@ -70,17 +87,26 @@
               {% endfor %}
             </select>
           </div>
-          <!-- END NEW -->
+
+          <div class="form-group">
+            <label for="assignmentManager">Managed by</label>
+            <select id="assignmentManager" required>
+              <option value="" disabled selected>-- Select a Manager --</option>
+              {% for user in users %}
+              <option value="{{ user.id }}">{{ user.username }}</option>
+              {% endfor %}
+            </select>
+          </div>
 
           <div class="form-group">
             <label for="startDate">Start Date</label>
             <input type="date" id="startDate" required>
           </div>
-        </div>
 
-        <div class="form-group">
-          <label for="baseSalary">Base Salary (THB, whole contract)</label>
-          <input type="number" id="baseSalary" min="0" step="50" value="0" required>
+          <div class="form-group form-group-full-width">
+            <label for="baseSalary">Base Salary (THB, whole contract)</label>
+            <input type="number" id="baseSalary" min="0" step="50" value="0" required>
+          </div>
         </div>
 
         <div class="modal-footer">

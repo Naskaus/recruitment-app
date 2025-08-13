@@ -41,9 +41,10 @@ def super_admin_required(f):
 # --- Hardcoded Data (for now) ---
 ADMIN_LIST = ["Admin 1", "Mama Rose", "Mama Joy", "Khun Somchai"]
 VENUE_LIST = ["Red Dragon", "Mandarin", "Shark"]
-# NEW: Define roles
 ROLE_LIST = ["Dancer", "Hostess"]
-
+CONTRACT_TYPES = {"1jour": 1, "10jours": 10, "1mois": 30}
+DRINK_STAFF_COMMISSION = 100
+DRINK_BAR_PRICE = 120
 
 # Ensure an 'uploads' directory exists
 if not os.path.exists(UPLOAD_FOLDER):
@@ -52,6 +53,26 @@ if not os.path.exists(UPLOAD_FOLDER):
 # =========================
 # Models
 # =========================
+
+class User(db.Model, UserMixin):
+    __tablename__ = "user"
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    role = db.Column(db.String(80), nullable=False, default='Admin') # e.g., 'Admin', 'Super-Admin'
+
+    # MODIFIED: Relationship now uses back_populates for explicit linking
+    managed_assignments = db.relationship('Assignment', foreign_keys='Assignment.managed_by_user_id', back_populates='manager')
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def __repr__(self):
+        return f'<User {self.username}>'
+
 
 class StaffProfile(db.Model):
     __tablename__ = "staff_profile"
@@ -82,32 +103,12 @@ class StaffProfile(db.Model):
         today = date.today()
         return today.year - self.dob.year - ((today.month, today.day) < (self.dob.month, self.dob.day))
 
-
-# --- Contract system ---
-
-CONTRACT_TYPES = {"1jour": 1, "10jours": 10, "1mois": 30}
-
-def compute_end_date(start_date: date, contract_type: str) -> date:
-    days = CONTRACT_TYPES.get(contract_type)
-    if not days:
-        raise ValueError("Invalid contract_type")
-    return start_date + timedelta(days=days - 1)
-
-def calc_lateness_penalty(arrival_time):
-    if not arrival_time:
-        return 0
-    cutoff = dt_time(19, 30)
-    if arrival_time <= cutoff:
-        return 0
-    minutes = (datetime.combine(date.today(), arrival_time) - datetime.combine(date.today(), cutoff)).seconds // 60
-    return minutes * 5
-
 class Assignment(db.Model):
     __tablename__ = 'assignment'
     id = db.Column(db.Integer, primary_key=True)
     staff_id = db.Column(db.Integer, db.ForeignKey('staff_profile.id'), nullable=False)
+    managed_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     venue = db.Column(db.String(80), nullable=False)
-    # MODIFIED: Added server_default to handle existing rows during migration
     role = db.Column(db.String(50), nullable=False, server_default='Dancer')
     contract_type = db.Column(db.String(20), nullable=False)
     start_date = db.Column(db.Date, nullable=False)
@@ -115,6 +116,9 @@ class Assignment(db.Model):
     base_salary = db.Column(db.Float, nullable=False, default=0.0)
     status = db.Column(db.String(20), nullable=False, default='ongoing')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # MODIFIED: Explicit relationship to User model
+    manager = db.relationship('User', back_populates='managed_assignments')
 
     performance_records = db.relationship(
         'PerformanceRecord',
@@ -131,6 +135,7 @@ class Assignment(db.Model):
             "end_date": self.end_date.isoformat(), "base_salary": self.base_salary,
             "status": self.status,
         }
+
 
 class PerformanceRecord(db.Model):
     __tablename__ = 'performance_record'
@@ -155,6 +160,28 @@ class PerformanceRecord(db.Model):
             "drinks_sold": self.drinks_sold, "special_commissions": self.special_commissions,
             "bonus": self.bonus, "malus": self.malus, "lateness_penalty": self.lateness_penalty,
         }
+
+# --- Login Manager Setup ---
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+# --- Helper Functions ---
+def compute_end_date(start_date: date, contract_type: str) -> date:
+    days = CONTRACT_TYPES.get(contract_type)
+    if not days:
+        raise ValueError("Invalid contract_type")
+    return start_date + timedelta(days=days - 1)
+
+def calc_lateness_penalty(arrival_time):
+    if not arrival_time:
+        return 0
+    cutoff = dt_time(19, 30)
+    if arrival_time <= cutoff:
+        return 0
+    minutes = (datetime.combine(date.today(), arrival_time) - datetime.combine(date.today(), cutoff)).seconds // 60
+    return minutes * 5
+
 # =========================
 # Auth Routes
 # =========================
@@ -185,6 +212,7 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for('login'))
+
 @app.route('/users', methods=['GET', 'POST'])
 @login_required
 @super_admin_required
@@ -194,7 +222,6 @@ def manage_users():
         password = request.form.get('password')
         role = request.form.get('role')
 
-        # Basic validation
         if not username or not password or not role:
             flash('All fields are required.', 'danger')
             return redirect(url_for('manage_users'))
@@ -209,21 +236,20 @@ def manage_users():
             return redirect(url_for('manage_users'))
 
         new_user = User(username=username, role=role)
-        new_user.set_password(password) # Hashes the password
+        new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
         
         flash(f'User "{username}" created successfully.', 'success')
         return redirect(url_for('manage_users'))
 
-    # For GET request, list all users
     all_users = User.query.order_by(User.id).all()
     return render_template('users.html', users=all_users)
+
 @app.route('/users/delete/<int:user_id>', methods=['POST'])
 @login_required
 @super_admin_required
 def delete_user(user_id):
-    # Prevent a super admin from deleting themselves
     if user_id == current_user.id:
         flash("You cannot delete your own account.", 'danger')
         return redirect(url_for('manage_users'))
@@ -234,6 +260,7 @@ def delete_user(user_id):
     
     flash(f'User "{user_to_delete.username}" has been deleted.', 'success')
     return redirect(url_for('manage_users'))
+
 # =========================
 # Views
 # =========================
@@ -246,25 +273,30 @@ def staff_list():
     return render_template('staff_list.html', profiles=all_profiles)
 
 @app.route('/dispatch')
+@login_required
 def dispatch_board():
     all_staff = StaffProfile.query.all()
     available_staff = [s for s in all_staff if not s.current_venue]
     dispatched_staff = {venue: [s for s in all_staff if s.current_venue == venue] for venue in VENUE_LIST}
-    # NEW: Pass roles to the template
-    return render_template('dispatch.html', available_staff=available_staff, dispatched_staff=dispatched_staff, venues=VENUE_LIST, roles=ROLE_LIST)
+    # NEW: Get all users to populate the manager dropdown
+    all_users = User.query.order_by(User.username).all()
+    return render_template('dispatch.html', available_staff=available_staff, dispatched_staff=dispatched_staff, venues=VENUE_LIST, roles=ROLE_LIST, users=all_users)
 
 @app.route('/payroll')
+@login_required
 def payroll_page_new():
-    # --- NEW: Read all filter parameters from the request URL ---
     selected_venue = request.args.get('venue')
     selected_contract_type = request.args.get('contract_type')
     selected_status = request.args.get('status')
     search_nickname = request.args.get('nickname')
 
-    # Base query with performance optimizations
-    q = Assignment.query.options(db.joinedload(Assignment.staff), db.subqueryload(Assignment.performance_records))
+    # MODIFIED: Added joinedload for Assignment.manager to efficiently get the manager's name
+    q = Assignment.query.options(
+        db.joinedload(Assignment.staff), 
+        db.joinedload(Assignment.manager), 
+        db.subqueryload(Assignment.performance_records)
+    )
 
-    # --- NEW: Apply filters dynamically ---
     if selected_venue:
         q = q.filter(Assignment.venue == selected_venue)
     
@@ -274,11 +306,9 @@ def payroll_page_new():
     if selected_status:
         q = q.filter(Assignment.status == selected_status)
     else:
-        # Default behavior: show ongoing and archived if no specific status is chosen
         q = q.filter(Assignment.status.in_(['ongoing', 'archived']))
 
     if search_nickname:
-        # This requires a JOIN to search on the StaffProfile model
         q = q.join(StaffProfile).filter(StaffProfile.nickname.ilike(f'%{search_nickname}%'))
     
     status_order = db.case((Assignment.status == 'ongoing', 1), (Assignment.status == 'archived', 2), else_=3).label("status_order")
@@ -312,7 +342,6 @@ def payroll_page_new():
             "contract_stats": contract_stats
         })
         
-    # --- NEW: Prepare data for the filter bar in the template ---
     filter_data = {
         "venues": VENUE_LIST,
         "contract_types": CONTRACT_TYPES.keys(),
@@ -325,7 +354,9 @@ def payroll_page_new():
 
     return render_template('payroll.html', assignments=rows, filters=filter_data)
 
+
 @app.route('/profile/new', methods=['GET'])
+@login_required
 def new_profile_form():
     current_year = date.today().year
     years = range(current_year - 18, current_year - 60, -1)
@@ -333,18 +364,13 @@ def new_profile_form():
     days = range(1, 32)
     return render_template('profile_form.html', years=years, months=months, days=days, admins=ADMIN_LIST, edit_mode=False)
 
-# --- NEW CONSTANTS FOR CALCULATIONS ---
-# We should centralize these if they are used in multiple places.
-DRINK_STAFF_COMMISSION = 100
-DRINK_BAR_PRICE = 120
-
 @app.route('/profile/<int:profile_id>')
+@login_required
 def profile_detail(profile_id):
     profile = StaffProfile.query.options(
         db.joinedload(StaffProfile.assignments).subqueryload(Assignment.performance_records)
     ).get_or_404(profile_id)
 
-    # --- NEW: Date Filter Logic ---
     start_date_str = request.args.get('start_date')
     end_date_str = request.args.get('end_date')
     
@@ -356,11 +382,9 @@ def profile_detail(profile_id):
 
     all_assignments = sorted(profile.assignments, key=lambda a: a.start_date, reverse=True)
     
-    # Filter assignments if dates are provided
     if start_date or end_date:
         filtered_assignments = []
         for a in all_assignments:
-            # A contract is included if it overlaps with the selected date range.
             contract_starts_before_range_ends = not end_date or a.start_date <= end_date
             contract_ends_after_range_starts = not start_date or a.end_date >= start_date
             if contract_starts_before_range_ends and contract_ends_after_range_starts:
@@ -368,9 +392,7 @@ def profile_detail(profile_id):
         assignments_to_process = filtered_assignments
     else:
         assignments_to_process = all_assignments
-    # --- END: Date Filter Logic ---
 
-    # Initialize global KPI counters
     total_days_worked = 0
     total_drinks_sold = 0
     total_special_comm = 0
@@ -385,7 +407,6 @@ def profile_detail(profile_id):
         original_duration = CONTRACT_TYPES.get(assignment.contract_type, 1)
         base_daily_salary = (assignment.base_salary / original_duration) if original_duration > 0 else 0
 
-        # Now, filter the performance records within the assignment based on the date range
         records_to_process = assignment.performance_records
         if start_date or end_date:
             records_to_process = [
@@ -425,13 +446,13 @@ def profile_detail(profile_id):
     return render_template(
         'profile_detail.html', 
         profile=profile,
-        assignments=assignments_to_process, # Pass the (potentially filtered) list
+        assignments=assignments_to_process,
         history_stats=history_stats,
-        # NEW: Pass filter dates back to the template
         filter_start_date=start_date,
         filter_end_date=end_date
     )
 @app.route('/profile/<int:profile_id>/edit', methods=['GET'])
+@login_required
 def edit_profile_form(profile_id):
     profile = StaffProfile.query.get_or_404(profile_id)
     current_year = date.today().year
@@ -445,6 +466,7 @@ def edit_profile_form(profile_id):
 # =========================
 
 @app.route('/api/profile', methods=['POST'])
+@login_required
 def create_profile():
     data = request.form
     if not data.get('nickname'):
@@ -472,6 +494,7 @@ def create_profile():
     return jsonify({'status': 'success', 'message': 'Profile created successfully!'}), 201
 
 @app.route('/api/profile/<int:profile_id>', methods=['POST'])
+@login_required
 def update_profile(profile_id):
     profile = StaffProfile.query.get_or_404(profile_id)
     data = request.form
@@ -503,6 +526,7 @@ def update_profile(profile_id):
     return jsonify({'status': 'success', 'message': 'Profile updated successfully!'}), 200
 
 @app.route('/api/profile/<int:profile_id>/delete', methods=['POST'])
+@login_required
 def delete_profile(profile_id):
     profile = StaffProfile.query.get_or_404(profile_id)
     if profile.photo_url and 'default_avatar' not in profile.photo_url:
@@ -525,33 +549,48 @@ def uploaded_file(filename):
 # =========================
 
 @app.route('/api/assignment', methods=['POST'])
+@login_required
 def create_assignment():
     data = request.get_json() or {}
     try:
         staff_id = int(data.get('staff_id'))
         venue = data.get('venue')
-        # NEW: Get role from payload
         role = data.get('role')
         contract_type = data.get('contract_type')
         start_date = datetime.fromisoformat(data.get('start_date')).date()
         base_salary = float(data.get('base_salary', 0))
-    except Exception:
-        return jsonify({"status": "error", "message": "Invalid payload."}), 400
+        # NEW: Get the manager ID from the payload
+        managed_by_user_id = int(data.get('managed_by_user_id'))
+    except (ValueError, TypeError):
+        return jsonify({"status": "error", "message": "Invalid payload. Check data types."}), 400
     
-    # NEW: Validate the role
     if role not in ROLE_LIST: return jsonify({"status": "error", "message": f"Invalid role. Must be one of {ROLE_LIST}"}), 400
     if venue not in VENUE_LIST: return jsonify({"status": "error", "message": "Invalid venue."}), 400
     if contract_type not in CONTRACT_TYPES: return jsonify({"status": "error", "message": "Invalid contract_type."}), 400
     
     staff = StaffProfile.query.get(staff_id)
     if not staff: return jsonify({"status": "error", "message": "Staff not found."}), 404
+
+    # NEW: Check if manager exists
+    manager = User.query.get(managed_by_user_id)
+    if not manager: return jsonify({"status": "error", "message": "Manager not found."}), 404
     
     overlapping = Assignment.query.filter(Assignment.staff_id == staff_id, Assignment.status == 'ongoing', Assignment.start_date <= start_date, Assignment.end_date >= start_date).first()
     if overlapping: return jsonify({"status": "error", "message": "Staff already has an ongoing contract overlapping this start date."}), 409
     
     end_date = compute_end_date(start_date, contract_type)
-    # NEW: Add role to the constructor
-    new_a = Assignment(staff_id=staff_id, venue=venue, role=role, contract_type=contract_type, start_date=start_date, end_date=end_date, base_salary=base_salary, status='ongoing')
+    # NEW: Add managed_by_user_id to the constructor
+    new_a = Assignment(
+        staff_id=staff_id, 
+        venue=venue, 
+        role=role, 
+        contract_type=contract_type, 
+        start_date=start_date, 
+        end_date=end_date, 
+        base_salary=base_salary, 
+        status='ongoing',
+        managed_by_user_id=managed_by_user_id
+    )
     db.session.add(new_a)
     
     staff.current_venue = venue
@@ -559,6 +598,7 @@ def create_assignment():
     return jsonify({"status": "success", "assignment": new_a.to_dict()}), 201
 
 @app.route('/api/assignment/<int:assignment_id>/end', methods=['POST'])
+@login_required
 def end_assignment_now(assignment_id):
     a = Assignment.query.get_or_404(assignment_id)
     if a.status != 'ongoing':
@@ -574,6 +614,7 @@ def end_assignment_now(assignment_id):
     }), 200
 
 @app.route('/api/assignment/<int:assignment_id>', methods=['DELETE'])
+@login_required
 def delete_assignment(assignment_id):
     a = Assignment.query.get_or_404(assignment_id)
     if a.staff:
@@ -583,6 +624,7 @@ def delete_assignment(assignment_id):
     return jsonify({"status": "success"}), 200
 
 @app.route('/api/assignment/<int:assignment_id>/finalize', methods=['POST'])
+@login_required
 def finalize_assignment(assignment_id):
     a = Assignment.query.get_or_404(assignment_id)
     data = request.get_json() or {}
@@ -610,6 +652,7 @@ def _get_or_create_daily_record(assignment_id: int, ymd: date) -> 'PerformanceRe
     return rec
 
 @app.route('/api/performance/<int:assignment_id>/<string:ymd>', methods=['GET'])
+@login_required
 def get_performance(assignment_id, ymd):
     try:
         day = datetime.fromisoformat(ymd).date()
@@ -621,6 +664,7 @@ def get_performance(assignment_id, ymd):
     return jsonify({"status": "success", "record": rec.to_dict()}), 200
 
 @app.route('/api/performance/<int:assignment_id>', methods=['GET'])
+@login_required
 def list_performance_for_assignment(assignment_id):
     a = Assignment.query.get(assignment_id)
     if not a:
@@ -644,6 +688,7 @@ def list_performance_for_assignment(assignment_id):
 
 
 @app.route('/api/performance', methods=['POST'])
+@login_required
 def upsert_performance():
     data = request.get_json() or {}
     try:
@@ -670,32 +715,7 @@ def upsert_performance():
     rec.lateness_penalty = float(calc_lateness_penalty(rec.arrival_time))
     db.session.commit()
     return jsonify({"status": "success", "record": rec.to_dict()}), 200
-# =========================
-# Models
-# =========================
 
-# ... (StaffProfile, Assignment, PerformanceRecord models are here) ...
-
-class User(db.Model, UserMixin):
-    __tablename__ = "user"
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
-    role = db.Column(db.String(80), nullable=False, default='Admin') # e.g., 'Admin', 'Super-Admin'
-
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
-
-    def __repr__(self):
-        return f'<User {self.username}>'
-
-# --- Login Manager Setup ---
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
 # =========================
 # CLI Commands
 # =========================
@@ -717,9 +737,9 @@ def create_user():
     db.session.add(new_user)
     db.session.commit()
     click.echo(f"User {username} created successfully with role {role}.")
+
 # =========================
 # Main
 # =========================
-
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

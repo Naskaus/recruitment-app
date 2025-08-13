@@ -131,8 +131,9 @@
     const startDateInput = document.getElementById("startDate");
     const contractTypeInput = document.getElementById("contractType");
     const baseSalaryInput = document.getElementById("baseSalary");
-    // NEW: Get the role select input
     const roleInput = document.getElementById("assignmentRole");
+    // NEW: Get the manager select input
+    const managerInput = document.getElementById("assignmentManager");
 
 
     const SALARY_DEFAULTS = {
@@ -160,6 +161,10 @@
       if (roleInput && roleInput.options.length > 0) {
         roleInput.selectedIndex = 0;
       }
+      // NEW: Set a default manager if available
+      if (managerInput && managerInput.options.length > 1) { // more than the disabled option
+        managerInput.selectedIndex = 0; // Reset to the placeholder
+      }
       updateDefaultSalary(); 
     }
     function closeModal() { assignmentModal?.classList.add("hidden"); }
@@ -178,16 +183,23 @@
       const payload = {
         staff_id: staffIdInput.value,
         venue: venueInput.value,
-        // NEW: Add role to the payload
         role: roleInput.value,
+        // NEW: Add manager to the payload
+        managed_by_user_id: managerInput.value,
         contract_type: contractTypeInput.value,
         start_date: startDateInput.value,
         base_salary: baseSalaryInput.value,
       };
 
-      // NEW: Simple validation for the role
+      // NEW: Simple validation for role and manager
       if (!payload.role) {
           alert("Please select a role.");
+          submitBtn.disabled = false;
+          submitBtn.textContent = prev;
+          return;
+      }
+      if (!payload.managed_by_user_id) {
+          alert("Please select a manager.");
           submitBtn.disabled = false;
           submitBtn.textContent = prev;
           return;
@@ -424,7 +436,7 @@
       }
     }
     
-                function calculateAndShowSummary(assignmentId, records, contract, baseDailyFromCaller) {
+            function calculateAndShowSummary(assignmentId, records, contract, baseDailyFromCaller) {
         let totalDrinks = 0, totalSpecial = 0, totalCommission = 0, totalSalary = 0, totalProfit = 0;
 
         // On privilégie le baseDaily calculé en amont (plus fiable si contrat raccourci).

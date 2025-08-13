@@ -125,7 +125,15 @@
         <th>Actions</th>
       </tr>
       </thead>
-      <tbody>
+      <style>
+  /* ... (vos styles existants ici) ... */
+  .deleted-staff-cell img {
+    filter: grayscale(100%);
+    opacity: 0.7;
+  }
+</style>
+
+<tbody>
       {% if assignments and assignments|length > 0 %}
         {% for row in assignments %}
           {% set a = row.assignment %}
@@ -138,7 +146,7 @@
             id="assignment-row-{{ a.id }}"
             class="row-contract-{{ a.contract_type }} status-{{ a.status }}"
             data-assignment-id="{{ a.id }}"
-            data-staff-name="{{ a.staff.nickname }}"
+            data-staff-name="{{ a.staff.nickname if a.staff else a.archived_staff_name }}"
             data-start-date="{{ a.start_date.isoformat() }}"
             data-end-date="{{ a.end_date.isoformat() }}"
             data-base-salary="{{ a.base_salary or 0 }}"
@@ -148,13 +156,28 @@
             data-role="{{ a.role }}"
           >
             <td>
-              <div class="staff-cell">
-                <img src="{{ a.staff.photo_url }}" alt="{{ a.staff.nickname }}">
-                <div class="staff-cell-info">
-                  <strong>{{ a.staff.nickname }}</strong>
-                  <span class="role-badge">{{ a.role }}</span>
+              {% if a.staff %}
+                {# Staff exists, display normal info with a link #}
+                <div class="staff-cell">
+                  <img src="{{ a.staff.photo_url }}" alt="{{ a.staff.nickname }}">
+                  <div class="staff-cell-info">
+                    <a href="{{ url_for('profile_detail', profile_id=a.staff.id) }}">
+                      <strong>{{ a.staff.nickname }}</strong>
+                    </a>
+                    <span class="role-badge">{{ a.role }}</span>
+                  </div>
                 </div>
-              </div>
+              {% else %}
+                {# Staff was deleted, display archived info #}
+                <div class="staff-cell deleted-staff-cell">
+                  <img src="{{ a.archived_staff_photo }}" alt="{{ a.archived_staff_name }}">
+                  <div class="staff-cell-info">
+                    <strong>{{ a.archived_staff_name }}</strong>
+                    <span class="role-badge">{{ a.role }}</span>
+                    <small class="muted" style="display: block;">(Deleted)</small>
+                  </div>
+                </div>
+              {% endif %}
             </td>
             <td>{{ a.venue }}</td>
             <td>
@@ -214,7 +237,7 @@
                   <button 
                     class="button button-danger delete-contract-btn" 
                     data-assignment-id="{{ a.id }}" 
-                    data-staff-name="{{ a.staff.nickname }}"
+                    data-staff-name="{{ a.staff.nickname if a.staff else a.archived_staff_name }}"
                     style="padding: 4px 8px; font-size: 0.8rem;"
                     title="Permanently delete this contract">
                     Del

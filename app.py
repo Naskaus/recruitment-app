@@ -94,7 +94,8 @@ class StaffProfile(db.Model):
     current_venue = db.Column(db.String(80), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    assignments = db.relationship('Assignment', backref='staff', lazy=True, cascade="all, delete-orphan")
+    # MODIFIED: Removed cascade="all, delete-orphan" to prevent automatic deletion of assignments
+    assignments = db.relationship('Assignment', backref='staff', lazy=True)
 
     @property
     def age(self):
@@ -103,11 +104,19 @@ class StaffProfile(db.Model):
         today = date.today()
         return today.year - self.dob.year - ((today.month, today.day) < (self.dob.month, self.dob.day))
 
+
+
 class Assignment(db.Model):
     __tablename__ = 'assignment'
     id = db.Column(db.Integer, primary_key=True)
-    staff_id = db.Column(db.Integer, db.ForeignKey('staff_profile.id'), nullable=False)
+    # MODIFIED: staff_id is now nullable to allow for orphaned assignments
+    staff_id = db.Column(db.Integer, db.ForeignKey('staff_profile.id'), nullable=True)
     managed_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    
+    # NEW: Fields to store staff info after deletion for historical records
+    archived_staff_name = db.Column(db.String(100), nullable=True)
+    archived_staff_photo = db.Column(db.String(200), nullable=True)
+
     venue = db.Column(db.String(80), nullable=False)
     role = db.Column(db.String(50), nullable=False, server_default='Dancer')
     contract_type = db.Column(db.String(20), nullable=False)
@@ -135,6 +144,8 @@ class Assignment(db.Model):
             "end_date": self.end_date.isoformat(), "base_salary": self.base_salary,
             "status": self.status,
         }
+
+
 
 
 class PerformanceRecord(db.Model):
@@ -548,16 +559,37 @@ def update_profile(profile_id):
 @login_required
 def delete_profile(profile_id):
     profile = StaffProfile.query.get_or_404(profile_id)
+
+    # NEW LOGIC: Handle assignments before deleting the profile
+    # Loop through a copy of the assignments list because we might modify it
+    for assignment in list(profile.assignments):
+        if assignment.status == 'archived':
+            # NEW: Copy staff info to the assignment for historical record
+            assignment.archived_staff_name = profile.nickname
+            assignment.archived_staff_photo = profile.photo_url
+            
+            # For archived contracts, just remove the link to the staff profile
+            assignment.staff_id = None
+        else:
+            # For any other status (ongoing, completed, etc.), delete the contract
+            db.session.delete(assignment)
+    
+    # Now, delete the photo if it exists
     if profile.photo_url and 'default_avatar' not in profile.photo_url:
         try:
             photo_path = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(profile.photo_url))
             if os.path.exists(photo_path):
                 os.remove(photo_path)
         except Exception as e:
+            # Log the error but don't stop the process
             print(f"Error deleting photo {profile.photo_url}: {e}")
+
+    # Finally, delete the profile itself
     db.session.delete(profile)
     db.session.commit()
-    return jsonify({'status': 'success', 'message': 'Profile deleted successfully.'})
+    
+    return jsonify({'status': 'success', 'message': 'Profile and associated ongoing contracts deleted successfully.'})
+
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):

@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+  /* NEW: Grid layout styles for the assignment modal form */
+  .form-grid-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem 1.5rem; /* vertical horizontal */
+    align-items: start;
+  }
+  .form-grid-layout .form-group {
+    display: flex;
+    flex-direction: column;
+  }
+  .form-grid-layout .form-group-full-width {
+    grid-column: 1 / -1; /* Span across both columns */
+  }
+</style>
+
+<div class="page-header">
+  <h2>Dispatch Board</h2>
+</div>
+
+<div class="dispatch-board">
+  <div class="dispatch-column">
+    <h3>Available</h3>
+    <div class="dispatch-list" data-venue="available">
+      {% for s in available_staff %}
+      <div class="dispatch-card" data-id="{{ s.id }}">
+        <img src="{{ s.photo_url }}" alt="{{ s.nickname }}">
+        <div class="info">
+          <strong>{{ s.nickname }}</strong>
+          <small>{{ s.first_name or '' }}</small>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% for v in venues %}
+  <div class="dispatch-column">
+    <h3>{{ v }}</h3>
+    <div class="dispatch-list" data-venue="{{ v }}">
+      {% for s in dispatched_staff[v] %}
+      <div class="dispatch-card" data-id="{{ s.id }}">
+        <img src="{{ s.photo_url }}" alt="{{ s.nickname }}">
+        <div class="info">
+          <strong>{{ s.nickname }}</strong>
+          <small>{{ s.first_name or '' }}</small>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Assignment modal -->
+<div id="assignmentModal" class="modal-overlay hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Create Assignment for <span id="assignmentStaffName"></span></h3>
+      <button id="closeAssignmentModalBtn" class="modal-close-btn">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="assignmentForm">
+        <input type="hidden" id="assignmentStaffId">
+        <input type="hidden" id="assignmentVenue">
+
+        <!-- MODIFIED: Restructured the form with a new grid layout class -->
+        <div class="form-grid-layout">
+          <div class="form-group">
+            <label for="contractType">Contract Type</label>
+            <select id="contractType" required>
+              <option value="1jour">1 jour</option>
+              <option value="10jours">10 jours</option>
+              <option value="1mois">1 mois</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="assignmentRole">Role</label>
+            <select id="assignmentRole" required>
+              {% for role in roles %}
+              <option value="{{ role }}">{{ role }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="assignmentManager">Managed by</label>
+            <select id="assignmentManager" required>
+              <option value="" disabled selected>-- Select a Manager --</option>
+              {% for user in users %}
+              <option value="{{ user.id }}">{{ user.username }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="startDate">Start Date</label>
+            <input type="date" id="startDate" required>
+          </div>
+
+          <div class="form-group form-group-full-width">
+            <label for="baseSalary">Base Salary (THB, whole contract)</label>
+            <input type="number" id="baseSalary" min="0" step="50" value="0" required>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="button button-secondary" id="cancelAssignmentModalBtn">Cancel</button>
+          <button type="submit" class="button button-primary">Create Assignment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

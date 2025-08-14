@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment
+.env
+env/
+venv/
+
+# IDE / Editor
+.vscode/
+.idea/
+
+# Database
+recruitment.db
+instance/
+
+# Flask-Migrate
+migrations/

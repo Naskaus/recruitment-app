@@ -42,6 +42,7 @@ def super_admin_required(f):
 ADMIN_LIST = ["Admin 1", "Mama Rose", "Mama Joy", "Khun Somchai"]
 VENUE_LIST = ["Red Dragon", "Mandarin", "Shark"]
 ROLE_LIST = ["Dancer", "Hostess"]
+STATUS_LIST = ["Active", "Working", "Quiet"] # NEW
 CONTRACT_TYPES = {"1jour": 1, "10jours": 10, "1mois": 30}
 DRINK_STAFF_COMMISSION = 100
 DRINK_BAR_PRICE = 120
@@ -61,7 +62,6 @@ class User(db.Model, UserMixin):
     password_hash = db.Column(db.String(128), nullable=False)
     role = db.Column(db.String(80), nullable=False, default='Admin') # e.g., 'Admin', 'Super-Admin'
 
-    # MODIFIED: Relationship now uses back_populates for explicit linking
     managed_assignments = db.relationship('Assignment', foreign_keys='Assignment.managed_by_user_id', back_populates='manager')
 
     def set_password(self, password):
@@ -94,7 +94,6 @@ class StaffProfile(db.Model):
     current_venue = db.Column(db.String(80), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # MODIFIED: Removed cascade="all, delete-orphan" to prevent automatic deletion of assignments
     assignments = db.relationship('Assignment', backref='staff', lazy=True)
 
     @property
@@ -109,11 +108,9 @@ class StaffProfile(db.Model):
 class Assignment(db.Model):
     __tablename__ = 'assignment'
     id = db.Column(db.Integer, primary_key=True)
-    # MODIFIED: staff_id is now nullable to allow for orphaned assignments
     staff_id = db.Column(db.Integer, db.ForeignKey('staff_profile.id'), nullable=True)
     managed_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     
-    # NEW: Fields to store staff info after deletion for historical records
     archived_staff_name = db.Column(db.String(100), nullable=True)
     archived_staff_photo = db.Column(db.String(200), nullable=True)
 
@@ -126,7 +123,6 @@ class Assignment(db.Model):
     status = db.Column(db.String(20), nullable=False, default='ongoing')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # MODIFIED: Explicit relationship to User model
     manager = db.relationship('User', back_populates='managed_assignments')
 
     performance_records = db.relationship(
@@ -144,9 +140,6 @@ class Assignment(db.Model):
             "end_date": self.end_date.isoformat(), "base_salary": self.base_salary,
             "status": self.status,
         }
-
-
-
 
 class PerformanceRecord(db.Model):
     __tablename__ = 'performance_record'
@@ -281,7 +274,8 @@ def delete_user(user_id):
 @login_required
 def staff_list():
     all_profiles = StaffProfile.query.order_by(StaffProfile.created_at.desc()).all()
-    return render_template('staff_list.html', profiles=all_profiles)
+    # MODIFIED: Pass statuses to the template
+    return render_template('staff_list.html', profiles=all_profiles, statuses=STATUS_LIST)
 
 @app.route('/dispatch')
 @login_required
@@ -289,9 +283,14 @@ def dispatch_board():
     all_staff = StaffProfile.query.all()
     available_staff = [s for s in all_staff if not s.current_venue]
     dispatched_staff = {venue: [s for s in all_staff if s.current_venue == venue] for venue in VENUE_LIST}
-    # NEW: Get all users to populate the manager dropdown
     all_users = User.query.order_by(User.username).all()
-    return render_template('dispatch.html', available_staff=available_staff, dispatched_staff=dispatched_staff, venues=VENUE_LIST, roles=ROLE_LIST, users=all_users)
+    return render_template('dispatch.html', 
+                           available_staff=available_staff, 
+                           dispatched_staff=dispatched_staff, 
+                           venues=VENUE_LIST, 
+                           roles=ROLE_LIST, 
+                           users=all_users,
+                           statuses=STATUS_LIST) # Pass the status list to the template
 
 @app.route('/payroll')
 @login_required
@@ -356,7 +355,6 @@ def payroll_page_new():
             "contract_stats": contract_stats
         })
         
-    # NEW: Calculate totals from the generated rows
     total_profit = sum(row['contract_stats']['profit'] for row in rows)
     total_days_worked = sum(row['days_worked'] for row in rows)
 
@@ -379,11 +377,7 @@ def payroll_page_new():
         "selected_manager_id": selected_manager_id
     }
 
-    # MODIFIED: Pass the new summary_stats to the template
     return render_template('payroll.html', assignments=rows, filters=filter_data, summary=summary_stats)
-
-
-
 
 @app.route('/profile/new', methods=['GET'])
 @login_required
@@ -560,31 +554,22 @@ def update_profile(profile_id):
 def delete_profile(profile_id):
     profile = StaffProfile.query.get_or_404(profile_id)
 
-    # NEW LOGIC: Handle assignments before deleting the profile
-    # Loop through a copy of the assignments list because we might modify it
     for assignment in list(profile.assignments):
         if assignment.status == 'archived':
-            # NEW: Copy staff info to the assignment for historical record
             assignment.archived_staff_name = profile.nickname
             assignment.archived_staff_photo = profile.photo_url
-            
-            # For archived contracts, just remove the link to the staff profile
             assignment.staff_id = None
         else:
-            # For any other status (ongoing, completed, etc.), delete the contract
             db.session.delete(assignment)
     
-    # Now, delete the photo if it exists
     if profile.photo_url and 'default_avatar' not in profile.photo_url:
         try:
             photo_path = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(profile.photo_url))
             if os.path.exists(photo_path):
                 os.remove(photo_path)
         except Exception as e:
-            # Log the error but don't stop the process
             print(f"Error deleting photo {profile.photo_url}: {e}")
 
-    # Finally, delete the profile itself
     db.session.delete(profile)
     db.session.commit()
     
@@ -594,6 +579,46 @@ def delete_profile(profile_id):
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+# =========================
+# Staff Status API (NEW)
+# =========================
+
+@app.route('/api/profile/<int:profile_id>/status', methods=['POST'])
+@login_required
+def update_staff_status(profile_id):
+    profile = StaffProfile.query.get_or_404(profile_id)
+    data = request.get_json()
+    new_status = data.get('status')
+
+    if not new_status or new_status not in STATUS_LIST:
+        return jsonify({'status': 'error', 'message': 'Invalid status provided.'}), 400
+
+    profile.status = new_status
+    db.session.commit()
+    
+    return jsonify({'status': 'success', 'message': f'Status for {profile.nickname} updated to {new_status}.'})
+
+# =========================
+# Form Data API (NEW)
+# =========================
+
+@app.route('/api/assignment/form-data')
+@login_required
+def get_assignment_form_data():
+    """Provides necessary data to populate the assignment form dynamically."""
+    try:
+        all_users = User.query.order_by(User.username).all()
+        managers = [{"id": user.id, "username": user.username} for user in all_users]
+        
+        return jsonify({
+            "status": "success",
+            "roles": ROLE_LIST,
+            "managers": managers
+        })
+    except Exception as e:
+        # Log the exception e if you have a logger configured
+        return jsonify({"status": "error", "message": "Could not retrieve form data."}), 500
 
 # =========================
 # Assignment API
@@ -610,7 +635,6 @@ def create_assignment():
         contract_type = data.get('contract_type')
         start_date = datetime.fromisoformat(data.get('start_date')).date()
         base_salary = float(data.get('base_salary', 0))
-        # NEW: Get the manager ID from the payload
         managed_by_user_id = int(data.get('managed_by_user_id'))
     except (ValueError, TypeError):
         return jsonify({"status": "error", "message": "Invalid payload. Check data types."}), 400
@@ -622,7 +646,6 @@ def create_assignment():
     staff = StaffProfile.query.get(staff_id)
     if not staff: return jsonify({"status": "error", "message": "Staff not found."}), 404
 
-    # NEW: Check if manager exists
     manager = User.query.get(managed_by_user_id)
     if not manager: return jsonify({"status": "error", "message": "Manager not found."}), 404
     
@@ -630,7 +653,6 @@ def create_assignment():
     if overlapping: return jsonify({"status": "error", "message": "Staff already has an ongoing contract overlapping this start date."}), 409
     
     end_date = compute_end_date(start_date, contract_type)
-    # NEW: Add managed_by_user_id to the constructor
     new_a = Assignment(
         staff_id=staff_id, 
         venue=venue, 
@@ -644,7 +666,10 @@ def create_assignment():
     )
     db.session.add(new_a)
     
+    # Update staff status and current venue
     staff.current_venue = venue
+    staff.status = 'Working' # NEW: Automatically set status to 'Working'
+    
     db.session.commit()
     return jsonify({"status": "success", "assignment": new_a.to_dict()}), 201
 
@@ -680,13 +705,18 @@ def finalize_assignment(assignment_id):
     a = Assignment.query.get_or_404(assignment_id)
     data = request.get_json() or {}
     final_status = data.get('status')
+
     if a.status not in ['ongoing', 'completed']:
         return jsonify({"status": "error", "message": f"Assignment cannot be finalized from its current state ({a.status})."}), 400
     if final_status != 'archived':
         return jsonify({"status": "error", "message": "Invalid final status. Must be 'archived'."}), 400
+    
     a.status = 'archived'
     if a.staff:
         a.staff.current_venue = None
+        # NEW: Automatically set status back to 'Active'
+        a.staff.status = 'Active' 
+        
     db.session.commit()
     return jsonify({"status": "success", "message": f"Assignment finalized as {final_status}.", "assignment": a.to_dict()}), 200
 

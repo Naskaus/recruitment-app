@@ -115,13 +115,13 @@
       <thead>
       <tr>
         <th>Staff</th>
-        <th>Venue</th>
-        <th>Managed by</th>
-        <th>Contract</th>
-        <th>Progress</th>
-        <th class="days-worked-cell">Days Worked</th>
-        <th>Profit (Total)</th>
-        <th>Period</th>
+        <th class="mobile-hidden">Venue</th>
+        <th class="mobile-hidden">Managed by</th>
+        <th class="mobile-hidden">Contract</th>
+        <th class="mobile-hidden">Progress</th>
+        <th class="days-worked-cell mobile-hidden">Days Worked</th>
+        <th class="mobile-hidden">Profit (Total)</th>
+        <th class="mobile-hidden">Period</th>
         <th>Actions</th>
       </tr>
       </thead>
@@ -179,20 +179,19 @@
                 </div>
               {% endif %}
             </td>
-            <td>{{ a.venue }}</td>
-            <td>
+            <td data-label="Venue">{{ a.venue }}</td>
+            <td data-label="Managed By">
                 {% if a.manager %}
                     {{ a.manager.username }}
                 {% else %}
                     <span class="muted">—</span>
                 {% endif %}
             </td>
-            <td>
+            <td data-label="Contract">
               <span class="contract-badge badge-{{ a.contract_type }}">{{ label }}</span>
               <small class="muted">({{ '%.0f'|format(a.base_salary or 0) }}฿)</small>
             </td>
-
-            <td>
+            <td data-label="Progress">
               {% if a.status == 'ongoing' %}
                 {% set worked = row.days_worked|int %}
                 {% set total = row.original_duration|int %}
@@ -206,10 +205,8 @@
                 <span class="muted">—</span>
               {% endif %}
             </td>
-            
-            <td class="days-worked-cell">{{ row.days_worked }}</td>
-
-            <td class="profit-cell">
+            <td class="days-worked-cell" data-label="Days Worked">{{ row.days_worked }}</td>
+            <td class="profit-cell" data-label="Profit">
                 <div class="tooltip-container">
                     <span class="{% if stats.profit > 0 %}profit-positive{% elif stats.profit < 0 %}profit-negative{% endif %}">
                         {{ '%.0f'|format(stats.profit) }} ฿
@@ -222,9 +219,7 @@
                     </div>
                 </div>
             </td>
-
-            <td>{{ a.start_date.strftime("%d/%m") }} → {{ a.end_date.strftime("%d/%m") }}</td>
-            
+            <td data-label="Period">{{ a.start_date.strftime("%d/%m") }} → {{ a.end_date.strftime("%d/%m") }}</td>
             <td>
               <div class="actions">
                 {% if a.status == 'ongoing' %}

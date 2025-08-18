@@ -1688,6 +1688,8 @@
         justify-content: space-between;
         width: 100%;
     }
+
+    /* Staff List Table Responsive */
     .staff-list-table {
         white-space: normal; /* Allow text wrapping */
     }
@@ -1698,6 +1700,42 @@
         flex-direction: column; /* Stack buttons vertically on mobile */
         align-items: flex-start;
         gap: 4px;
+    }
+
+    /* Payroll Table Responsive (NEW & CORRECTED) */
+    .payroll-table thead {
+        display: none; /* Hide table headers on mobile */
+    }
+    .payroll-table tr {
+        display: block; /* Each row becomes a block element */
+        border-bottom: 2px solid var(--color-border);
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+    }
+    /* --- THIS IS THE FIX --- */
+    /* Apply flexbox styling ONLY to cells that have a data-label */
+    .payroll-table td[data-label] {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--color-hover-bg);
+        text-align: right;
+    }
+    .payroll-table td[data-label]:before {
+        content: attr(data-label);
+        font-weight: 600;
+        text-align: left;
+        margin-right: 1rem;
+        color: var(--color-text-secondary);
+    }
+    /* --- END OF FIX --- */
+
+    .payroll-table .actions {
+        margin-top: 0.5rem;
+        display: flex;
+        flex-direction: row; /* Buttons side-by-side */
+        gap: 8px;
     }
 }
 /* ===================================
@@ -1773,4 +1811,56 @@
 .status-changer-select:disabled {
     cursor: not-allowed;
     opacity: 0.7;
+}
+
+/* ===================================
+   36. Payroll Responsive (DEFINITIVE FIX)
+   =================================== */
+@media (max-width: 767.98px) {
+    .payroll-table thead {
+        display: none; /* 1. Hide table headers */
+    }
+
+    .payroll-table tr {
+        display: block; /* 2. Each row becomes a card-like block */
+        border-bottom: 2px solid var(--color-border);
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+    }
+
+    .payroll-table td {
+        padding: 8px 0; /* 3. Basic padding for all cells */
+        border-bottom: 1px solid var(--color-hover-bg);
+    }
+
+    /* 4. The first (Staff) and last (Actions) cells are special */
+    .payroll-table td:first-child,
+    .payroll-table td:last-child {
+        border-bottom: none; /* No separator line for them */
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+
+    /* 5. Transform ONLY cells with a 'data-label' into a label/value pair */
+    .payroll-table td[data-label] {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        text-align: right;
+    }
+
+    .payroll-table td[data-label]::before {
+        content: attr(data-label);
+        font-weight: 600;
+        text-align: left;
+        margin-right: 1rem;
+        color: var(--color-text-secondary);
+    }
+
+    .payroll-table .actions {
+        margin-top: 0.5rem;
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
+    }
 }

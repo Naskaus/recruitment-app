@@ -1864,3 +1864,47 @@
         gap: 8px;
     }
 }
+/* ===================================
+   37. Profile Detail Responsive (NEW)
+   =================================== */
+@media (max-width: 991.98px) {
+    .profile-detail-grid {
+        grid-template-columns: 1fr; /* Stack photo and info vertically */
+        gap: 32px;
+    }
+
+    .profile-photo-section {
+        display: flex; /* Align photo and name horizontally */
+        flex-direction: row;
+        align-items: center;
+        text-align: left;
+        gap: 24px;
+    }
+
+    .profile-photo-large {
+        width: 120px;
+        height: 120px;
+        margin-bottom: 0;
+    }
+
+    .profile-main-names h3 {
+        font-size: 1.8rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .profile-detail-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr; /* Stack info items on small screens */
+    }
+
+    .profile-photo-section {
+        flex-direction: column; /* Stack photo and name vertically again on very small screens */
+        text-align: center;
+    }
+}

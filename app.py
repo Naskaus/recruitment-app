@@ -92,7 +92,8 @@ class StaffProfile(db.Model):
     weight = db.Column(db.Float)
     status = db.Column(db.String(50), nullable=False, default='Active')
     photo_url = db.Column(db.String(200), default='/static/images/default_avatar.png')
-    admin_mama_name = db.Column(db.String(80))
+    # MODIFIED: Replaced admin_mama_name with preferred_position
+    preferred_position = db.Column(db.String(50), nullable=True) 
     current_venue = db.Column(db.String(80), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -537,7 +538,8 @@ def create_profile():
         nickname=data.get('nickname'), dob=dob_date, first_name=data.get('first_name'),
         last_name=data.get('last_name'), phone=data.get('phone'), instagram=data.get('instagram'),
         facebook=data.get('facebook'), line_id=data.get('line_id'), height=data.get('height') or None,
-        weight=data.get('weight') or None, photo_url=photo_url, admin_mama_name=data.get('admin_mama_name')
+        weight=data.get('weight') or None, photo_url=photo_url, 
+        preferred_position=data.get('preferred_position') # MODIFIED
     )
     db.session.add(new_profile)
     db.session.commit()
@@ -571,7 +573,7 @@ def update_profile(profile_id):
     profile.line_id = data.get('line_id')
     profile.height = data.get('height') or None
     profile.weight = data.get('weight') or None
-    profile.admin_mama_name = data.get('admin_mama_name')
+    profile.preferred_position = data.get('preferred_position') # MODIFIED
     db.session.commit()
     return jsonify({'status': 'success', 'message': 'Profile updated successfully!'}), 200
 
@@ -991,6 +993,80 @@ def assignment_pdf(assignment_id):
     staff_name = assignment.staff.nickname if assignment.staff else assignment.archived_staff_name
     filename = f"report_{staff_name}_{assignment.start_date.strftime('%Y-%m-%d')}.pdf"
 
+    return Response(pdf,
+                   mimetype='application/pdf',
+                   headers={'Content-Disposition': f'inline; filename={filename}'})
+@app.route('/profile/<int:profile_id>/pdf')
+@login_required
+def profile_pdf(profile_id):
+    profile = StaffProfile.query.options(
+        db.joinedload(StaffProfile.assignments).subqueryload(Assignment.performance_records)
+    ).get_or_404(profile_id)
+
+    # --- This logic is copied from profile_detail to ensure data consistency ---
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+    
+    start_date, end_date = None, None
+    if start_date_str: start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+    if end_date_str: end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+    all_assignments = sorted(profile.assignments, key=lambda a: a.start_date, reverse=True)
+    
+    assignments_to_process = all_assignments
+    if start_date or end_date:
+        assignments_to_process = [
+            a for a in all_assignments 
+            if (not end_date or a.start_date <= end_date) and (not start_date or a.end_date >= start_date)
+        ]
+
+    # Calculate history stats based on the filtered assignments
+    total_days_worked, total_drinks_sold, total_special_comm, total_salary_paid, total_commission_paid, total_bar_profit = 0, 0, 0, 0, 0, 0
+    for assignment in assignments_to_process:
+        assignment.contract_stats = { "profit": 0 } # Simplified for this context
+        original_duration = CONTRACT_TYPES.get(assignment.contract_type, 1)
+        base_daily_salary = (assignment.base_salary / original_duration) if original_duration > 0 else 0
+        records_to_process = [r for r in assignment.performance_records if (not start_date or r.record_date >= start_date) and (not end_date or r.record_date <= end_date)]
+        
+        assignment_profit = 0
+        for record in records_to_process:
+            daily_salary = (base_daily_salary + (record.bonus or 0) - (record.malus or 0) - (record.lateness_penalty or 0))
+            daily_commission = (record.drinks_sold or 0) * DRINK_STAFF_COMMISSION
+            daily_profit = (((record.drinks_sold or 0) * DRINK_BAR_PRICE) + (record.special_commissions or 0)) - daily_salary
+            
+            total_salary_paid += daily_salary
+            total_commission_paid += daily_commission
+            total_bar_profit += daily_profit
+            total_drinks_sold += record.drinks_sold or 0
+            total_special_comm += record.special_commissions or 0
+            assignment_profit += daily_profit
+
+        assignment.contract_stats["profit"] = assignment_profit
+        total_days_worked += len(records_to_process)
+
+    history_stats = {
+        "total_days_worked": total_days_worked, "total_drinks_sold": total_drinks_sold,
+        "total_special_comm": total_special_comm, "total_salary_paid": total_salary_paid,
+        "total_commission_paid": total_commission_paid, "total_bar_profit": total_bar_profit
+    }
+    # --- End of copied logic ---
+
+    # MODIFIED: Pass the direct URL of the photo
+    photo_url = None
+    if profile.photo_url and 'default_avatar' not in profile.photo_url:
+        # Build the full URL that WeasyPrint can access
+        photo_url = url_for('uploaded_file', filename=os.path.basename(profile.photo_url), _external=True)
+
+    html_for_pdf = render_template('profile_pdf.html',
+                                  profile=profile,
+                                  photo_url=photo_url, # MODIFIED: Pass the full URL
+                                  history_stats=history_stats,
+                                  assignments=assignments_to_process,
+                                  report_date=date.today())
+
+    pdf = HTML(string=html_for_pdf).write_pdf()
+    
+    filename = f"profile_{profile.nickname}.pdf"
     return Response(pdf,
                    mimetype='application/pdf',
                    headers={'Content-Disposition': f'inline; filename={filename}'})

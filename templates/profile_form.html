@@ -24,14 +24,14 @@
                  value="{{ profile.nickname if edit_mode else '' }}">
         </div>
         <div class="form-group">
-          <label for="admin_mama_name">Managed By</label>
-          <select id="admin_mama_name" name="admin_mama_name">
-            <option value="">-- Select --</option>
-            {% for a in admins %}
-            <option value="{{ a }}" {% if edit_mode and profile.admin_mama_name==a %}selected{% endif %}>{{ a }}</option>
-            {% endfor %}
-          </select>
-        </div>
+          <div class="form-group">
+        <label for="preferred_position">Preferred Position</label>
+        <select id="preferred_position" name="preferred_position">
+          <option value="">-- Select --</option>
+          <option value="Dancer" {% if edit_mode and profile.preferred_position == 'Dancer' %}selected{% endif %}>Dancer</option>
+          <option value="PR" {% if edit_mode and profile.preferred_position == 'PR' %}selected{% endif %}>PR</option>
+        </select>
+      </div>
       </div>
 
       <div class="form-grid-2">

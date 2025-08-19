@@ -92,8 +92,8 @@ class StaffProfile(db.Model):
     weight = db.Column(db.Float)
     status = db.Column(db.String(50), nullable=False, default='Active')
     photo_url = db.Column(db.String(200), default='/static/images/default_avatar.png')
-    # MODIFIED: Replaced admin_mama_name with preferred_position
     preferred_position = db.Column(db.String(50), nullable=True) 
+    notes = db.Column(db.Text, nullable=True) # NEW FIELD FOR NOTES
     current_venue = db.Column(db.String(80), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -539,7 +539,8 @@ def create_profile():
         last_name=data.get('last_name'), phone=data.get('phone'), instagram=data.get('instagram'),
         facebook=data.get('facebook'), line_id=data.get('line_id'), height=data.get('height') or None,
         weight=data.get('weight') or None, photo_url=photo_url, 
-        preferred_position=data.get('preferred_position') # MODIFIED
+        preferred_position=data.get('preferred_position'),
+        notes=data.get('notes') # NEW: Save the notes
     )
     db.session.add(new_profile)
     db.session.commit()
@@ -573,7 +574,8 @@ def update_profile(profile_id):
     profile.line_id = data.get('line_id')
     profile.height = data.get('height') or None
     profile.weight = data.get('weight') or None
-    profile.preferred_position = data.get('preferred_position') # MODIFIED
+    profile.preferred_position = data.get('preferred_position')
+    profile.notes = data.get('notes') # NEW: Save the notes
     db.session.commit()
     return jsonify({'status': 'success', 'message': 'Profile updated successfully!'}), 200
 

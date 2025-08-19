@@ -37,11 +37,15 @@
                     <div class="staff-card-header">
                         <img src="{{ profile.photo_url }}" alt="Photo of {{ profile.nickname }}">
                         <div class="staff-card-name">
-                            <h3>{{ profile.nickname or (profile.first_name + ' ' + profile.last_name) }}</h3>
-                            {% if profile.nickname %}<span>{{ profile.first_name }} {{ profile.last_name }}</span>{% endif %}
+                                <h3>{{ profile.nickname or (profile.first_name + ' ' + profile.last_name) }}</h3>
+                                {% if profile.nickname %}<span>{{ profile.first_name }} {{ profile.last_name }}</span>{% endif %}
+                                 <!-- NEW: Preferred Position Badge -->
+                                {% if profile.preferred_position %}
+                                    <span class="role-badge">{{ profile.preferred_position }}</span>
+                                {% endif %}
+                            </div>
                         </div>
-                    </div>
-                    <div class="staff-card-body">
+                        <div class="staff-card-body">
                         <div class="staff-details">
                             <p><strong>Age:</strong> {{ profile.age or 'N/A' }}</p>
                             <p><strong>Height:</strong> {{ profile.height or 'N/A' }} cm</p>
@@ -78,29 +82,34 @@
                     <thead>
                         <tr>
                             <th>Staff</th>
-                            <th class="mobile-hidden">Age</th>
-                            <th class="mobile-hidden">Height</th>
-                            <th class="mobile-hidden">Weight</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for profile in profiles %}
-                            <tr data-id="{{ profile.id }}" data-status="{{ profile.status | lower | replace(' ', '-') }}">
-                                <td>
-                                    <div class="staff-cell">
-                                        <img src="{{ profile.photo_url }}" alt="Photo of {{ profile.nickname }}">
-                                        <div class="staff-cell-info">
-                                            <strong>{{ profile.nickname or (profile.first_name + ' ' + profile.last_name) }}</strong>
-                                            {% if profile.nickname %}<span>{{ profile.first_name }} {{ profile.last_name }}</span>{% endif %}
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="mobile-hidden">{{ profile.age or 'N/A' }}</td>
-                                <td class="mobile-hidden">{{ profile.height or 'N/A' }} cm</td>
-                                <td class="mobile-hidden">{{ profile.weight or 'N/A' }} kg</td>
-                                <td><span class="status-badge status-{{ profile.status | lower | replace(' ', '-') }}">{{ profile.status }}</span></td>
+                            <thead>
+                                <tr>
+                                    <th>Staff</th>
+                                    <th>Position</th> <!-- CORRECTED: Added header -->
+                                    <th class="mobile-hidden">Age</th>
+                                    <th class="mobile-hidden">Height</th>
+                                    <th class="mobile-hidden">Weight</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for profile in profiles %}
+                                    <tr data-id="{{ profile.id }}" data-status="{{ profile.status | lower | replace(' ', '-') }}">
+                                        <td>
+                                            <div class="staff-cell">
+                                                <img src="{{ profile.photo_url }}" alt="Photo of {{ profile.nickname }}">
+                                                <div class="staff-cell-info">
+                                                    <strong>{{ profile.nickname or (profile.first_name + ' ' + profile.last_name) }}</strong>
+                                                    {% if profile.nickname %}<span>{{ profile.first_name }} {{ profile.last_name }}</span>{% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>{{ profile.preferred_position or 'N/A' }}</td> <!-- CORRECTED: Added data cell -->
+                                        <td class="mobile-hidden">{{ profile.age or 'N/A' }}</td>
+                                        <td class="mobile-hidden">{{ profile.height or 'N/A' }} cm</td>
+                                        <td class="mobile-hidden">{{ profile.weight or 'N/A' }} kg</td>
+                                        <td><span class="status-badge status-{{ profile.status | lower | replace(' ', '-') }}">{{ profile.status }}</span></td>
                                 <td>
                                     <div class="list-actions">
                                         <!-- NEW DISPATCH BUTTON -->

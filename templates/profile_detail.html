@@ -78,10 +78,18 @@
                         {% endif %}
                     </p>
                 </div>
+
+                {% if profile.notes %}
+                <h4>Notes</h4>
+                <div class="notes-display">
+                    {{ profile.notes }}
+                </div>
+                {% endif %}
             </div>
 
         </div>
     </div>
+</div>
             <!-- ============================================= -->
         <!-- NEW: Performance History Section              -->
         <!-- ============================================= -->

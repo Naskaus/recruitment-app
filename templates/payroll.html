@@ -82,9 +82,20 @@
           {% endfor %}
         </select>
       </div>
+
+      <div class="filter-group">
+          <label for="start_date">Start Date</label>
+          <input type="date" id="start_date" name="start_date" value="{{ filters.selected_start_date or '' }}">
+      </div>
+      <div class="filter-group">
+          <label for="end_date">End Date</label>
+          <input type="date" id="end_date" name="end_date" value="{{ filters.selected_end_date or '' }}">
+      </div>
+
       <div class="filter-actions">
         <button type="submit" class="button button-primary">Apply Filters</button>
         <a href="{{ url_for('payroll_page_new') }}" class="button button-secondary">Clear</a>
+        <a href="{{ url_for('payroll_pdf', **request.args) }}" target="_blank" class="button button-secondary">Export PDF</a>
       </div>
     </form>
   </div>

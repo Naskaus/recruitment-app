@@ -8,6 +8,8 @@ from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
+from flask import Response
+from weasyprint import HTML
 
 # --- App Initialization ---
 app = Flask(__name__)
@@ -300,6 +302,9 @@ def payroll_page_new():
     selected_status = request.args.get('status')
     search_nickname = request.args.get('nickname')
     selected_manager_id = request.args.get('manager_id', type=int)
+    # NEW: Get date strings from request arguments
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
 
     q = Assignment.query.options(
         db.joinedload(Assignment.staff), 
@@ -307,6 +312,7 @@ def payroll_page_new():
         db.subqueryload(Assignment.performance_records)
     )
 
+    # --- Apply filters ---
     if selected_venue:
         q = q.filter(Assignment.venue == selected_venue)
     
@@ -323,6 +329,24 @@ def payroll_page_new():
     
     if selected_manager_id:
         q = q.filter(Assignment.managed_by_user_id == selected_manager_id)
+
+    # NEW: Date range filtering logic
+    start_date, end_date = None, None
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            # Filter contracts that end on or after the start date of our range
+            q = q.filter(Assignment.end_date >= start_date)
+        except ValueError:
+            flash(f'Invalid start date format: {start_date_str}. Please use YYYY-MM-DD.', 'danger')
+
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            # Filter contracts that start on or before the end date of our range
+            q = q.filter(Assignment.start_date <= end_date)
+        except ValueError:
+            flash(f'Invalid end date format: {end_date_str}. Please use YYYY-MM-DD.', 'danger')
     
     status_order = db.case((Assignment.status == 'ongoing', 1), (Assignment.status == 'archived', 2), else_=3).label("status_order")
     all_assignments = q.order_by(status_order, Assignment.start_date.asc()).all()
@@ -374,11 +398,13 @@ def payroll_page_new():
         "selected_contract_type": selected_contract_type,
         "selected_status": selected_status,
         "search_nickname": search_nickname,
-        "selected_manager_id": selected_manager_id
+        "selected_manager_id": selected_manager_id,
+        # NEW: Pass selected dates back to the template
+        "selected_start_date": start_date_str,
+        "selected_end_date": end_date_str
     }
 
     return render_template('payroll.html', assignments=rows, filters=filter_data, summary=summary_stats)
-
 @app.route('/profile/new', methods=['GET'])
 @login_required
 def new_profile_form():
@@ -796,7 +822,6 @@ def upsert_performance():
     rec.lateness_penalty = float(calc_lateness_penalty(rec.arrival_time))
     db.session.commit()
     return jsonify({"status": "success", "record": rec.to_dict()}), 200
-
 # =========================
 # CLI Commands
 # =========================
@@ -819,8 +844,153 @@ def create_user():
     db.session.commit()
     click.echo(f"User {username} created successfully with role {role}.")
 
-# =========================
-# Main
-# =========================
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+# THIS ENTIRE BLOCK WAS MOVED OUTSIDE of the create_user function
+@app.route('/payroll/pdf')
+@login_required
+def payroll_pdf():
+    # --- This filtering logic is an EXACT copy from payroll_page_new ---
+    selected_venue = request.args.get('venue')
+    selected_contract_type = request.args.get('contract_type')
+    selected_status = request.args.get('status')
+    search_nickname = request.args.get('nickname')
+    selected_manager_id = request.args.get('manager_id', type=int)
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    q = Assignment.query.options(
+        db.joinedload(Assignment.staff), 
+        db.joinedload(Assignment.manager), 
+        db.subqueryload(Assignment.performance_records)
+    )
+
+    if selected_venue: q = q.filter(Assignment.venue == selected_venue)
+    if selected_contract_type: q = q.filter(Assignment.contract_type == selected_contract_type)
+    if selected_status: q = q.filter(Assignment.status == selected_status)
+    else: q = q.filter(Assignment.status.in_(['ongoing', 'archived']))
+    if search_nickname: q = q.join(StaffProfile).filter(StaffProfile.nickname.ilike(f'%{search_nickname}%'))
+    if selected_manager_id: q = q.filter(Assignment.managed_by_user_id == selected_manager_id)
+
+    start_date, end_date = None, None
+    if start_date_str:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        q = q.filter(Assignment.end_date >= start_date)
+    if end_date_str:
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        q = q.filter(Assignment.start_date <= end_date)
+
+    status_order = db.case((Assignment.status == 'ongoing', 1), (Assignment.status == 'archived', 2), else_=3).label("status_order")
+    all_assignments = q.order_by(status_order, Assignment.start_date.asc()).all()
+
+    rows = []
+    for a in all_assignments:
+        # ... (Data processing logic remains the same)
+        contract_stats = { "drinks": 0, "special_comm": 0, "salary": 0, "commission": 0, "profit": 0 }
+        original_duration = CONTRACT_TYPES.get(a.contract_type, 1)
+        base_daily_salary = (a.base_salary / original_duration) if original_duration > 0 else 0
+        for record in a.performance_records:
+            daily_salary = (base_daily_salary + (record.bonus or 0) - (record.malus or 0) - (record.lateness_penalty or 0))
+            daily_commission = (record.drinks_sold or 0) * DRINK_STAFF_COMMISSION
+            bar_revenue = ((record.drinks_sold or 0) * DRINK_BAR_PRICE) + (record.special_commissions or 0)
+            daily_profit = bar_revenue - daily_salary
+            contract_stats["drinks"] += record.drinks_sold or 0
+            contract_stats["special_comm"] += record.special_commissions or 0
+            contract_stats["salary"] += daily_salary
+            contract_stats["commission"] += daily_commission
+            contract_stats["profit"] += daily_profit
+        rows.append({
+            "assignment": a, "contract_days": (a.end_date - a.start_date).days + 1,
+            "days_worked": len(a.performance_records), "original_duration": original_duration,
+            "contract_stats": contract_stats
+        })
+
+    total_profit = sum(row['contract_stats']['profit'] for row in rows)
+    total_days_worked = sum(row['days_worked'] for row in rows)
+    summary_stats = { "total_profit": total_profit, "total_days_worked": total_days_worked }
+
+    # MODIFIED: Get manager name for display and ensure all filters are included
+    manager_name = None
+    if selected_manager_id:
+        manager = User.query.get(selected_manager_id)
+        if manager:
+            manager_name = manager.username
+
+    filter_data = {
+        "selected_venue": selected_venue, 
+        "selected_contract_type": selected_contract_type,
+        "selected_status": selected_status, 
+        "search_nickname": search_nickname,
+        "selected_manager_name": manager_name,
+        "selected_start_date": start_date_str, 
+        "selected_end_date": end_date_str
+    }
+
+    # --- PDF Generation ---
+    html_for_pdf = render_template('payroll_pdf.html', 
+                                  assignments=rows, 
+                                  summary=summary_stats,
+                                  filters=filter_data,
+                                  report_date=date.today())
+
+    pdf = HTML(string=html_for_pdf).write_pdf()
+
+    return Response(pdf,
+                   mimetype='application/pdf',
+                   headers={'Content-Disposition': 'inline; filename=payroll_report.pdf'})
+@app.route('/assignment/<int:assignment_id>/pdf')
+@login_required
+def assignment_pdf(assignment_id):
+    # 1. Fetch the specific assignment
+    assignment = Assignment.query.options(
+        db.joinedload(Assignment.staff),
+        db.joinedload(Assignment.manager),
+        db.subqueryload(Assignment.performance_records)
+    ).get_or_404(assignment_id)
+
+    # 2. Calculate its stats (similar logic to the payroll page)
+    contract_stats = { "drinks": 0, "special_comm": 0, "salary": 0, "commission": 0, "profit": 0 }
+    original_duration = CONTRACT_TYPES.get(assignment.contract_type, 1)
+    base_daily_salary = (assignment.base_salary / original_duration) if original_duration > 0 else 0
+
+    for record in assignment.performance_records:
+        daily_salary = (base_daily_salary + (record.bonus or 0) - (record.malus or 0) - (record.lateness_penalty or 0))
+        daily_commission = (record.drinks_sold or 0) * DRINK_STAFF_COMMISSION
+        bar_revenue = ((record.drinks_sold or 0) * DRINK_BAR_PRICE) + (record.special_commissions or 0)
+        daily_profit = bar_revenue - daily_salary
+        
+        contract_stats["drinks"] += record.drinks_sold or 0
+        contract_stats["special_comm"] += record.special_commissions or 0
+        contract_stats["salary"] += daily_salary
+        contract_stats["commission"] += daily_commission
+        contract_stats["profit"] += daily_profit
+
+    # 3. Prepare data for the template in the same structure as the main PDF report
+    rows = [{
+        "assignment": assignment,
+        "contract_days": (assignment.end_date - assignment.start_date).days + 1,
+        "days_worked": len(assignment.performance_records),
+        "original_duration": original_duration,
+        "contract_stats": contract_stats
+    }]
+    
+    summary_stats = {
+        "total_profit": contract_stats["profit"],
+        "total_days_worked": len(assignment.performance_records)
+    }
+
+    # 4. Render the PDF using the SAME template for a consistent look
+    html_for_pdf = render_template('payroll_pdf.html',
+                                  assignments=rows,
+                                  summary=summary_stats,
+                                  contract_stats=contract_stats, # NEW: Pass the full stats dictionary
+                                  filters={}, # No filters needed for a single report
+                                  report_date=date.today())
+
+    pdf = HTML(string=html_for_pdf).write_pdf()
+    
+    # Use staff name in the filename for clarity
+    staff_name = assignment.staff.nickname if assignment.staff else assignment.archived_staff_name
+    filename = f"report_{staff_name}_{assignment.start_date.strftime('%Y-%m-%d')}.pdf"
+
+    return Response(pdf,
+                   mimetype='application/pdf',
+                   headers={'Content-Disposition': f'inline; filename={filename}'})

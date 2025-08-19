@@ -735,7 +735,15 @@ form?.addEventListener("submit", async (e) => {
         });
 
         summaryPdfBtn?.addEventListener('click', () => {
-            alert('PDF generation will be implemented in a future step.');
+            const assignmentId = summaryAssignmentIdInput.value;
+            if (assignmentId) {
+                // Construct the URL for the specific assignment PDF
+                const pdfUrl = `/assignment/${assignmentId}/pdf`;
+                // Open the URL in a new tab
+                window.open(pdfUrl, '_blank');
+            } else {
+                alert('Error: Could not determine the Assignment ID.');
+            }
         });
 
         // --- Event Delegation for Payroll Table ---
@@ -875,17 +883,13 @@ form?.addEventListener("submit", async (e) => {
   });
   
   // -----------------------------
-  // Profile delete (list + detail) - This should be outside DOMContentLoaded
-  // because it uses event delegation on the body.
-  // -----------------------------
-  document.addEventListener("click", (e) => {
-    // This listener is now ONLY for the delete buttons on staff cards/pages
-    const deleteButton = e.target.closest(".card-delete-button, .button-danger[data-id]");
-    if (!deleteButton) return; // If it's not a delete button, do nothing.
-
-    const getTargetData = (el) => {
-        const btn = el.closest(".card-delete-button, .button.button-danger");
-        if (!btn) return null;
+  // Profile delete (list + detail) - This should be outside DOMContentLoaded
+  // because it uses event delegation on the body.
+  // -----------------------------
+  document.body.addEventListener("click", (e) => {
+    const getTargetData = (el) => {
+        const btn = el.closest(".card-delete-button, .button.button-danger");
+        if (!btn) return null;
         let id = btn.dataset.id;
         let name = btn.dataset.name;
         if (!name) {

@@ -92,18 +92,15 @@
         }
 
         const setView = (view) => {
+            // This function now ONLY sets the classes, it doesn't save or reload
             console.log(`Setting view to: ${view}`);
-            localStorage.setItem('staffView', view);
-
             if (view === 'grid') {
                 listView.classList.add('view-hidden');
                 gridView.classList.remove('view-hidden');
                 listBtn.classList.remove('active');
                 gridBtn.classList.add('active');
                 
-                // Initialize SortableJS only for grid view and on non-touch devices/large screens
                 if (window.Sortable && window.innerWidth > 768 && !sortableInstance) {
-                    console.log("Initializing SortableJS for grid view.");
                     sortableInstance = new Sortable(gridView, { 
                         animation: 150, 
                         ghostClass: "sortable-ghost", 
@@ -116,22 +113,27 @@
                 gridBtn.classList.remove('active');
                 listBtn.classList.add('active');
                 
-                // Destroy SortableJS instance if it exists
                 if (sortableInstance) {
-                    console.log("Destroying SortableJS instance.");
                     sortableInstance.destroy();
                     sortableInstance = null;
                 }
             }
         };
 
-        gridBtn.addEventListener('click', () => setView('grid'));
-        listBtn.addEventListener('click', () => setView('list'));
+        // NEW: Click handlers that save the choice and then reload the page
+        gridBtn.addEventListener('click', () => {
+            localStorage.setItem('staffView', 'grid');
+            window.location.reload();
+        });
 
-  // Set initial view based on localStorage or default to 'list'
-        const preferredView = localStorage.getItem('staffView') || 'list';
-        console.log(`Preferred view is: ${preferredView}`);
-        setView(preferredView);
+        listBtn.addEventListener('click', () => {
+            localStorage.setItem('staffView', 'list');
+            window.location.reload();
+        });
+
+        // This part remains the same. It runs ONCE on page load to set the correct view.
+        const preferredView = localStorage.getItem('staffView') || 'list';
+        setView(preferredView);
     }
 
     // -----------------------------

@@ -287,9 +287,52 @@ def delete_user(user_id):
 @app.route('/staff')
 @login_required
 def staff_list():
-    all_profiles = StaffProfile.query.order_by(StaffProfile.created_at.desc()).all()
-    # MODIFIED: Pass statuses to the template
-    return render_template('staff_list.html', profiles=all_profiles, statuses=STATUS_LIST)
+    # Get sorting and filtering parameters from URL
+    search_nickname = request.args.get('search_nickname', '').strip()
+    sort_by = request.args.get('sort_by', 'created_at')
+    sort_order = request.args.get('sort_order', 'desc')
+
+    # Base query
+    query = StaffProfile.query
+
+    # Apply nickname filter if provided
+    if search_nickname:
+        query = query.filter(StaffProfile.nickname.ilike(f'%{search_nickname}%'))
+
+    # Determine the column to sort by
+    sort_column = StaffProfile.created_at # Default sort
+    if sort_by == 'nickname':
+        sort_column = db.func.lower(StaffProfile.nickname)
+    elif sort_by == 'age':
+        # Sort by age requires sorting by date of birth
+        sort_column = StaffProfile.dob
+        # To sort by age ascending, we sort by dob descending, and vice-versa
+        sort_order = 'asc' if sort_order == 'desc' else 'desc'
+    elif sort_by == 'status':
+        sort_column = StaffProfile.status
+    elif sort_by == 'preferred_position':
+        sort_column = StaffProfile.preferred_position
+    
+    # Apply sorting direction
+    if sort_order == 'desc':
+        query = query.order_by(sort_column.desc())
+    else:
+        query = query.order_by(sort_column.asc())
+
+    # Execute the final query
+    all_profiles = query.all()
+
+    return render_template(
+        'staff_list.html',
+        profiles=all_profiles,
+        statuses=STATUS_LIST,
+        # Pass current filter/sort values to the template
+        current_filters={
+            'search_nickname': search_nickname,
+            'sort_by': sort_by,
+            'sort_order': sort_order
+        }
+    )
 
 @app.route('/dispatch')
 @login_required

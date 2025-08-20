@@ -931,7 +931,7 @@ def payroll_pdf():
 
     return Response(pdf,
                    mimetype='application/pdf',
-                   headers={'Content-Disposition': 'inline; filename=payroll_report.pdf'})
+                   headers={'Content-Disposition': 'attachment; filename=payroll_report.pdf'})
 
 @app.route('/assignment/<int:assignment_id>/pdf')
 @login_required
@@ -985,7 +985,7 @@ def assignment_pdf(assignment_id):
 
     return Response(pdf,
                    mimetype='application/pdf',
-                   headers={'Content-Disposition': f'inline; filename={filename}'})
+                   headers={'Content-Disposition': f'attachment; filename={filename}'})
 
 @app.route('/profile/<int:profile_id>/pdf')
 @login_required
@@ -994,11 +994,14 @@ def profile_pdf(profile_id):
         db.joinedload(StaffProfile.assignments).subqueryload(Assignment.performance_records)
     ).get_or_404(profile_id)
 
+    # This logic is copied from profile_detail to ensure data consistency
     total_days_worked, total_drinks_sold, total_special_comm, total_salary_paid, total_commission_paid, total_bar_profit = 0, 0, 0, 0, 0, 0
     for assignment in profile.assignments:
+        assignment.contract_stats = { "profit": 0 } # Simplified for this context
         original_duration = CONTRACT_TYPES.get(assignment.contract_type, 1)
         base_daily_salary = (assignment.base_salary / original_duration) if original_duration > 0 else 0
 
+        assignment_profit = 0
         for record in assignment.performance_records:
             daily_salary = (base_daily_salary + (record.bonus or 0) - (record.malus or 0) - (record.lateness_penalty or 0))
             daily_commission = (record.drinks_sold or 0) * DRINK_STAFF_COMMISSION
@@ -1009,7 +1012,9 @@ def profile_pdf(profile_id):
             total_bar_profit += daily_profit
             total_drinks_sold += record.drinks_sold or 0
             total_special_comm += record.special_commissions or 0
+            assignment_profit += daily_profit
 
+        assignment.contract_stats["profit"] = assignment_profit
         total_days_worked += len(assignment.performance_records)
 
     history_stats = {
@@ -1026,6 +1031,7 @@ def profile_pdf(profile_id):
                                   profile=profile,
                                   photo_url=photo_url,
                                   history_stats=history_stats,
+                                  assignments=profile.assignments,
                                   report_date=date.today())
 
     pdf = HTML(string=html_for_pdf).write_pdf()
@@ -1033,4 +1039,4 @@ def profile_pdf(profile_id):
     filename = f"profile_{profile.nickname}.pdf"
     return Response(pdf,
                    mimetype='application/pdf',
-                   headers={'Content-Disposition': f'inline; filename={filename}'})
+                   headers={'Content-Disposition': f'attachment; filename={filename}'})

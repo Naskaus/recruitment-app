@@ -2,202 +2,201 @@
 
 {% block content %}
 <div class="card">
-    <div class="card-header">
-        <div class="profile-detail-header">
-            <h2>Profile Details</h2>
-            <div class="header-actions">
-                <a href="{{ url_for('edit_profile_form', profile_id=profile.id) }}" class="button button-primary">
-                    Edit Profile
-                </a>
-                <a href="{{ url_for('profile_pdf', profile_id=profile.id) }}" class="button button-secondary">
-                    Export PDF
-                </a>
-                <button 
-                    class="button button-danger" 
-                    type="button"
-                    data-id="{{ profile.id }}" 
-                    data-name="{{ profile.nickname }}">
-                    Delete
-                </button>
-            </div>
+  <div class="card-header">
+    <div class="profile-detail-header">
+      <h2>Profile Details</h2>
+      <div class="header-actions">
+        <a href="{{ url_for('edit_profile_form', profile_id=profile.id) }}" class="button button-primary">
+          Edit Profile
+        </a>
+        <a href="{{ url_for('profile_pdf', profile_id=profile.id) }}" class="button button-secondary">
+          Export PDF
+        </a>
+        <button 
+          class="button button-danger" 
+          type="button"
+          data-id="{{ profile.id }}" 
+          data-name="{{ profile.nickname }}">
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-body">
+    <div class="profile-detail-grid">
+
+      <!-- Photo + Nom + Statut -->
+      <div class="profile-photo-section">
+        <img src="{{ profile.photo_url }}" alt="Photo of {{ profile.nickname }}" class="profile-photo-large">
+        <div class="profile-main-names">
+          <h3>{{ profile.nickname }}</h3>
+          <p>{{ profile.first_name or '' }} {{ profile.last_name or '' }}</p>
         </div>
-    </div>
-    <div class="card-body">
-        <div class="profile-detail-grid">
-            
-            <!-- Photo + Nom + Statut -->
-            <div class="profile-photo-section">
-                <img src="{{ profile.photo_url }}" alt="Photo of {{ profile.nickname }}" class="profile-photo-large">
-                <div class="profile-main-names">
-                    <h3>{{ profile.nickname }}</h3>
-                    <p>{{ profile.first_name or '' }} {{ profile.last_name or '' }}</p>
-                </div>
-                <div class="staff-card-status">
-                    <span class="status-badge status-{{ profile.status | lower | replace(' ', '-') }}">
-                        {{ profile.status }}
-                    </span>
-                </div>
-            </div>
+        <div class="staff-card-status">
+          <span class="status-badge status-{{ profile.status | lower | replace(' ', '-') }}">
+            {{ profile.status }}
+          </span>
+        </div>
+      </div>
 
-            <!-- Infos personnelles -->
-            <div class="profile-info-section">
-    <h4>Personal Information</h4>
-    <div class="info-grid">
-        <p><strong>Staff ID:</strong> {{ profile.staff_id or 'N/A' }}</p>
-        <p><strong>Preferred Position:</strong> {{ profile.preferred_position or 'N/A' }}</p>
-        <p><strong>First Name:</strong> {{ profile.first_name or 'N/A' }}</p>
-        <p><strong>Last Name:</strong> {{ profile.last_name or 'N/A' }}</p>
-        <p><strong>Age:</strong> {{ profile.age or 'N/A' }}</p>
-        <p><strong>Date of Birth:</strong> {{ profile.dob.strftime('%d %B %Y') if profile.dob else 'N/A' }}</p>
-        <p><strong>Height:</strong> {{ profile.height or 'N/A' }} cm</p>
-        <p><strong>Weight:</strong> {{ profile.weight or 'N/A' }} kg</p>
-    </div>
+      <!-- Infos personnelles -->
+      <div class="profile-info-section">
+        <h4>Personal Information</h4>
+        <div class="info-grid">
+          <p><strong>Staff ID:</strong> {{ profile.staff_id or 'N/A' }}</p>
+          <p><strong>Preferred Position:</strong> {{ profile.preferred_position or 'N/A' }}</p>
+          <p><strong>First Name:</strong> {{ profile.first_name or 'N/A' }}</p>
+          <p><strong>Last Name:</strong> {{ profile.last_name or 'N/A' }}</p>
+          <p><strong>Age:</strong> {{ profile.age or 'N/A' }}</p>
+          <p><strong>Date of Birth:</strong> {{ profile.dob.strftime('%d %B %Y') if profile.dob else 'N/A' }}</p>
+          <p><strong>Height:</strong> {{ profile.height or 'N/A' }} cm</p>
+          <p><strong>Weight:</strong> {{ profile.weight or 'N/A' }} kg</p>
+        </div>
 
-    <h4>Contact & Social</h4>
-    <div class="info-grid">
-        <p><strong>Phone:</strong> {{ profile.phone or 'N/A' }}</p>
-        <p><strong>Line:</strong> 
+        <h4>Contact & Social</h4>
+        <div class="info-grid">
+          <p><strong>Phone:</strong> {{ profile.phone or 'N/A' }}</p>
+          <p><strong>Line:</strong>
             {% if profile.line_id %}
-                <a href="https://line.me/ti/p/~{{ profile.line_id }}" target="_blank">{{ profile.line_id }}</a>
+              <a href="https://line.me/ti/p/~{{ profile.line_id }}" target="_blank">{{ profile.line_id }}</a>
             {% else %}
-                N/A
+              N/A
             {% endif %}
-        </p>
-        <p><strong>Instagram:</strong> 
+          </p>
+          <p><strong>Instagram:</strong>
             {% if profile.instagram %}
-                <a href="https://instagram.com/{{ profile.instagram }}" target="_blank">{{ profile.instagram }}</a>
+              <a href="https://instagram.com/{{ profile.instagram }}" target="_blank">{{ profile.instagram }}</a>
             {% else %}
-                N/A
+              N/A
             {% endif %}
-        </p>
-        <p><strong>Facebook:</strong> 
+          </p>
+          <p><strong>Facebook:</strong>
             {% if profile.facebook %}
-                <a href="https://facebook.com/{{ profile.facebook }}" target="_blank">{{ profile.facebook }}</a>
+              <a href="https://facebook.com/{{ profile.facebook }}" target="_blank">{{ profile.facebook }}</a>
             {% else %}
-                N/A
+              N/A
             {% endif %}
-        </p>
-    </div>
-
-    {% if profile.notes %}
-    <h4>Notes</h4>
-    <div class="notes-display" style="background-color: var(--color-main-bg); padding: 12px; border-radius: var(--border-radius-sm); white-space: pre-wrap;">
-        {{ profile.notes }}
-    </div>
-    {% endif %}
-</div>
-
+          </p>
         </div>
-    </div>
-            <!-- ============================================= -->
-        <!-- NEW: Performance History Section              -->
-        <!-- ============================================= -->
-        <hr style="margin: 48px 0; border-color: var(--color-border);">
 
-        <div class="performance-history-section">
-                        <div class="profile-detail-header" style="margin-bottom: 24px; align-items: flex-end;">
-                <h4>Performance History</h4>
-                
-                <!-- NEW: Date Range Filter Form -->
-                <form method="GET" action="{{ url_for('profile_detail', profile_id=profile.id) }}" class="history-filter-form">
-                    <div class="form-group">
-                        <label for="start_date">From</label>
-                        <input type="date" id="start_date" name="start_date" value="{{ filter_start_date.isoformat() if filter_start_date else '' }}">
-                    </div>
-                    <div class="form-group">
-                        <label for="end_date">To</label>
-                        <input type="date" id="end_date" name="end_date" value="{{ filter_end_date.isoformat() if filter_end_date else '' }}">
-                    </div>
-                    <div class="form-actions">
-                        <button type="submit" class="button button-primary">Filter</button>
-                        <a href="{{ url_for('profile_detail', profile_id=profile.id) }}" class="button button-secondary">Clear</a>
-                    </div>
-                </form>
-                <!-- END NEW -->
-            </div>
-
-            <!-- KPIs Summary Grid -->
-            <div class="kpi-grid">
-                <div class="kpi-card">
-                    <span class="kpi-label">Total Days Worked</span>
-                    <span class="kpi-value">{{ history_stats.total_days_worked }}</span>
-                </div>
-                <div class="kpi-card">
-                    <span class="kpi-label">Total Drinks Sold</span>
-                    <span class="kpi-value">{{ history_stats.total_drinks_sold }}</span>
-                </div>
-                <div class="kpi-card">
-                    <span class="kpi-label">Total Salary Paid</span>
-                    <span class="kpi-value">{{ '%.0f'|format(history_stats.total_salary_paid) }} ฿</span>
-                </div>
-                <div class="kpi-card">
-                    <span class="kpi-label">Total Commission Paid</span>
-                    <span class="kpi-value">{{ '%.0f'|format(history_stats.total_commission_paid) }} ฿</span>
-                </div>
-                <div class="kpi-card">
-                    <span class="kpi-label">Total Special Comm</span>
-                    <span class="kpi-value">{{ '%.0f'|format(history_stats.total_special_comm) }} ฿</span>
-                </div>
-                <div class="kpi-card {% if history_stats.total_bar_profit > 0 %}profit-positive-bg{% elif history_stats.total_bar_profit < 0 %}profit-negative-bg{% endif %}">
-                    <span class="kpi-label">Total Bar Profit</span>
-                    <span class="kpi-value">{{ '%.0f'|format(history_stats.total_bar_profit) }} ฿</span>
-                </div>
-            </div>
-
-                        <!-- Assignments History Table -->
-            <h5 style="margin-top: 32px; margin-bottom: 16px;">Assignments History</h5>
-            <div class="table-responsive">
-                <table class="payroll-table">
-                    <thead>
-                        <tr>
-                            <th>Period</th>
-                            <th>Venue</th>
-                            <th>Contract</th>
-                            <th>Status</th>
-                            <th>Profit</th> <!-- NEW: Profit column -->
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% if assignments %}
-                            {% for a in assignments %}
-                                {% set stats = a.contract_stats %}
-                                <tr>
-                                    <td>{{ a.start_date.strftime('%d %b %Y') }}</td>
-                                    <td>{{ a.venue }}</td>
-                                    <td>{{ a.contract_type }} ({{ a.role }})</td>
-                                    <td>
-                                      <span class="status-badge status-badge-{{ a.status }}">{{ a.status }}</span>
-                                    </td>
-                                    <!-- NEW: Profit Cell with Tooltip -->
-                                    <td class="profit-cell">
-                                        <div class="tooltip-container">
-                                            <span class="{% if stats.profit > 0 %}profit-positive{% elif stats.profit < 0 %}profit-negative{% endif %}">
-                                                {{ '%.0f'|format(stats.profit) }} ฿
-                                            </span>
-                                            <div class="tooltip">
-                                                <div class="tooltip-item"><span>Drinks Sold:</span> <strong>{{ stats.drinks }}</strong></div>
-                                                <div class="tooltip-item"><span>Special Comm:</span> <strong>{{ '%.0f'|format(stats.special_comm) }} ฿</strong></div>
-                                                <div class="tooltip-item"><span>Salary Paid:</span> <strong>{{ '%.0f'|format(stats.salary) }} ฿</strong></div>
-                                                <div class="tooltip-item"><span>Commission Paid:</span> <strong>{{ '%.0f'|format(stats.commission) }} ฿</strong></div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <a href="{{ url_for('payroll_page_new') }}#assignment-row-{{ a.id }}" class="button button-secondary" style="padding: 4px 8px; font-size: 0.8rem;">View</a>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        {% else %}
-                            <!-- MODIFIED: Colspan is now 6 -->
-                            <tr>
-                                <td colspan="6" class="text-center">No assignment history found.</td>
-                            </tr>
-                        {% endif %}
-                    </tbody>
-                </table>
-            </div>
-
+        {% if profile.notes %}
+        <h4>Notes</h4>
+        <div class="notes-display" style="background-color: var(--color-main-bg); padding: 12px; border-radius: var(--border-radius-sm); white-space: pre-wrap;">
+          {{ profile.notes }}
         </div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================================= -->
+  <!-- Performance History Section                   -->
+  <!-- ============================================= -->
+  <hr style="margin: 48px 0; border-color: var(--color-border);">
+
+  <div class="performance-history-section">
+    <div class="profile-detail-header" style="margin-bottom: 24px; align-items: flex-end;">
+      <h4>Performance History</h4>
+
+      <!-- Date Range Filter Form -->
+      <form method="GET" action="{{ url_for('profile_detail', profile_id=profile.id) }}" class="history-filter-form">
+        <div class="form-group">
+          <label for="start_date">From</label>
+          <input type="date" id="start_date" name="start_date" value="{{ filter_start_date.isoformat() if filter_start_date else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="end_date">To</label>
+          <input type="date" id="end_date" name="end_date" value="{{ filter_end_date.isoformat() if filter_end_date else '' }}">
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="button button-primary">Filter</button>
+          <a href="{{ url_for('profile_detail', profile_id=profile.id) }}" class="button button-secondary">Clear</a>
+        </div>
+      </form>
+    </div>
+
+    <!-- KPIs Summary Grid -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <span class="kpi-label">Total Days Worked</span>
+        <span class="kpi-value">{{ history_stats.total_days_worked }}</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Total Drinks Sold</span>
+        <span class="kpi-value">{{ history_stats.total_drinks_sold }}</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Total Salary Paid</span>
+        <span class="kpi-value">{{ '%.0f'|format(history_stats.total_salary_paid) }} ฿</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Total Commission Paid</span>
+        <span class="kpi-value">{{ '%.0f'|format(history_stats.total_commission_paid) }} ฿</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Total Special Comm</span>
+        <span class="kpi-value">{{ '%.0f'|format(history_stats.total_special_comm) }} ฿</span>
+      </div>
+      <div class="kpi-card {% if history_stats.total_bar_profit > 0 %}profit-positive-bg{% elif history_stats.total_bar_profit < 0 %}profit-negative-bg{% endif %}">
+        <span class="kpi-label">Total Bar Profit</span>
+        <span class="kpi-value">{{ '%.0f'|format(history_stats.total_bar_profit) }} ฿</span>
+      </div>
+    </div>
+
+    <!-- Recent history (daily, like contracts) -->
+    <h5 style="margin-top: 32px; margin-bottom: 16px;">Recent history</h5>
+    <div class="table-responsive-wrapper">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Dr</th>
+            <th>Sp.</th>
+            <th>Sal.</th>
+            <th>Com.</th>
+            <th>Profit</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set ns = namespace(count=0) %}
+
+          {% for a in assignments %}
+            {% set original_days = 1 if a.contract_type == '1jour' else 10 if a.contract_type == '10jours' else 30 %}
+            {% set base_daily = (a.base_salary / original_days) if original_days > 0 else 0 %}
+
+            {% for r in (a.performance_records | sort(attribute='record_date')) %}
+              {% if (not filter_start_date or r.record_date >= filter_start_date) and (not filter_end_date or r.record_date <= filter_end_date) %}
+                {% set penalty = r.lateness_penalty or 0 %}
+                {% set bonus = r.bonus or 0 %}
+                {% set malus = r.malus or 0 %}
+                {% set drinks = r.drinks_sold or 0 %}
+                {% set special = r.special_commissions or 0 %}
+                {% set salary = base_daily + bonus - malus - penalty %}
+                {% set commission = drinks * 100 %}
+                {% set profit = (drinks * 120 + special) - salary %}
+
+                <tr>
+                  <td>{{ r.record_date.strftime('%d/%m') }}</td>
+                  <td>{{ drinks }}</td>
+                  <td>{{ '%.0f'|format(special) }}฿</td>
+                  <td>{{ '%.0f'|format(salary) }}฿</td>
+                  <td>{{ '%.0f'|format(commission) }}฿</td>
+                  <td>{{ '%.0f'|format(profit) }}฿</td>
+                </tr>
+                {% set ns.count = ns.count + 1 %}
+              {% endif %}
+            {% endfor %}
+          {% endfor %}
+
+          {% if ns.count == 0 %}
+            <tr><td colspan="6" class="text-center">No history yet.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+    <!-- /Recent history -->
+  </div>
 </div>
 {% endblock %}

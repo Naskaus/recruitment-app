@@ -844,7 +844,6 @@ def create_user():
     db.session.commit()
     click.echo(f"User {username} created successfully with role {role}.")
 
-# THIS ENTIRE BLOCK WAS MOVED OUTSIDE of the create_user function
 @app.route('/payroll/pdf')
 @login_required
 def payroll_pdf():
@@ -883,7 +882,6 @@ def payroll_pdf():
 
     rows = []
     for a in all_assignments:
-        # ... (Data processing logic remains the same)
         contract_stats = { "drinks": 0, "special_comm": 0, "salary": 0, "commission": 0, "profit": 0 }
         original_duration = CONTRACT_TYPES.get(a.contract_type, 1)
         base_daily_salary = (a.base_salary / original_duration) if original_duration > 0 else 0
@@ -907,7 +905,6 @@ def payroll_pdf():
     total_days_worked = sum(row['days_worked'] for row in rows)
     summary_stats = { "total_profit": total_profit, "total_days_worked": total_days_worked }
 
-    # MODIFIED: Get manager name for display and ensure all filters are included
     manager_name = None
     if selected_manager_id:
         manager = User.query.get(selected_manager_id)
@@ -924,7 +921,6 @@ def payroll_pdf():
         "selected_end_date": end_date_str
     }
 
-    # --- PDF Generation ---
     html_for_pdf = render_template('payroll_pdf.html', 
                                   assignments=rows, 
                                   summary=summary_stats,
@@ -936,17 +932,16 @@ def payroll_pdf():
     return Response(pdf,
                    mimetype='application/pdf',
                    headers={'Content-Disposition': 'inline; filename=payroll_report.pdf'})
+
 @app.route('/assignment/<int:assignment_id>/pdf')
 @login_required
 def assignment_pdf(assignment_id):
-    # 1. Fetch the specific assignment
     assignment = Assignment.query.options(
         db.joinedload(Assignment.staff),
         db.joinedload(Assignment.manager),
         db.subqueryload(Assignment.performance_records)
     ).get_or_404(assignment_id)
 
-    # 2. Calculate its stats (similar logic to the payroll page)
     contract_stats = { "drinks": 0, "special_comm": 0, "salary": 0, "commission": 0, "profit": 0 }
     original_duration = CONTRACT_TYPES.get(assignment.contract_type, 1)
     base_daily_salary = (assignment.base_salary / original_duration) if original_duration > 0 else 0
@@ -956,14 +951,13 @@ def assignment_pdf(assignment_id):
         daily_commission = (record.drinks_sold or 0) * DRINK_STAFF_COMMISSION
         bar_revenue = ((record.drinks_sold or 0) * DRINK_BAR_PRICE) + (record.special_commissions or 0)
         daily_profit = bar_revenue - daily_salary
-        
+
         contract_stats["drinks"] += record.drinks_sold or 0
         contract_stats["special_comm"] += record.special_commissions or 0
         contract_stats["salary"] += daily_salary
         contract_stats["commission"] += daily_commission
         contract_stats["profit"] += daily_profit
 
-    # 3. Prepare data for the template in the same structure as the main PDF report
     rows = [{
         "assignment": assignment,
         "contract_days": (assignment.end_date - assignment.start_date).days + 1,
@@ -971,26 +965,72 @@ def assignment_pdf(assignment_id):
         "original_duration": original_duration,
         "contract_stats": contract_stats
     }]
-    
+
     summary_stats = {
         "total_profit": contract_stats["profit"],
         "total_days_worked": len(assignment.performance_records)
     }
 
-    # 4. Render the PDF using the SAME template for a consistent look
-    html_for_pdf = render_template('payroll_pdf.html',
+    html_for_pdf = render_template('assignment_pdf.html',
                                   assignments=rows,
                                   summary=summary_stats,
-                                  contract_stats=contract_stats, # NEW: Pass the full stats dictionary
-                                  filters={}, # No filters needed for a single report
+                                  contract_stats=contract_stats,
+                                  filters={},
                                   report_date=date.today())
 
     pdf = HTML(string=html_for_pdf).write_pdf()
-    
-    # Use staff name in the filename for clarity
+
     staff_name = assignment.staff.nickname if assignment.staff else assignment.archived_staff_name
     filename = f"report_{staff_name}_{assignment.start_date.strftime('%Y-%m-%d')}.pdf"
 
+    return Response(pdf,
+                   mimetype='application/pdf',
+                   headers={'Content-Disposition': f'inline; filename={filename}'})
+
+@app.route('/profile/<int:profile_id>/pdf')
+@login_required
+def profile_pdf(profile_id):
+    profile = StaffProfile.query.options(
+        db.joinedload(StaffProfile.assignments).subqueryload(Assignment.performance_records)
+    ).get_or_404(profile_id)
+
+    total_days_worked, total_drinks_sold, total_special_comm, total_salary_paid, total_commission_paid, total_bar_profit = 0, 0, 0, 0, 0, 0
+    for assignment in profile.assignments:
+        original_duration = CONTRACT_TYPES.get(assignment.contract_type, 1)
+        base_daily_salary = (assignment.base_salary / original_duration) if original_duration > 0 else 0
+
+        for record in assignment.performance_records:
+            daily_salary = (base_daily_salary + (record.bonus or 0) - (record.malus or 0) - (record.lateness_penalty or 0))
+            daily_commission = (record.drinks_sold or 0) * DRINK_STAFF_COMMISSION
+            daily_profit = (((record.drinks_sold or 0) * DRINK_BAR_PRICE) + (record.special_commissions or 0)) - daily_salary
+
+            total_salary_paid += daily_salary
+            total_commission_paid += daily_commission
+            total_bar_profit += daily_profit
+            total_drinks_sold += record.drinks_sold or 0
+            total_special_comm += record.special_commissions or 0
+
+        total_days_worked += len(assignment.performance_records)
+
+    history_stats = {
+        "total_days_worked": total_days_worked, "total_drinks_sold": total_drinks_sold,
+        "total_special_comm": total_special_comm, "total_salary_paid": total_salary_paid,
+        "total_commission_paid": total_commission_paid, "total_bar_profit": total_bar_profit
+    }
+
+    photo_url = None
+    if profile.photo_url and 'default_avatar' not in profile.photo_url:
+        photo_url = url_for('uploaded_file', filename=os.path.basename(profile.photo_url), _external=True)
+
+    html_for_pdf = render_template('profile_pdf.html',
+                                  profile=profile,
+                                  photo_url=photo_url,
+                                  history_stats=history_stats,
+                                  report_date=date.today())
+
+    pdf = HTML(string=html_for_pdf).write_pdf()
+
+    filename = f"profile_{profile.nickname}.pdf"
     return Response(pdf,
                    mimetype='application/pdf',
                    headers={'Content-Disposition': f'inline; filename={filename}'})

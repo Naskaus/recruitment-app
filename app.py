@@ -18,8 +18,13 @@ app = Flask(__name__)
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 
+# --- Configuration ---
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
+
 app.config['SECRET_KEY'] = 'a-very-secret-and-hard-to-guess-key' # Replace with a real secret key
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(BASE_DIR, "recruitment.db")}'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://Naskaus:!35Q#V%G3$BvnYieqsyj@127.0.0.1/Naskaus$default?charset=utf8mb4'
+# app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(BASE_DIR, "recruitment.db")}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
@@ -61,7 +66,7 @@ class User(db.Model, UserMixin):
     __tablename__ = "user"
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(80), nullable=False, default='Admin') # e.g., 'Admin', 'Super-Admin'
 
     managed_assignments = db.relationship('Assignment', foreign_keys='Assignment.managed_by_user_id', back_populates='manager')
@@ -75,11 +80,14 @@ class User(db.Model, UserMixin):
     def __repr__(self):
         return f'<User {self.username}>'
 
-
 class StaffProfile(db.Model):
     __tablename__ = "staff_profile"
 
     id = db.Column(db.Integer, primary_key=True)
+    
+    # --- NEW ---
+    staff_id = db.Column(db.String(10), unique=True, nullable=True) 
+    
     first_name = db.Column(db.String(80))
     last_name = db.Column(db.String(80))
     nickname = db.Column(db.String(80), nullable=False)
@@ -96,6 +104,10 @@ class StaffProfile(db.Model):
     current_venue = db.Column(db.String(80), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # --- NEW ---
+    preferred_position = db.Column(db.String(80), nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    
     assignments = db.relationship('Assignment', backref='staff', lazy=True)
 
     @property
@@ -525,6 +537,14 @@ def create_profile():
         dob_date = date(int(data.get('dob_year')), int(data.get('dob_month')), int(data.get('dob_day')))
     except Exception:
         return jsonify({'status': 'error', 'message': 'A valid Date of Birth is required.'}), 400
+    
+    # Check if staff_id is unique if provided
+    staff_id = data.get('staff_id')
+    if staff_id:
+        existing_profile = StaffProfile.query.filter_by(staff_id=staff_id).first()
+        if existing_profile:
+            return jsonify({'status': 'error', 'message': f'Staff ID "{staff_id}" is already in use.'}), 400
+
     photo_url = '/static/images/default_avatar.png'
     if 'photo' in request.files and request.files['photo'].filename != '':
         photo = request.files['photo']
@@ -533,11 +553,25 @@ def create_profile():
         save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
         photo.save(save_path)
         photo_url = f'/uploads/{unique_filename}'
+    
     new_profile = StaffProfile(
-        nickname=data.get('nickname'), dob=dob_date, first_name=data.get('first_name'),
-        last_name=data.get('last_name'), phone=data.get('phone'), instagram=data.get('instagram'),
-        facebook=data.get('facebook'), line_id=data.get('line_id'), height=data.get('height') or None,
-        weight=data.get('weight') or None, photo_url=photo_url, admin_mama_name=data.get('admin_mama_name')
+        nickname=data.get('nickname'), 
+        dob=dob_date, 
+        first_name=data.get('first_name'),
+        last_name=data.get('last_name'), 
+        phone=data.get('phone'), 
+        instagram=data.get('instagram'),
+        facebook=data.get('facebook'), 
+        line_id=data.get('line_id'), 
+        height=data.get('height') or None,
+        weight=data.get('weight') or None, 
+        photo_url=photo_url, 
+        admin_mama_name=data.get('admin_mama_name'),
+
+        # --- ADDED NEW FIELDS ---
+        staff_id=staff_id,
+        preferred_position=data.get('preferred_position'),
+        notes=data.get('notes')
     )
     db.session.add(new_profile)
     db.session.commit()

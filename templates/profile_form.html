@@ -11,143 +11,148 @@
     <div id="form-response" class="alert hidden"></div>
 
     <form id="profileForm"
-          data-mode="{{ 'edit' if edit_mode else 'create' }}"
-          {% if edit_mode %} data-id="{{ profile.id }}"{% endif %}
-          enctype="multipart/form-data"
-          novalidate>
+      data-mode="{{ 'edit' if edit_mode else 'create' }}"
+      {% if edit_mode %} data-id="{{ profile.id }}"{% endif %}
+      enctype="multipart/form-data"
+      novalidate>
 
-      <!-- Identity -->
-      <div class="form-grid-2">
-        <div class="form-group">
-          <label for="nickname">Nickname <span style="color:#d33">*</span></label>
-          <input type="text" id="nickname" name="nickname" required
-                 value="{{ profile.nickname if edit_mode else '' }}">
-        </div>
-        <div class="form-group">
-          <label for="admin_mama_name">Managed By</label>
-          <select id="admin_mama_name" name="admin_mama_name">
-            <option value="">-- Select --</option>
-            {% for a in admins %}
-            <option value="{{ a }}" {% if edit_mode and profile.admin_mama_name==a %}selected{% endif %}>{{ a }}</option>
-            {% endfor %}
-          </select>
+  <div class="form-grid-3">
+    <div class="form-group">
+      <label for="nickname">Nickname <span style="color:#d33">*</span></label>
+      <input type="text" id="nickname" name="nickname" required
+             value="{{ profile.nickname if edit_mode else '' }}">
+    </div>
+    <div class="form-group">
+      <label for="staff_id">Staff ID</label>
+      <input type="text" id="staff_id" name="staff_id"
+             placeholder="e.g., 007"
+             value="{{ profile.staff_id if edit_mode and profile.staff_id else '' }}">
+    </div>
+    <div class="form-group">
+      <label for="preferred_position">Preferred Position</label>
+      <select id="preferred_position" name="preferred_position">
+        <option value="">-- Select --</option>
+        <option value="Dancer" {% if edit_mode and profile.preferred_position == 'Dancer' %}selected{% endif %}>Dancer</option>
+        <option value="Hostess" {% if edit_mode and profile.preferred_position == 'Hostess' %}selected{% endif %}>Hostess</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-grid-2">
+    <div class="form-group">
+      <label for="first_name">First name</label>
+      <input type="text" id="first_name" name="first_name"
+             value="{{ profile.first_name if edit_mode else '' }}">
+    </div>
+    <div class="form-group">
+      <label for="last_name">Last name</label>
+      <input type="text" id="last_name" name="last_name"
+             value="{{ profile.last_name if edit_mode else '' }}">
+    </div>
+  </div>
+
+  <div class="form-grid-2">
+    <div class="form-group">
+      <label for="phone">Phone</label>
+      <input type="text" id="phone" name="phone"
+             value="{{ profile.phone if edit_mode else '' }}">
+    </div>
+    <div class="form-group">
+      <label for="line_id">LINE ID</label>
+      <input type="text" id="line_id" name="line_id"
+             value="{{ profile.line_id if edit_mode else '' }}">
+    </div>
+  </div>
+
+  <div class="form-grid-2">
+    <div class="form-group">
+      <label for="instagram">Instagram</label>
+      <input type="text" id="instagram" name="instagram"
+             value="{{ profile.instagram if edit_mode else '' }}">
+    </div>
+    <div class="form-group">
+      <label for="facebook">Facebook</label>
+      <input type="text" id="facebook" name="facebook"
+             value="{{ profile.facebook if edit_mode else '' }}">
+    </div>
+  </div>
+
+  <div class="form-grid-3">
+    <div class="form-group">
+      <label for="dob_day">DOB Day</label>
+      <select id="dob_day" name="dob_day">
+        {% for d in days %}
+        {% set sel = (edit_mode and profile.dob and profile.dob.day == d) %}
+        <option value="{{ d }}" {% if sel %}selected{% endif %}>{{ d }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="dob_month">DOB Month</label>
+      <select id="dob_month" name="dob_month">
+        {% for m in months %}
+        {% set sel = (edit_mode and profile.dob and profile.dob.month == m) %}
+        <option value="{{ m }}" {% if sel %}selected{% endif %}>{{ m }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="dob_year">DOB Year</label>
+      <select id="dob_year" name="dob_year">
+        {% for y in years %}
+        {% set sel = (edit_mode and profile.dob and profile.dob.year == y) %}
+        <option value="{{ y }}" {% if sel %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="form-grid-2">
+    <div class="form-group">
+      <label for="height">Height (cm)</label>
+      <input type="number" id="height" name="height" min="120" max="220"
+             value="{{ profile.height if edit_mode and profile.height else '' }}">
+    </div>
+    <div class="form-group">
+      <label for="weight">Weight (kg)</label>
+      <input type="number" id="weight" name="weight" step="0.1" min="35" max="120"
+             value="{{ profile.weight if edit_mode and profile.weight else '' }}">
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="notes" rows="4" placeholder="Add any relevant notes here...">{{ profile.notes if edit_mode and profile.notes else '' }}</textarea>
+  </div>
+
+  <div class="form-grid-2">
+    <div class="form-group">
+      <label for="photo">Photo</label>
+      <input type="file" id="photo" name="photo" accept="image/*">
+      <small class="muted">Choose a JPG/PNG (max a few MB)</small>
+    </div>
+
+    <div class="form-group">
+      <label>Preview</label>
+      <div class="photo-preview">
+        <img id="photoPreview"
+             src="{{ profile.photo_url if edit_mode and profile.photo_url else '' }}"
+             alt="Preview"
+             {% if not (edit_mode and profile.photo_url) %}class="hidden"{% endif %}>
+        <div id="photoPlaceholder" class="{% if edit_mode and profile.photo_url %}hidden{% else %}placeholder{% endif %}">
+          No photo selected
         </div>
       </div>
+    </div>
+  </div>
 
-      <div class="form-grid-2">
-        <div class="form-group">
-          <label for="first_name">First name</label>
-          <input type="text" id="first_name" name="first_name"
-                 value="{{ profile.first_name if edit_mode else '' }}">
-        </div>
-        <div class="form-group">
-          <label for="last_name">Last name</label>
-          <input type="text" id="last_name" name="last_name"
-                 value="{{ profile.last_name if edit_mode else '' }}">
-        </div>
-      </div>
-
-      <!-- Contacts -->
-      <div class="form-grid-2">
-        <div class="form-group">
-          <label for="phone">Phone</label>
-          <input type="text" id="phone" name="phone"
-                 value="{{ profile.phone if edit_mode else '' }}">
-        </div>
-        <div class="form-group">
-          <label for="line_id">LINE ID</label>
-          <input type="text" id="line_id" name="line_id"
-                 value="{{ profile.line_id if edit_mode else '' }}">
-        </div>
-      </div>
-
-      <div class="form-grid-2">
-        <div class="form-group">
-          <label for="instagram">Instagram</label>
-          <input type="text" id="instagram" name="instagram"
-                 value="{{ profile.instagram if edit_mode else '' }}">
-        </div>
-        <div class="form-group">
-          <label for="facebook">Facebook</label>
-          <input type="text" id="facebook" name="facebook"
-                 value="{{ profile.facebook if edit_mode else '' }}">
-        </div>
-      </div>
-
-      <!-- DOB -->
-      <div class="form-grid-3">
-        <div class="form-group">
-          <label for="dob_day">DOB Day</label>
-          <select id="dob_day" name="dob_day">
-            {% for d in days %}
-            {% set sel = (edit_mode and profile.dob and profile.dob.day == d) %}
-            <option value="{{ d }}" {% if sel %}selected{% endif %}>{{ d }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="dob_month">DOB Month</label>
-          <select id="dob_month" name="dob_month">
-            {% for m in months %}
-            {% set sel = (edit_mode and profile.dob and profile.dob.month == m) %}
-            <option value="{{ m }}" {% if sel %}selected{% endif %}>{{ m }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="dob_year">DOB Year</label>
-          <select id="dob_year" name="dob_year">
-            {% for y in years %}
-            {% set sel = (edit_mode and profile.dob and profile.dob.year == y) %}
-            <option value="{{ y }}" {% if sel %}selected{% endif %}>{{ y }}</option>
-            {% endfor %}
-          </select>
-        </div>
-      </div>
-
-      <!-- Body -->
-      <div class="form-grid-2">
-        <div class="form-group">
-          <label for="height">Height (cm)</label>
-          <input type="number" id="height" name="height" min="120" max="220"
-                 value="{{ profile.height if edit_mode and profile.height else '' }}">
-        </div>
-        <div class="form-group">
-          <label for="weight">Weight (kg)</label>
-          <input type="number" id="weight" name="weight" step="0.1" min="35" max="120"
-                 value="{{ profile.weight if edit_mode and profile.weight else '' }}">
-        </div>
-      </div>
-
-      <!-- Photo -->
-      <div class="form-grid-2">
-        <div class="form-group">
-          <label for="photo">Photo</label>
-          <input type="file" id="photo" name="photo" accept="image/*">
-          <small class="muted">Choose a JPG/PNG (max a few MB)</small>
-        </div>
-
-        <div class="form-group">
-          <label>Preview</label>
-          <div class="photo-preview">
-            <img id="photoPreview"
-                 src="{{ profile.photo_url if edit_mode and profile.photo_url else '' }}"
-                 alt="Preview"
-                 {% if not (edit_mode and profile.photo_url) %}class="hidden"{% endif %}>
-            <div id="photoPlaceholder" class="{% if edit_mode and profile.photo_url %}hidden{% else %}placeholder{% endif %}">
-              No photo selected
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="form-actions">
-        <a href="/staff" class="button button-secondary" type="button">Cancel</a>
-        <button id="profileSubmitBtn" type="submit" class="button button-primary">
-          {{ 'Update Profile' if edit_mode else 'Create Profile' }}
-        </button>
-      </div>
-    </form>
+  <div class="form-actions">
+    <a href="/staff" class="button button-secondary" type="button">Cancel</a>
+    <button id="profileSubmitBtn" type="submit" class="button button-primary">
+      {{ 'Update Profile' if edit_mode else 'Create Profile' }}
+    </button>
+  </div>
+</form>
   </div>
 </div>
 

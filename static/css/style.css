@@ -1604,8 +1604,7 @@
 .staff-list-table {
     width: 100%;
     border-collapse: collapse;
-    white-space: normal; /* Allow text wrapping */
-    table-layout: fixed; /* Use defined column widths */
+    white-space: nowrap; /* Prevent wrapping on desktop */
 }
 
 .staff-list-table th,
@@ -1616,24 +1615,11 @@
     vertical-align: middle;
 }
 
-/* Define column widths */
-.staff-list-table th:nth-child(1),
-.staff-list-table td:nth-child(1) { width: 40%; } /* Staff name */
-
-.staff-list-table th:nth-child(2),
-.staff-list-table td:nth-child(2) { width: 8%; text-align: center;} /* Age */
-
-.staff-list-table th:nth-child(3),
-.staff-list-table td:nth-child(3) { width: 12%; text-align: center;} /* Height */
-
-.staff-list-table th:nth-child(4),
-.staff-list-table td:nth-child(4) { width: 12%; text-align: center;} /* Weight */
-
-.staff-list-table th:nth-child(5),
-.staff-list-table td:nth-child(5) { width: 12%; text-align: center;} /* Status */
-
-.staff-list-table th:nth-child(6),
-.staff-list-table td:nth-child(6) { width: 16%; } /* Actions */
+/* NEW: Center the list view card and give it a max-width */
+#staff-list-view.card {
+    max-width: 1200px;
+    margin: 0 auto;
+}
 
 .staff-list-table th {
     font-weight: 600;
@@ -1658,7 +1644,6 @@
     font-size: 0.85rem;
 }
 
-/* NEW: Style for the primary dispatch button in the list */
 .list-actions .button.button-primary {
     padding: 6px 12px;
     font-size: 0.85rem;
@@ -1676,67 +1661,6 @@
 
 .list-actions .button-table-delete:hover svg {
     fill: var(--color-danger);
-}
-
-/* Make page header responsive */
-@media (max-width: 767.98px) {
-    .page-header {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .header-actions {
-        justify-content: space-between;
-        width: 100%;
-    }
-
-    /* Staff List Table Responsive */
-    .staff-list-table {
-        white-space: normal; /* Allow text wrapping */
-    }
-    .staff-list-table .mobile-hidden {
-        display: none; /* Hide columns on mobile */
-    }
-    .staff-list-table .list-actions {
-        flex-direction: column; /* Stack buttons vertically on mobile */
-        align-items: flex-start;
-        gap: 4px;
-    }
-
-    /* Payroll Table Responsive (NEW & CORRECTED) */
-    .payroll-table thead {
-        display: none; /* Hide table headers on mobile */
-    }
-    .payroll-table tr {
-        display: block; /* Each row becomes a block element */
-        border-bottom: 2px solid var(--color-border);
-        margin-bottom: 1rem;
-        padding-bottom: 1rem;
-    }
-    /* --- THIS IS THE FIX --- */
-    /* Apply flexbox styling ONLY to cells that have a data-label */
-    .payroll-table td[data-label] {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 8px 0;
-        border-bottom: 1px solid var(--color-hover-bg);
-        text-align: right;
-    }
-    .payroll-table td[data-label]:before {
-        content: attr(data-label);
-        font-weight: 600;
-        text-align: left;
-        margin-right: 1rem;
-        color: var(--color-text-secondary);
-    }
-    /* --- END OF FIX --- */
-
-    .payroll-table .actions {
-        margin-top: 0.5rem;
-        display: flex;
-        flex-direction: row; /* Buttons side-by-side */
-        gap: 8px;
-    }
 }
 /* ===================================
    34. Venue Choice Modal (NEW)
@@ -1814,53 +1738,101 @@
 }
 
 /* ===================================
-   36. Payroll Responsive (DEFINITIVE FIX)
+   36. Payroll & Staff List Responsive (CORRECTED)
    =================================== */
 @media (max-width: 767.98px) {
-    .payroll-table thead {
-        display: none; /* 1. Hide table headers */
+    .payroll-table thead,
+    .staff-list-table thead {
+        display: none;
     }
 
-    .payroll-table tr {
-        display: block; /* 2. Each row becomes a card-like block */
-        border-bottom: 2px solid var(--color-border);
+    .payroll-table tr,
+    .staff-list-table tr {
+        display: block;
+        border: 1px solid var(--color-border);
+        box-shadow: var(--shadow-card);
+        border-radius: var(--border-radius-lg);
         margin-bottom: 1.5rem;
-        padding-bottom: 1rem;
+        padding: 1rem;
     }
 
-    .payroll-table td {
-        padding: 8px 0; /* 3. Basic padding for all cells */
+    .payroll-table td,
+    .staff-list-table td {
+        padding: 8px 0;
         border-bottom: 1px solid var(--color-hover-bg);
     }
 
-    /* 4. The first (Staff) and last (Actions) cells are special */
     .payroll-table td:first-child,
-    .payroll-table td:last-child {
-        border-bottom: none; /* No separator line for them */
+    .payroll-table td:last-child,
+    .staff-list-table td:first-child,
+    .staff-list-table td:last-child {
+        border-bottom: none;
         padding-top: 0;
         padding-bottom: 0;
     }
 
-    /* 5. Transform ONLY cells with a 'data-label' into a label/value pair */
-    .payroll-table td[data-label] {
+    .payroll-table td[data-label],
+    .staff-list-table td[data-label] {
         display: flex;
         justify-content: space-between;
         align-items: center;
         text-align: right;
     }
 
-    .payroll-table td[data-label]::before {
+    .payroll-table td[data-label]::before,
+    .staff-list-table td[data-label]::before {
         content: attr(data-label);
         font-weight: 600;
         text-align: left;
         margin-right: 1rem;
         color: var(--color-text-secondary);
     }
-
-    .payroll-table .actions {
-        margin-top: 0.5rem;
+    
+    .payroll-table .actions,
+    .staff-list-table .list-actions {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--color-border);
         display: flex;
         flex-direction: row;
         gap: 8px;
+    }
+}
+/* ===================================
+   37. Profile Detail Responsive (NEW)
+   =================================== */
+@media (max-width: 991.98px) {
+    .profile-detail-grid {
+        grid-template-columns: 1fr; /* Stack photo and info vertically */
+        gap: 32px;
+    }
+
+    .profile-photo-section {
+        display: flex; /* Align photo and name horizontally */
+        flex-direction: row;
+        align-items: center;
+        text-align: left;
+        gap: 24px;
+    }
+
+    .profile-photo-large {
+        width: 120px;
+        height: 120px;
+        margin-bottom: 0;
+    }
+
+    .profile-main-names h3 {
+        font-size: 1.8rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .profile-photo-section {
+        flex-direction: column; /* Stack photo and name vertically again on very small screens */
+        text-align: center;
+    }
+    
+    .info-grid {
+        grid-template-columns: 1fr; /* Stack info items on small screens */
     }
 }

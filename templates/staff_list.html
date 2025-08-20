@@ -31,43 +31,51 @@
         <div id="staff-grid-view" class="staff-grid view-hidden">
             {% for profile in profiles %}
                 <div class="staff-card" data-id="{{ profile.id }}" data-status="{{ profile.status | lower | replace(' ', '-') }}">
-                    <div class="card-delete-button" data-id="{{ profile.id }}" data-name="{{ profile.nickname or (profile.first_name + ' ' + profile.last_name) }}">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z"/></svg>
-                    </div>
-                    <div class="staff-card-header">
-                        <img src="{{ profile.photo_url }}" alt="Photo of {{ profile.nickname }}">
-                        <div class="staff-card-name">
-                            <h3>{{ profile.nickname or (profile.first_name + ' ' + profile.last_name) }}</h3>
-                            {% if profile.nickname %}<span>{{ profile.first_name }} {{ profile.last_name }}</span>{% endif %}
-                        </div>
-                    </div>
-                    <div class="staff-card-body">
-                        <div class="staff-details">
-                            <p><strong>Age:</strong> {{ profile.age or 'N/A' }}</p>
-                            <p><strong>Height:</strong> {{ profile.height or 'N/A' }} cm</p>
-                            <p><strong>Weight:</strong> {{ profile.weight or 'N/A' }} kg</p>
-                        </div>
-                       <div class="staff-card-status">
-                            <form class="status-changer-form">
-                                <select name="status" class="status-changer-select" data-id="{{ profile.id }}" {% if profile.status == 'Working' %}disabled{% endif %}>
-                                    {% for status_option in statuses %}
-                                    <option value="{{ status_option }}" 
-                                            {% if profile.status == status_option %}selected{% endif %}
-                                            {% if status_option == 'Working' %}disabled{% endif %}>
-                                        {{ status_option }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </form>
-                        </div>
-                    </div>
-                    <div class="staff-card-footer">
-                        <div class="social-links">
-                             <!-- Social links remain the same -->
-                        </div>
-                        <a href="{{ url_for('profile_detail', profile_id=profile.id) }}" class="button-details">View Details</a>
-                    </div>
-                </div>
+    <div class="card-delete-button" data-id="{{ profile.id }}" data-name="{{ profile.nickname or (profile.first_name + ' ' + profile.last_name) }}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z"/></svg>
+    </div>
+    <div class="staff-card-header">
+        <img src="{{ profile.photo_url }}" alt="Photo of {{ profile.nickname }}">
+        <div class="staff-card-name">
+            <h3>
+                {{ profile.nickname or (profile.first_name + ' ' + profile.last_name) }}
+                {% if profile.staff_id %}
+                    <span style="font-weight: 400; font-size: 1rem; color: var(--color-text-secondary);">#{{ profile.staff_id }}</span>
+                {% endif %}
+            </h3>
+            {% if profile.nickname %}<span>{{ profile.first_name }} {{ profile.last_name }}</span>{% endif %}
+            
+            {% if profile.preferred_position %}
+                <span class="role-badge">{{ profile.preferred_position }}</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="staff-card-body">
+        <div class="staff-details">
+            <p><strong>Age:</strong> {{ profile.age or 'N/A' }}</p>
+            <p><strong>Height:</strong> {{ profile.height or 'N/A' }} cm</p>
+            <p><strong>Weight:</strong> {{ profile.weight or 'N/A' }} kg</p>
+        </div>
+       <div class="staff-card-status">
+            <form class="status-changer-form">
+                <select name="status" class="status-changer-select" data-id="{{ profile.id }}" {% if profile.status == 'Working' %}disabled{% endif %}>
+                    {% for status_option in statuses %}
+                    <option value="{{ status_option }}" 
+                            {% if profile.status == status_option %}selected{% endif %}
+                            {% if status_option == 'Working' %}disabled{% endif %}>
+                        {{ status_option }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+    </div>
+    <div class="staff-card-footer">
+        <div class="social-links">
+             </div>
+        <a href="{{ url_for('profile_detail', profile_id=profile.id) }}" class="button-details">View Details</a>
+    </div>
+</div>
             {% endfor %}
         </div>
 
@@ -75,46 +83,45 @@
         <div id="staff-list-view" class="card">
             <div class="table-responsive-wrapper">
                 <table class="staff-list-table">
-                    <thead>
-                        <tr>
-                            <th>Staff</th>
-                            <th class="mobile-hidden">Age</th>
-                            <th class="mobile-hidden">Height</th>
-                            <th class="mobile-hidden">Weight</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for profile in profiles %}
-                            <tr data-id="{{ profile.id }}" data-status="{{ profile.status | lower | replace(' ', '-') }}">
-                                <td>
-                                    <div class="staff-cell">
-                                        <img src="{{ profile.photo_url }}" alt="Photo of {{ profile.nickname }}">
-                                        <div class="staff-cell-info">
-                                            <strong>{{ profile.nickname or (profile.first_name + ' ' + profile.last_name) }}</strong>
-                                            {% if profile.nickname %}<span>{{ profile.first_name }} {{ profile.last_name }}</span>{% endif %}
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="mobile-hidden">{{ profile.age or 'N/A' }}</td>
-                                <td class="mobile-hidden">{{ profile.height or 'N/A' }} cm</td>
-                                <td class="mobile-hidden">{{ profile.weight or 'N/A' }} kg</td>
-                                <td><span class="status-badge status-{{ profile.status | lower | replace(' ', '-') }}">{{ profile.status }}</span></td>
-                                <td>
-                                    <div class="list-actions">
-                                        <!-- NEW DISPATCH BUTTON -->
-                                        <button class="button button-primary dispatch-from-list-btn" data-id="{{ profile.id }}" data-name="{{ profile.nickname or (profile.first_name + ' ' + profile.last_name) }}">Dispatch</button>
-                                        <a href="{{ url_for('profile_detail', profile_id=profile.id) }}" class="button button-secondary">Details</a>
-                                        <button class="button-table-delete card-delete-button" data-id="{{ profile.id }}" data-name="{{ profile.nickname or (profile.first_name + ' ' + profile.last_name) }}" title="Delete">
-                                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z"/></svg>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <thead>
+        <tr>
+            <th>Staff</th>
+            <th class="mobile-hidden">Staff ID</th>
+            <th class="mobile-hidden">Position</th>
+            <th class="mobile-hidden">Age</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for profile in profiles %}
+        <tr data-id="{{ profile.id }}" data-status="{{ profile.status | lower | replace(' ', '-') }}">
+            <td>
+                <div class="staff-cell">
+                    <img src="{{ profile.photo_url }}" alt="Photo of {{ profile.nickname }}">
+                    <div class="staff-cell-info">
+                        <strong>{{ profile.nickname or (profile.first_name + ' ' + profile.last_name) }}</strong>
+                        {% if profile.nickname %}<span>{{ profile.first_name }} {{ profile.last_name }}</span>{% endif %}
+                    </div>
+                </div>
+            </td>
+            <td data-label="Staff ID">{{ profile.staff_id or 'N/A' }}</td>
+            <td data-label="Position">{{ profile.preferred_position or 'N/A' }}</td>
+            <td data-label="Age">{{ profile.age or 'N/A' }}</td>
+            <td data-label="Status"><span class="status-badge status-{{ profile.status | lower | replace(' ', '-') }}">{{ profile.status }}</span></td>
+            <td>
+                <div class="list-actions">
+                    <button class="button button-primary dispatch-from-list-btn" data-id="{{ profile.id }}" data-name="{{ profile.nickname or (profile.first_name + ' ' + profile.last_name) }}">Dispatch</button>
+                    <a href="{{ url_for('profile_detail', profile_id=profile.id) }}" class="button button-secondary">Details</a>
+                    <button class="button-table-delete card-delete-button" data-id="{{ profile.id }}" data-name="{{ profile.nickname or (profile.first_name + ' ' + profile.last_name) }}" title="Delete">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z"/></svg>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    {% endfor %}
+</tbody>
+</table>
             </div>
         </div>
     </div>

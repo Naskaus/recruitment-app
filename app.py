@@ -22,9 +22,22 @@ UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 
+# Add a secret key for session management (e.g., flash messages)
 app.config['SECRET_KEY'] = 'a-very-secret-and-hard-to-guess-key' # Replace with a real secret key
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://Naskaus:!35Q#V%G3$BvnYieqsyj@127.0.0.1/Naskaus$default?charset=utf8mb4'
-# app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(BASE_DIR, "recruitment.db")}'
+
+# --- Database Configuration (Production vs. Development) ---
+# Check for a production database URL in environment variables
+DATABASE_URL = os.environ.get('DATABASE_URL')
+
+if DATABASE_URL:
+    # Production environment (e.g., PythonAnywhere)
+    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+else:
+    # Development environment (your local machine)
+    # We fall back to a simple SQLite database for easy local development.
+    print("WARNING: DATABASE_URL not found. Falling back to local SQLite database.")
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(BASE_DIR, "recruitment.db")}'
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 

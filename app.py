@@ -30,8 +30,17 @@ app.config['SECRET_KEY'] = 'a-very-secret-and-hard-to-guess-key' # Replace with 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
-    # Production environment (e.g., PythonAnywhere)
-    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+    # Production environment (e.g., PythonAnywhere with Heroku Postgres)
+    # 1. Replace postgres:// with postgresql:// for compatibility with psycopg2
+    db_url = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+    # 2. Add connect_args to enforce SSL connection
+    app.config['SQLALCHEMY_DATABASE_URI'] = db_url
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'connect_args': {
+            'sslmode': 'require'
+        }
+    }
 else:
     # Development environment (your local machine)
     # We fall back to a simple SQLite database for easy local development.

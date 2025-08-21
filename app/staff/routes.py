@@ -3,7 +3,7 @@
 from flask import (Blueprint, render_template, request, jsonify, redirect,
                    url_for, current_app, Response, send_from_directory)
 from flask_login import login_required
-from app.models import db, StaffProfile, Assignment, User
+from app.models import db, StaffProfile, Assignment, User, PerformanceRecord
 from werkzeug.utils import secure_filename
 from datetime import datetime, date
 import os
@@ -13,6 +13,11 @@ import pathlib
 
 # Blueprint definition
 staff_bp = Blueprint('staff', __name__, template_folder='../templates', url_prefix='/staff')
+
+# --- Constantes (à déplacer plus tard) ---
+CONTRACT_TYPES = {"1jour": 1, "10jours": 10, "1mois": 30}
+DRINK_STAFF_COMMISSION = 100
+DRINK_BAR_PRICE = 120
 
 def allowed_file(filename):
     """Checks if the file extension is allowed."""
@@ -38,15 +43,15 @@ def staff_list():
         'nickname': db.func.lower(StaffProfile.nickname),
         'age': StaffProfile.dob,
         'status': StaffProfile.status,
-        'created_at': StaffProfile.created_at
+        'created_at': StaffProfile.created_at,
+        'staff_id': StaffProfile.staff_id,
+        'preferred_position': StaffProfile.preferred_position
     }
     sort_column = sort_column_map.get(sort_by, StaffProfile.created_at)
 
-    # Reverse sorting order for age (newer DOB = younger)
+    effective_sort_order = sort_order
     if sort_by == 'age':
         effective_sort_order = 'asc' if sort_order == 'desc' else 'desc'
-    else:
-        effective_sort_order = sort_order
 
     if effective_sort_order == 'desc':
         query = query.order_by(sort_column.desc())
@@ -57,7 +62,6 @@ def staff_list():
     return render_template('staff_list.html', profiles=all_profiles, statuses=["Active", "Working", "Quiet"],
         current_filters={'search_nickname': search_nickname, 'sort_by': sort_by, 'sort_order': sort_order})
 
-# IMPROVED: Two routes now point to this single, more robust function
 @staff_bp.route('/profile/new', methods=['GET'])
 @staff_bp.route('/profile/<int:profile_id>/edit', methods=['GET'])
 @login_required
@@ -80,12 +84,72 @@ def profile_detail(profile_id):
         db.joinedload(StaffProfile.assignments).subqueryload(Assignment.performance_records)
     ).get_or_404(profile_id)
     
-    # Placeholder for stats logic
-    history_stats = {'total_days_worked': 0, 'total_drinks_sold': 0, 'total_salary_paid': 0,
-                     'total_commission_paid': 0, 'total_special_comm': 0, 'total_bar_profit': 0}
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
     
-    return render_template('profile_detail.html', profile=profile, assignments=profile.assignments, 
-                           history_stats=history_stats, filter_start_date=None, filter_end_date=None)
+    start_date, end_date = None, None
+    if start_date_str:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+    if end_date_str:
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+    all_assignments = sorted(profile.assignments, key=lambda a: a.start_date, reverse=True)
+    
+    assignments_to_process = all_assignments
+    if start_date or end_date:
+        assignments_to_process = [
+            a for a in all_assignments
+            if (not end_date or a.start_date <= end_date) and \
+               (not start_date or a.end_date >= start_date)
+        ]
+
+    # --- CORRECTED KPI CALCULATION LOGIC ---
+    total_days_worked = 0
+    total_drinks_sold = 0
+    total_special_comm = 0
+    total_salary_paid = 0
+    total_commission_paid = 0
+    total_bar_profit = 0
+
+    for assignment in assignments_to_process:
+        original_duration = CONTRACT_TYPES.get(assignment.contract_type, 1)
+        base_daily_salary = (assignment.base_salary / original_duration) if original_duration > 0 else 0
+
+        records_to_process = assignment.performance_records
+        if start_date or end_date:
+            records_to_process = [
+                r for r in assignment.performance_records 
+                if (not start_date or r.record_date >= start_date) and \
+                   (not end_date or r.record_date <= end_date)
+            ]
+
+        for record in records_to_process:
+            daily_salary = (base_daily_salary + (record.bonus or 0) - (record.malus or 0) - (record.lateness_penalty or 0))
+            daily_commission = (record.drinks_sold or 0) * DRINK_STAFF_COMMISSION
+            bar_revenue = ((record.drinks_sold or 0) * DRINK_BAR_PRICE) + (record.special_commissions or 0)
+            daily_profit = bar_revenue - daily_salary
+            
+            total_salary_paid += daily_salary
+            total_commission_paid += daily_commission
+            total_bar_profit += daily_profit
+            total_drinks_sold += record.drinks_sold or 0
+            total_special_comm += record.special_commissions or 0
+        
+        total_days_worked += len(records_to_process)
+
+    history_stats = {
+        "total_days_worked": total_days_worked,
+        "total_drinks_sold": total_drinks_sold,
+        "total_special_comm": total_special_comm,
+        "total_salary_paid": total_salary_paid,
+        "total_commission_paid": total_commission_paid,
+        "total_bar_profit": total_bar_profit
+    }
+    # --- END OF CORRECTION ---
+    
+    return render_template('profile_detail.html', profile=profile, assignments=assignments_to_process, 
+                           history_stats=history_stats, filter_start_date=start_date, filter_end_date=end_date)
+
 
 # --- API (JSON ROUTES) ---
 
@@ -113,7 +177,8 @@ def create_profile():
             unique_filename = f"{uuid.uuid4().hex}_{filename}"
             save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], unique_filename)
             file.save(save_path)
-            new_profile.photo_url = url_for('staff.uploaded_file', filename=unique_filename)
+            # Store only the filename, not the full URL
+            new_profile.photo_url = unique_filename
             
     db.session.add(new_profile)
     db.session.commit()
@@ -141,7 +206,8 @@ def update_profile(profile_id):
             unique_filename = f"{uuid.uuid4().hex}_{filename}"
             save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], unique_filename)
             file.save(save_path)
-            profile.photo_url = url_for('staff.uploaded_file', filename=unique_filename)
+            # Store only the filename
+            profile.photo_url = unique_filename
             
     db.session.commit()
     return jsonify({'status': 'success', 'message': 'Profile updated successfully!'}), 200
@@ -151,10 +217,9 @@ def update_profile(profile_id):
 def delete_profile(profile_id):
     """API endpoint to delete a profile."""
     profile = StaffProfile.query.get_or_404(profile_id)
-    if profile.photo_url:
+    if profile.photo_url and 'default' not in profile.photo_url:
         try:
-            photo_filename = os.path.basename(profile.photo_url)
-            photo_path = os.path.join(current_app.config['UPLOAD_FOLDER'], photo_filename)
+            photo_path = os.path.join(current_app.config['UPLOAD_FOLDER'], profile.photo_url)
             if os.path.exists(photo_path):
                 os.remove(photo_path)
         except Exception as e:
@@ -188,18 +253,37 @@ def uploaded_file(filename):
 def profile_pdf(profile_id):
     """Generates a PDF report for a staff profile."""
     profile = StaffProfile.query.get_or_404(profile_id)
-    photo_url = None
-    if profile.photo_url:
-        photo_filename = os.path.basename(profile.photo_url)
-        photo_path = os.path.join(current_app.config['UPLOAD_FOLDER'], photo_filename)
+    photo_url_for_pdf = None
+    if profile.photo_url and 'default' not in profile.photo_url:
+        photo_path = os.path.join(current_app.config['UPLOAD_FOLDER'], profile.photo_url)
         if os.path.exists(photo_path):
-            photo_url = pathlib.Path(photo_path).as_uri()
+            photo_url_for_pdf = pathlib.Path(photo_path).as_uri()
             
-    # Placeholder for stats logic
-    history_stats = {'total_days_worked': 0, 'total_drinks_sold': 0, 'total_salary_paid': 0, 
-                     'total_commission_paid': 0, 'total_special_comm': 0, 'total_bar_profit': 0}
+    # Re-run calculation logic for the PDF context
+    # This is identical to the logic in profile_detail
+    total_days_worked, total_drinks_sold, total_special_comm, total_salary_paid, total_commission_paid, total_bar_profit = 0, 0, 0, 0, 0, 0
+    for assignment in profile.assignments:
+        original_duration = CONTRACT_TYPES.get(assignment.contract_type, 1)
+        base_daily_salary = (assignment.base_salary / original_duration) if original_duration > 0 else 0
+        for record in assignment.performance_records:
+            daily_salary = (base_daily_salary + (record.bonus or 0) - (record.malus or 0) - (record.lateness_penalty or 0))
+            daily_commission = (record.drinks_sold or 0) * DRINK_STAFF_COMMISSION
+            bar_revenue = ((record.drinks_sold or 0) * DRINK_BAR_PRICE) + (record.special_commissions or 0)
+            daily_profit = bar_revenue - daily_salary
+            total_salary_paid += daily_salary
+            total_commission_paid += daily_commission
+            total_bar_profit += daily_profit
+            total_drinks_sold += record.drinks_sold or 0
+            total_special_comm += record.special_commissions or 0
+        total_days_worked += len(assignment.performance_records)
 
-    rendered_html = render_template('pdf/profile_pdf.html', profile=profile, photo_url=photo_url,
+    history_stats = {
+        "total_days_worked": total_days_worked, "total_drinks_sold": total_drinks_sold,
+        "total_special_comm": total_special_comm, "total_salary_paid": total_salary_paid,
+        "total_commission_paid": total_commission_paid, "total_bar_profit": total_bar_profit
+    }
+
+    rendered_html = render_template('pdf/profile_pdf.html', profile=profile, photo_url=photo_url_for_pdf,
                                     history_stats=history_stats, assignments=profile.assignments, 
                                     report_date=datetime.utcnow())
     

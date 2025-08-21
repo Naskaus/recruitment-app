@@ -152,7 +152,6 @@
             const staffCard = selectElement.closest('.staff-card');
 
             try {
-                // CORRECTED: Added /staff prefix
                 const response = await fetch(`/staff/api/profile/${profileId}/status`, {
                     method: 'POST',
                     headers: {
@@ -297,7 +296,6 @@ const SALARY_DEFAULTS = {
 
 async function populateAssignmentModalDropdowns() {
     try {
-        // CORRECTED: Added /dispatch prefix
         const response = await fetch('/dispatch/api/assignment/form-data');
         if (!response.ok) throw new Error('Network response was not ok');
 
@@ -391,7 +389,6 @@ form?.addEventListener("submit", async (e) => {
   }
 
   try {
-    // CORRECTED: Added /dispatch prefix
     const res = await fetch("/dispatch/api/assignment", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -400,7 +397,7 @@ form?.addEventListener("submit", async (e) => {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.message || "Server error");
     closeModal();
-    window.location.href = '/payroll';
+    window.location.href = '/payroll/';
   } catch (err) {
     alert(err.message || "Network error.");
   } finally {
@@ -500,7 +497,6 @@ form?.addEventListener("submit", async (e) => {
 
         async function loadRecord(assignmentId, ymd) {
             try {
-                // CORRECTED: Added /payroll prefix
                 const res = await fetch(`/payroll/api/performance/${assignmentId}/${ymd}`);
                 const data = await res.json();
                 if (data && data.record) {
@@ -524,7 +520,6 @@ form?.addEventListener("submit", async (e) => {
         async function loadPerformanceHistory(assignmentId) {
             try {
                 historyBox.innerHTML = "";
-                // CORRECTED: Added /payroll prefix
                 const res = await fetch(`/payroll/api/performance/${assignmentId}`);
                 const data = await res.json();
                 if (!data || !data.records || !data.contract) {
@@ -554,9 +549,13 @@ form?.addEventListener("submit", async (e) => {
                     });
                     historyBox.appendChild(tableEl);
                 }
-                if (list.length >= contract.contract_days) {
+
+                // --- LOGIC CORRECTION ---
+                // Show summary if the contract is finished, regardless of days worked.
+                if (contract.status === 'completed' || contract.status === 'archived') {
                     calculateAndShowSummary(assignmentId, list, contract, baseDaily);
                 }
+
             } catch (e) {
                 console.error(e);
                 historyBox.innerHTML = `<p class="text-center" style="padding:.5rem;">Could not load history.</p>`;
@@ -597,7 +596,6 @@ form?.addEventListener("submit", async (e) => {
             const name = row ? (row.dataset.staffName || 'this contract') : 'this contract';
             if (!confirm(`This will finalize the contract for "${name}" as ${status}. Continue?`)) return;
             try {
-                // CORRECTED: Added /dispatch prefix
                 const res = await fetch(`/dispatch/api/assignment/${assignmentId}/finalize`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -625,7 +623,6 @@ form?.addEventListener("submit", async (e) => {
         summaryPdfBtn?.addEventListener('click', () => {
             const assignmentId = summaryAssignmentIdInput.value;
             if (assignmentId) {
-                // CORRECTED: Added /payroll prefix
                 const pdfUrl = `/payroll/assignment/${assignmentId}/pdf`;
                 window.open(pdfUrl, '_blank');
             } else {
@@ -668,12 +665,12 @@ form?.addEventListener("submit", async (e) => {
             if (e.target.closest(".end-contract-btn")) {
                 if (!confirm(`This will end the contract for "${staffName}" today and open the final summary. Continue?`)) return;
                 try {
-                    // CORRECTED: Added /dispatch prefix
                     const res = await fetch(`/dispatch/api/assignment/${assignmentId}/end`, { method: "POST" });
                     const data = await res.json().catch(() => ({}));
                     if (!res.ok) throw new Error(data.message || "Server error");
                     tr.dataset.endDate = data.assignment.end_date;
                     tr.dataset.contractDays = data.contract_days;
+                    // Programmatically click the manage button to open the summary
                     tr.querySelector('.manage-performance-btn')?.click();
                 } catch (err) {
                     alert(err.message || "Network error");
@@ -684,7 +681,6 @@ form?.addEventListener("submit", async (e) => {
             if (e.target.closest(".delete-contract-btn")) {
                 if (!confirm(`Delete this contract for "${staffName}"? This cannot be undone.`)) return;
                 try {
-                    // CORRECTED: Added /dispatch prefix
                     const res = await fetch(`/dispatch/api/assignment/${assignmentId}`, { method: "DELETE" });
                     if (!res.ok) {
                         const data = await res.json().catch(() => ({}));
@@ -716,7 +712,6 @@ form?.addEventListener("submit", async (e) => {
             submitBtn.disabled = true;
             submitBtn.textContent = "Saving…";
             try {
-                // CORRECTED: Added /payroll prefix
                 const res = await fetch("/payroll/api/performance", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -766,7 +761,6 @@ form?.addEventListener("submit", async (e) => {
 
     if (!confirm(`Delete "${name || "this profile"}"? This cannot be undone.`)) return;
 
-    // CORRECTED: Added /staff prefix
     fetch(`/staff/api/profile/${id}/delete`, { method: "POST" })
       .then(async (r) => {
         const data = await r.json().catch(() => ({}));

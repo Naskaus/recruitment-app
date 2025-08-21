@@ -24,16 +24,30 @@ def compute_end_date(start_date: date, contract_type: str) -> date:
 @dispatch_bp.route('/')
 @login_required
 def dispatch_board():
-    all_staff = StaffProfile.query.all()
-    available_staff = [s for s in all_staff if not s.current_venue]
-    dispatched_staff = {venue: [s for s in all_staff if s.current_venue == venue] for venue in VENUE_LIST}
-    all_users = User.query.order_by(User.username).all()
+    all_staff = StaffProfile.query.order_by(StaffProfile.nickname).all()
+    # Eager load current assignments to avoid N+1 queries in the template
+    ongoing_assignments = {a.staff_id: a for a in Assignment.query.filter_by(status='ongoing')}
+
+    available_staff = []
+    dispatched_staff_map = {venue: [] for venue in VENUE_LIST}
+
+    for s in all_staff:
+        if s.id in ongoing_assignments:
+            assignment = ongoing_assignments[s.id]
+            s.current_assignment = assignment # Attach for easy access in template
+            if assignment.venue in dispatched_staff_map:
+                dispatched_staff_map[assignment.venue].append(s)
+        else:
+            s.current_assignment = None
+            if s.status != 'Working': # Safety check
+                 available_staff.append(s)
+
     return render_template('dispatch.html',
                            available_staff=available_staff,
-                           dispatched_staff=dispatched_staff,
+                           dispatched_staff=dispatched_staff_map,
                            venues=VENUE_LIST,
                            roles=ROLE_LIST,
-                           users=all_users,
+                           users=User.query.order_by(User.username).all(),
                            statuses=STATUS_LIST)
 
 # --- API (Routes JSON pour les contrats) ---
@@ -68,18 +82,19 @@ def create_assignment():
     except (ValueError, TypeError):
         return jsonify({"status": "error", "message": "Invalid payload. Check data types."}), 400
     
-    if role not in ROLE_LIST: return jsonify({"status": "error", "message": f"Invalid role. Must be one of {ROLE_LIST}"}), 400
-    if venue not in VENUE_LIST: return jsonify({"status": "error", "message": "Invalid venue."}), 400
-    if contract_type not in CONTRACT_TYPES: return jsonify({"status": "error", "message": "Invalid contract_type."}), 400
-    
     staff = StaffProfile.query.get(staff_id)
     if not staff: return jsonify({"status": "error", "message": "Staff not found."}), 404
-
-    manager = User.query.get(managed_by_user_id)
-    if not manager: return jsonify({"status": "error", "message": "Manager not found."}), 404
     
-    overlapping = Assignment.query.filter(Assignment.staff_id == staff_id, Assignment.status == 'ongoing', Assignment.start_date <= start_date, Assignment.end_date >= start_date).first()
-    if overlapping: return jsonify({"status": "error", "message": "Staff already has an ongoing contract overlapping this start date."}), 409
+    # --- LOGIC RULE: When dispatched, status becomes 'Working' ---
+    staff.status = 'Working'
+    
+    overlapping = Assignment.query.filter(
+        Assignment.staff_id == staff_id, 
+        Assignment.status == 'ongoing', 
+        Assignment.end_date >= start_date
+    ).first()
+    if overlapping: 
+        return jsonify({"status": "error", "message": f"Staff already has an ongoing contract until {overlapping.end_date}."}), 409
     
     end_date = compute_end_date(start_date, contract_type)
     new_a = Assignment(
@@ -94,10 +109,6 @@ def create_assignment():
         managed_by_user_id=managed_by_user_id
     )
     db.session.add(new_a)
-    
-    staff.current_venue = venue
-    staff.status = 'Working'
-    
     db.session.commit()
     return jsonify({"status": "success", "assignment": new_a.to_dict()}), 201
 
@@ -107,9 +118,21 @@ def end_assignment_now(assignment_id):
     a = Assignment.query.get_or_404(assignment_id)
     if a.status != 'ongoing':
         return jsonify({"status": "error", "message": "Assignment is not ongoing."}), 400
+    
     today = date.today()
     a.end_date = today if today >= a.start_date else a.start_date
     a.status = 'completed'
+    
+    # --- LOGIC RULE: When contract ends, status becomes 'Active' if no other contracts are ongoing ---
+    if a.staff:
+        other_ongoing = Assignment.query.filter(
+            Assignment.staff_id == a.staff_id,
+            Assignment.status == 'ongoing',
+            Assignment.id != a.id
+        ).first()
+        if not other_ongoing:
+            a.staff.status = 'Active'
+
     db.session.commit()
     return jsonify({
         "status": "success", 
@@ -122,7 +145,7 @@ def end_assignment_now(assignment_id):
 def delete_assignment(assignment_id):
     a = Assignment.query.get_or_404(assignment_id)
     if a.staff:
-        a.staff.current_venue = None
+        a.staff.current_venue = None # Legacy, should be removed later
     db.session.delete(a)
     db.session.commit()
     return jsonify({"status": "success"}), 200
@@ -140,9 +163,16 @@ def finalize_assignment(assignment_id):
         return jsonify({"status": "error", "message": "Invalid final status. Must be 'archived'."}), 400
     
     a.status = 'archived'
+    
+    # --- LOGIC RULE: When contract is archived, status becomes 'Active' if no other contracts are ongoing ---
     if a.staff:
-        a.staff.current_venue = None
-        a.staff.status = 'Active' 
-        
+        other_ongoing = Assignment.query.filter(
+            Assignment.staff_id == a.staff_id,
+            Assignment.status == 'ongoing',
+            Assignment.id != a.id
+        ).first()
+        if not other_ongoing:
+            a.staff.status = 'Active'
+            
     db.session.commit()
     return jsonify({"status": "success", "message": f"Assignment finalized as {final_status}.", "assignment": a.to_dict()}), 200

@@ -16,7 +16,6 @@
 <div class="page-header">
     <h2>Staff Inventory</h2>
     <div class="header-actions">
-        {# CORRECTED: 'staff.new_profile_form' -> 'staff.profile_form' #}
         <a href="{{ url_for('staff.profile_form') }}" class="button button-primary">Create Profile</a>
     </div>
 </div>
@@ -165,9 +164,84 @@
         <div class="card-body" style="text-align: center;">
             <h3>No Staff Profiles Found</h3>
             <p>Get started by creating a new profile.</p>
-            {# CORRECTED: 'staff.new_profile_form' -> 'staff.profile_form' #}
             <a href="{{ url_for('staff.profile_form') }}" class="button-primary">Create Profile Now</a>
         </div>
     </div>
 {% endif %}
+
+
+<div id="venueChoiceModal" class="modal-overlay hidden">
+    <div class="modal-content modal-sm">
+        <div class="modal-header">
+            <h3>Dispatch <strong id="venueChoiceStaffName" style="color: var(--color-accent-primary);"></strong> to...</h3>
+            <button id="closeVenueChoiceModalBtn" class="modal-close-btn" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+            {# This list should ideally be passed from the Python route later #}
+            {% set venues = ["Red Dragon", "Mandarin", "Shark"] %}
+            <div class="venue-choice-buttons">
+                {% for venue in venues %}
+                    {# CORRECTED: Added 'button-primary' class for blue color #}
+                    <button class="button button-primary" data-venue="{{ venue }}">{{ venue }}</button>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="assignmentModal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>New Assignment for <strong id="assignmentStaffName" style="color: var(--color-accent-primary);">Staff</strong></h3>
+            <button id="closeAssignmentModalBtn" class="modal-close-btn" aria-label="Close">&times;</button>
+        </div>
+        <form id="assignmentForm" novalidate>
+            <div class="modal-body">
+                <input type="hidden" id="assignmentStaffId" name="staff_id">
+                
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="assignmentVenue">Venue</label>
+                        <input type="text" id="assignmentVenue" name="venue" readonly style="background-color: var(--color-main-bg); cursor: not-allowed;">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="startDate">Start Date</label>
+                        <input type="date" id="startDate" name="start_date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contractType">Contract Type</label>
+                        <select id="contractType" name="contract_type" required>
+                            <option value="1jour">1 Day</option>
+                            <option value="10jours" selected>10 Days</option>
+                            <option value="1mois">1 Month</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="baseSalary">Base Salary (THB)</label>
+                        <input type="number" id="baseSalary" name="base_salary" step="100" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="assignmentRole">Role</label>
+                        <select id="assignmentRole" name="role" required>
+                            </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="assignmentManager">Managed By</label>
+                        <select id="assignmentManager" name="managed_by_user_id" required>
+                            </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="cancelAssignmentModalBtn" class="button button-secondary">Cancel</button>
+                <button type="submit" class="button button-primary">Create Assignment</button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}

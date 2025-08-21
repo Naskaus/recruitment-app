@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+  /* Styles for the "Days Worked" column */
+  .days-worked-cell {
+    text-align: center;
+    font-weight: 600;
+    font-size: 1.05em;
+    vertical-align: middle;
+  }
+  .summary-stats-container {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 16px 24px;
+    width: 100%;
+  }
+  .summary-stat {
+    text-align: center;
+  }
+  .summary-label {
+    display: block;
+    font-size: 0.9em;
+    color: #6c757d;
+    margin-bottom: 4px;
+  }
+  .summary-value {
+    display: block;
+    font-size: 1.75em;
+    font-weight: 700;
+  }
+
+  /* NEW: Styles for the Final Summary Modal (Refactored from inline) */
+  .final-summary-grid {
+    font-size: 1.1em;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem 1.5rem;
+  }
+  .final-summary-row {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.5rem;
+  }
+</style>
+
+<div class="page-header">
+  <h2>Payroll & Performance (Contracts)</h2>
+</div>
+
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-body" style="padding: 24px;">
+    {# CORRECTED: action and clear button URLs #}
+    <form method="GET" action="{{ url_for('payroll.payroll_page') }}" class="payroll-filter-form">
+      <div class="filter-group">
+        <label for="nickname">Staff Name</label>
+        <input type="text" id="nickname" name="nickname" placeholder="Enter nickname..." value="{{ filters.search_nickname or '' }}">
+      </div>
+      <div class="filter-group">
+        <label for="venue">Venue</label>
+        <select id="venue" name="venue">
+          <option value="">All Venues</option>
+          {% for venue in filters.venues %}
+            <option value="{{ venue }}" {% if filters.selected_venue == venue %}selected{% endif %}>{{ venue }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="contract_type">Contract Type</label>
+        <select id="contract_type" name="contract_type">
+          <option value="">All Types</option>
+          {% for c_type in filters.contract_types %}
+            <option value="{{ c_type }}" {% if filters.selected_contract_type == c_type %}selected{% endif %}>{{ c_type }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          <option value="">All Statuses</option>
+          {% for status in filters.statuses %}
+            <option value="{{ status }}" {% if filters.selected_status == status %}selected{% endif %}>{{ status|capitalize }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="manager_id">Managed by</label>
+        <select id="manager_id" name="manager_id">
+          <option value="">All Managers</option>
+          {% for manager in filters.managers %}
+            <option value="{{ manager.id }}" {% if filters.selected_manager_id == manager.id %}selected{% endif %}>{{ manager.username }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-group">
+          <label for="start_date">Start Date</label>
+          <input type="date" id="start_date" name="start_date" value="{{ filters.selected_start_date or '' }}">
+      </div>
+      <div class="filter-group">
+          <label for="end_date">End Date</label>
+          <input type="date" id="end_date" name="end_date" value="{{ filters.selected_end_date or '' }}">
+      </div>
+
+      <div class="filter-actions">
+        <button type="submit" class="button button-primary">Apply Filters</button>
+        <a href="{{ url_for('payroll.payroll_page') }}" class="button button-secondary">Clear</a>
+        <a href="{{ url_for('payroll.payroll_pdf', **request.args) }}" target="_blank" class="button button-secondary">Export PDF</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom: 24px;">
+    <div class="summary-stats-container">
+        <div class="summary-stat">
+            <span class="summary-label">Total Profit (from selection)</span>
+            <span class="summary-value {% if summary.total_profit > 0 %}profit-positive{% elif summary.total_profit < 0 %}profit-negative{% endif %}">
+                {{ '%.0f'|format(summary.total_profit) }} ฿
+            </span>
+        </div>
+        <div class="summary-stat">
+            <span class="summary-label">Total Days Worked</span>
+            <span class="summary-value">
+                {{ summary.total_days_worked }}
+            </span>
+        </div>
+    </div>
+</div>
+
+
+<div class="card">
+  <div class="card-body">
+      <table class="payroll-table">
+        <thead>
+        <tr>
+          <th>Staff</th>
+          <th class="mobile-hidden">Venue</th>
+          <th class="mobile-hidden">Managed by</th>
+          <th class="mobile-hidden">Contract</th>
+          <th class="mobile-hidden">Progress</th>
+          <th class="days-worked-cell mobile-hidden">Days Worked</th>
+          <th class="mobile-hidden">Profit (Total)</th>
+          <th class="mobile-hidden">Period</th>
+          <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% if assignments and assignments|length > 0 %}
+          {% for row in assignments %}
+            {% set a = row.assignment %}
+            {% set stats = row.contract_stats %}
+            {% set label = '1-day' if a.contract_type == '1jour'
+                           else '10-days' if a.contract_type == '10jours'
+                           else '1-month' %}
+            
+            <tr
+              id="assignment-row-{{ a.id }}"
+              class="row-contract-{{ a.contract_type }} status-{{ a.status }}"
+              data-assignment-id="{{ a.id }}"
+              data-staff-name="{{ a.staff.nickname if a.staff else a.archived_staff_name }}"
+              data-start-date="{{ a.start_date.isoformat() }}"
+              data-end-date="{{ a.end_date.isoformat() }}"
+              data-base-salary="{{ a.base_salary or 0 }}"
+              data-contract-days="{{ row.contract_days or 1 }}"
+              data-contract-type="{{ a.contract_type }}"
+              data-current-status="{{ a.status }}"
+              data-role="{{ a.role }}"
+            >
+              <td>
+                {% if a.staff %}
+                  <div class="staff-cell">
+                    <img src="{{ url_for('staff.uploaded_file', filename=a.staff.photo_url.split('/')[-1]) if a.staff.photo_url and 'default' not in a.staff.photo_url else url_for('static', filename='images/default_avatar.png') }}" alt="{{ a.staff.nickname }}">
+                    <div class="staff-cell-info">
+                      <a href="{{ url_for('staff.profile_detail', profile_id=a.staff.id) }}">
+                        <strong>{{ a.staff.nickname }}</strong>
+                      </a>
+                      <span class="role-badge">{{ a.role }}</span>
+                    </div>
+                  </div>
+                {% else %}
+                  <div class="staff-cell deleted-staff-cell">
+                    <img src="{{ a.archived_staff_photo if a.archived_staff_photo else url_for('static', filename='images/default_avatar.png') }}" alt="{{ a.archived_staff_name }}">
+                    <div class="staff-cell-info">
+                      <strong>{{ a.archived_staff_name }}</strong>
+                      <span class="role-badge">{{ a.role }}</span>
+                      <small class="muted" style="display: block;">(Deleted)</small>
+                    </div>
+                  </div>
+                {% endif %}
+              </td>
+              <td data-label="Venue">{{ a.venue }}</td>
+              <td data-label="Managed By">
+                  {% if a.manager %} {{ a.manager.username }} {% else %} <span class="muted">—</span> {% endif %}
+              </td>
+              <td data-label="Contract">
+                <span class="contract-badge badge-{{ a.contract_type }}">{{ label }}</span>
+                <small class="muted">({{ '%.0f'|format(a.base_salary or 0) }}฿)</small>
+              </td>
+              <td data-label="Progress">
+                {% if a.status == 'ongoing' %}
+                  {% set worked = row.days_worked|int %}
+                  {% set total = row.original_duration|int %}
+                  {% set percentage = (worked * 100 / total) if total > 0 else 0 %}
+                  <div class="progress-text">{{ worked }} / {{ total }} days</div>
+                  <div class="progress-bar-container">
+                    <div class="progress-bar" style="width: {{ percentage }}%;"></div>
+                  </div>
+                {% else %}
+                  <span class="muted">—</span>
+                {% endif %}
+              </td>
+              <td class="days-worked-cell" data-label="Days Worked">{{ row.days_worked }}</td>
+              <td class="profit-cell" data-label="Profit">
+                  <div class="tooltip-container">
+                      <span class="{% if stats.profit > 0 %}profit-positive{% elif stats.profit < 0 %}profit-negative{% endif %}">
+                          {{ '%.0f'|format(stats.profit) }} ฿
+                      </span>
+                      <div class="tooltip">
+                          <div class="tooltip-item"><span>Drinks Sold:</span> <strong>{{ stats.drinks }}</strong></div>
+                          <div class="tooltip-item"><span>Special Comm:</span> <strong>{{ '%.0f'|format(stats.special_comm) }} ฿</strong></div>
+                          <div class="tooltip-item"><span>Salary Paid:</span> <strong>{{ '%.0f'|format(stats.salary) }} ฿</strong></div>
+                          <div class="tooltip-item"><span>Commission Paid:</span> <strong>{{ '%.0f'|format(stats.commission) }} ฿</strong></div>
+                      </div>
+                  </div>
+              </td>
+              <td data-label="Period">{{ a.start_date.strftime("%d/%m") }} → {{ a.end_date.strftime("%d/%m") }}</td>
+              <td>
+                <div class="actions">
+                  {% if a.status == 'ongoing' %}
+                    <button class="button button-primary manage-performance-btn">Manage</button>
+                    <button class="button button-secondary end-contract-btn">End</button>
+                    <button class="button button-danger delete-contract-btn">Del</button>
+                  {% elif a.status == 'archived' %}
+                    <span class="status-badge status-badge-archived">Archived</span>
+                    <button class="button button-secondary manage-performance-btn">Details</button>
+                    <button class="button button-danger delete-contract-btn" data-assignment-id="{{ a.id }}" data-staff-name="{{ a.staff.nickname if a.staff else a.archived_staff_name }}" style="padding: 4px 8px; font-size: 0.8rem;" title="Permanently delete this contract">Del</button>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="10" class="text-center">
+              {# CORRECTED: dispatch.board -> dispatch.dispatch_board #}
+              No contracts found. Use the <a href="{{ url_for('dispatch.dispatch_board') }}">Dispatch Board</a> to create one.
+            </td>
+          </tr>
+        {% endif %}
+        </tbody>
+      </table>
+  </div>
+</div>
+
+<div id="editRecordModal" class="modal-overlay hidden">
+    <div class="modal-content" id="performanceModalCard">
+    <div class="modal-header">
+        <h3>
+      Manage performance for <span id="modalStaffName"></span>
+      <span id="modalContractBadge" class="contract-badge">—</span>
+      <span id="modalRoleBadge" class="role-badge" style="vertical-align: middle;"></span>
+    </h3>
+      <button id="closeModalBtn" class="modal-close-btn">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="editRecordForm">
+        <input type="hidden" id="assignmentId" name="assignment_id">
+        <input type="hidden" id="contractDays" name="contract_days">
+        <input type="hidden" id="contractBaseSalary" name="contract_base_salary">
+        <input type="hidden" id="contractStart" name="contract_start">
+        <input type="hidden" id="contractEnd" name="contract_end">
+        <div class="form-group">
+          <label for="recordDate"><strong>Select date (within contract period)</strong></label>
+          <div style="display:flex; gap:12px; align-items:center;">
+            <input type="date" id="recordDate" name="record_date" style="flex:1;">
+          </div>
+          <small class="muted">Contract period: <span id="periodText"></span></small>
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group"><label for="arrivalTime">Arrival time (e.g., 19:30)</label><input type="time" id="arrivalTime" name="arrival_time"><small class="muted">Late after 19:30 = 5 THB/min</small></div>
+          <div class="form-group"><label for="departureTime">Departure time (e.g., 02:00)</label><input type="time" id="departureTime" name="departure_time"></div>
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group"><label for="drinksSold">Drinks sold (#)</label><input type="number" id="drinksSold" name="drinks_sold" min="0" value="0"><small class="muted">Staff commission: 100 THB/drink</small></div>
+          <div class="form-group"><label for="specialCommissions">Special sales (THB)</label><input type="number" id="specialCommissions" name="special_commissions" min="0" step="1" value="0"><small class="muted">Extra bar revenue</small></div>
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group"><label for="bonus">Bonus (+ THB)</label><input type="number" id="bonus" name="bonus" step="1" value="0"></div>
+          <div class="form-group"><label for="malus">Malus (- THB)</label><input type="number" id="malus" name="malus" step="1" value="0"></div>
+        </div>
+        <hr>
+        <h4>Calculated summary (per day)</h4>
+        <div class="form-grid-2 summary-grid">
+          <div class="form-group"><label>Lateness penalty (THB)</label><input type="number" id="latenessPenalty" name="lateness_penalty" readonly></div>
+          <div class="form-group"><label>Commission paid (THB)</label><input type="number" id="commissionPaid" readonly></div>
+          <div class="form-group"><label>Prorated base (THB)</label><input type="number" id="proratedBase" readonly></div>
+          <div class="form-group"><label>Salary paid (THB)</label><input type="number" id="salaryPaid" readonly></div>
+          <div class="form-group"><label>Bar profit (THB)</label><input type="number" id="barProfit" readonly></div>
+        </div>
+        <hr>
+        <h4>Recent history</h4>
+        <div id="recordHistory" class="record-history-list"></div>
+        <div class="modal-footer">
+          <button type="button" id="cancelModalBtn" class="button button-secondary">Cancel</button>
+          <button type="submit" class="button button-primary">Save Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div id="contractSummaryModal" class="modal-overlay hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Contract Completed: <span id="summaryStaffName"></span></h3>
+      <button id="closeSummaryModalBtn" class="modal-close-btn">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="summaryAssignmentId">
+      <p>This contract is complete. All performance data has been entered. Please review the totals below and choose an action.</p>
+      
+      <h4 style="margin-top: 1rem;">Final Summary</h4>
+      
+      <div class="final-summary-grid">
+          <div class="final-summary-row"><label>Total Days Worked:</label> <strong id="summaryTotalDaysWorked"></strong></div>
+          <div class="final-summary-row"><label>Total Drinks Sold:</label> <strong id="summaryTotalDrinks"></strong></div>
+          <div class="final-summary-row"><label>Total Special Comm:</label> <strong id="summaryTotalSpecialComm"></strong></div>
+          <div class="final-summary-row"><label>Total Commission Paid:</label> <strong id="summaryTotalCommission"></strong></div>
+          <div class="final-summary-row"><label>Total Salary Paid:</label> <strong id="summaryTotalSalary"></strong></div>
+          <div class="final-summary-row"><label>Total Bar Profit:</label> <strong id="summaryTotalProfit"></strong></div>
+      </div>
+
+      <hr style="margin-top: 1.5rem;">
+
+      <h4>Final Actions</h4>
+      <div class="modal-footer" style="justify-content: space-between; margin-top: 1rem;">
+        <button id="summaryPdfBtn" class="button button-secondary">Download PDF</button>
+        <div style="display: flex; gap: 0.5rem;">
+          <button id="summaryArchiveBtn" class="button button-primary">Salary Already Paid (Archive)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - OS Agency</title>
-    <!-- Google Fonts: Poppins -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -20,7 +19,6 @@
             --success-color: #4caf50;
             --error-color: #f44336;
         }
-
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -31,7 +29,6 @@
                 transform: translateY(0);
             }
         }
-
         body {
             font-family: 'Poppins', sans-serif;
             background: var(--background-dark);
@@ -43,7 +40,6 @@
             margin: 0;
             color: var(--text-color);
         }
-
         .login-container {
             background: var(--card-dark);
             padding: 2.5rem 3rem;
@@ -55,41 +51,30 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
             animation: fadeIn 0.8s ease-in-out;
         }
-
-        /* --- MODIFIED SECTION BELOW --- */
-
-        /* NEW: Targeting the brand name (h1) to make it huge */
         .login-container h1 {
-            font-size: 3rem; /* Much larger font size */
+            font-size: 3rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 3px;
             color: #ffffff;
             margin-bottom: 0.5rem;
         }
-
-        /* NEW: Styling the sub-heading (p) to be more discreet */
         .login-container .tagline {
             font-size: 1rem;
             font-weight: 400;
             color: var(--text-muted);
             margin-bottom: 2rem;
         }
-        
-        /* --- END OF MODIFIED SECTION --- */
-
         .form-group {
             margin-bottom: 1.5rem;
             text-align: left;
         }
-
         .form-group label {
             display: block;
             margin-bottom: 0.5rem;
             color: var(--text-muted);
             font-size: 0.9rem;
         }
-
         .form-group input {
             width: 100%;
             padding: 0.85rem 1rem;
@@ -101,13 +86,11 @@
             transition: border-color 0.3s, box-shadow 0.3s;
             box-sizing: border-box;
         }
-
         .form-group input:focus {
             outline: none;
             border-color: var(--primary-color);
             box-shadow: 0 0 0 3px rgba(106, 90, 249, 0.3);
         }
-
         .btn-login {
             width: 100%;
             padding: 1rem;
@@ -120,12 +103,10 @@
             font-weight: 600;
             transition: transform 0.2s, box-shadow 0.2s;
         }
-
         .btn-login:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(247, 37, 133, 0.25);
         }
-
         .alert {
             padding: 1rem;
             margin-bottom: 1.5rem;
@@ -134,7 +115,6 @@
             text-align: center;
             opacity: 0.95;
         }
-        
         .alert-danger { background-color: var(--error-color); }
         .alert-info { background-color: var(--primary-color); }
     </style>
@@ -142,7 +122,6 @@
 <body>
     <div class="login-container">
         
-        <!-- MODIFIED: Swapped H1 and P for better structure and styling -->
         <h1>OS Agency</h1>
         <p class="tagline">Admin Access</p>
 
@@ -154,7 +133,7 @@
           {% endif %}
         {% endwith %}
         
-        <form method="POST" action="{{ url_for('login') }}">
+        <form method="POST" action="{{ url_for('auth.login') }}">
             <div class="form-group">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" required>

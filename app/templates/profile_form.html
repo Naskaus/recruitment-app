@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+  <h2>{{ 'Edit Profile' if edit_mode else 'New Profile' }}</h2>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div id="form-response" class="alert hidden"></div>
+
+    <form id="profileForm"
+          data-mode="{{ 'edit' if edit_mode else 'create' }}"
+          {% if edit_mode %}data-id="{{ profile.id }}"{% endif %}
+          
+          {# CORRECTED: Only render routes that require an ID when in edit_mode #}
+          data-create-url="{{ url_for('staff.create_profile') }}"
+          data-redirect-list-url="{{ url_for('staff.staff_list') }}"
+          {% if edit_mode %}
+          data-update-url-template="{{ url_for('staff.update_profile', profile_id='_PROFILE_ID_PLACEHOLDER_') }}"
+          data-redirect-detail-url-template="{{ url_for('staff.profile_detail', profile_id='_PROFILE_ID_PLACEHOLDER_') }}"
+          {% endif %}
+
+          enctype="multipart/form-data"
+          novalidate>
+
+      <div class="form-grid-3">
+        <div class="form-group">
+          <label for="nickname">Nickname <span style="color:#d33">*</span></label>
+          <input type="text" id="nickname" name="nickname" required
+                 value="{{ profile.nickname if edit_mode else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="staff_id">Staff ID</label>
+          <input type="text" id="staff_id" name="staff_id"
+                 placeholder="e.g., 007"
+                 value="{{ profile.staff_id if edit_mode and profile.staff_id else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="preferred_position">Preferred Position</label>
+          <select id="preferred_position" name="preferred_position">
+            <option value="">-- Select --</option>
+            <option value="Dancer" {% if edit_mode and profile.preferred_position == 'Dancer' %}selected{% endif %}>Dancer</option>
+            <option value="Hostess" {% if edit_mode and profile.preferred_position == 'Hostess' %}selected{% endif %}>Hostess</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label for="first_name">First name</label>
+          <input type="text" id="first_name" name="first_name"
+                 value="{{ profile.first_name if edit_mode else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="last_name">Last name</label>
+          <input type="text" id="last_name" name="last_name"
+                 value="{{ profile.last_name if edit_mode else '' }}">
+        </div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label for="phone">Phone</label>
+          <input type="text" id="phone" name="phone"
+                 value="{{ profile.phone if edit_mode else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="line_id">LINE ID</label>
+          <input type="text" id="line_id" name="line_id"
+                 value="{{ profile.line_id if edit_mode else '' }}">
+        </div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label for="instagram">Instagram</label>
+          <input type="text" id="instagram" name="instagram"
+                 value="{{ profile.instagram if edit_mode else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="facebook">Facebook</label>
+          <input type="text" id="facebook" name="facebook"
+                 value="{{ profile.facebook if edit_mode else '' }}">
+        </div>
+      </div>
+
+      <div class="form-grid-3">
+        <div class="form-group">
+          <label for="dob_day">DOB Day</label>
+          <select id="dob_day" name="dob_day">
+            {% for d in days %}
+            {% set sel = (edit_mode and profile.dob and profile.dob.day == d) %}
+            <option value="{{ d }}" {% if sel %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="dob_month">DOB Month</label>
+          <select id="dob_month" name="dob_month">
+            {% for m in months %}
+            {% set sel = (edit_mode and profile.dob and profile.dob.month == m) %}
+            <option value="{{ m }}" {% if sel %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="dob_year">DOB Year</label>
+          <select id="dob_year" name="dob_year">
+            {% for y in years %}
+            {% set sel = (edit_mode and profile.dob and profile.dob.year == y) %}
+            <option value="{{ y }}" {% if sel %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label for="height">Height (cm)</label>
+          <input type="number" id="height" name="height" min="120" max="220"
+                 value="{{ profile.height if edit_mode and profile.height else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="weight">Weight (kg)</label>
+          <input type="number" id="weight" name="weight" step="0.1" min="35" max="120"
+                 value="{{ profile.weight if edit_mode and profile.weight else '' }}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes" rows="4" placeholder="Add any relevant notes here...">{{ profile.notes if edit_mode and profile.notes else '' }}</textarea>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label for="photo">Photo</label>
+          <input type="file" id="photo" name="photo" accept="image/*">
+          <small class="muted">Choose a JPG/PNG (max a few MB)</small>
+        </div>
+
+        <div class="form-group">
+          <label>Preview</label>
+          <div class="photo-preview">
+            <img id="photoPreview"
+                 src="{{ profile.photo_url if edit_mode and profile.photo_url else '' }}"
+                 alt="Preview"
+                 {% if not (edit_mode and profile.photo_url) %}class="hidden"{% endif %}>
+            <div id="photoPlaceholder" class="{% if edit_mode and profile.photo_url %}hidden{% else %}placeholder{% endif %}">
+              No photo selected
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <a href="{{ url_for('staff.staff_list') }}" class="button button-secondary" type="button">Cancel</a>
+        <button id="profileSubmitBtn" type="submit" class="button button-primary">
+          {{ 'Update Profile' if edit_mode else 'Create Profile' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  .form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+  .form-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; }
+  .form-group label { display:block; margin-bottom:.35rem; }
+  .form-group input, .form-group select, .form-group textarea { width:100%; }
+
+  /* Preview carrée et cadrée */
+  .photo-preview { width:140px; height:140px; border:1px dashed #ccc; padding:0; display:flex; align-items:center; justify-content:center; }
+  .photo-preview img { width:100%; height:100%; object-fit:cover; border-radius:8px; display:block; }
+
+  .placeholder { color:#888; }
+  .hidden { display:none; }
+  .alert { margin-bottom:1rem; padding:.5rem .75rem; border-radius:4px; }
+  .alert.success { background:#e8f7ee; color:#0b6b2e; }
+  .alert.error { background:#fdecea; color:#b3261e; }
+</style>
+
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('profileForm');
+  const submitBtn = document.getElementById('profileSubmitBtn');
+  const formResponseDiv = document.getElementById('form-response');
+
+  // --- Photo preview (no changes here)
+  const photoInput = document.getElementById('photo');
+  const photoPreview = document.getElementById('photoPreview');
+  const photoPlaceholder = document.getElementById('photoPlaceholder');
+
+  if (photoInput) {
+    photoInput.addEventListener('change', (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        photoPreview.src = e.target.result;
+        photoPreview.classList.remove('hidden');
+        photoPlaceholder.classList.add('hidden');
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // --- Submit AJAX
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    formResponseDiv.className = 'alert hidden'; // Reset classes
+
+    const nickname = document.getElementById('nickname').value.trim();
+    if (!nickname) {
+      formResponseDiv.textContent = 'Nickname is required.';
+      formResponseDiv.classList.add('error');
+      formResponseDiv.classList.remove('hidden');
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
+
+    const mode = form.dataset.mode;
+    const profileId = form.dataset.id;
+    
+    let url;
+    if (mode === 'edit') {
+        // The data attribute only exists in edit mode, so this code is safe
+        const urlTemplate = form.dataset.updateUrlTemplate;
+        url = urlTemplate.replace('_PROFILE_ID_PLACEHOLDER_', profileId);
+    } else {
+        url = form.dataset.createUrl;
+    }
+
+    const fd = new FormData(form);
+
+    try {
+      const res = await fetch(url, { method: 'POST', body: fd });
+      const data = await res.json();
+
+      if (res.ok && data.status === 'success') {
+        formResponseDiv.textContent = data.message || 'Saved.';
+        formResponseDiv.classList.add('success');
+        formResponseDiv.classList.remove('hidden');
+        
+        setTimeout(() => {
+          if (mode === 'edit') {
+            const redirectTemplate = form.dataset.redirectDetailUrlTemplate;
+            window.location.href = redirectTemplate.replace('_PROFILE_ID_PLACEHOLDER_', profileId);
+          } else {
+            // After creation, the new ID is in data.profile_id
+            const redirectTemplate = form.dataset.redirectDetailUrlTemplate;
+            if (data.profile_id && redirectTemplate) {
+                 window.location.href = redirectTemplate.replace('_PROFILE_ID_PLACEHOLDER_', data.profile_id);
+            } else {
+                 window.location.href = form.dataset.redirectListUrl; // Fallback
+            }
+          }
+        }, 900);
+      } else {
+        throw new Error((data && data.message) ? data.message : 'An error occurred.');
+      }
+    } catch (err) {
+      formResponseDiv.textContent = err.message || 'Network error. Please try again.';
+      formResponseDiv.classList.add('error');
+      formResponseDiv.classList.remove('hidden');
+      submitBtn.disabled = false;
+      submitBtn.textContent = (mode === 'edit') ? 'Update Profile' : 'Create Profile';
+    }
+  });
+});
+</script>
+{% endblock %}

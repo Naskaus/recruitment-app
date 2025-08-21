@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Dispatch Board</h2>
+    <div class="filter-controls">
+        <label for="statusFilter">Filter available staff:</label>
+        <select id="statusFilter">
+            <option value="all">All Statuses</option>
+            {% for status in statuses %}
+                <option value="{{ status | lower | replace(' ', '-') }}">{{ status }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<div class="dispatch-board">
+    <div class="dispatch-column">
+        <div class="dispatch-column-header">
+            <h3>Available</h3>
+            <span class="staff-count" id="available-staff-count">{{ available_staff|length }}</span>
+        </div>
+        <div class="dispatch-list" data-venue="available">
+            {% for s in available_staff %}
+            <div class="dispatch-card" data-id="{{ s.id }}" data-status="{{ s.status | lower | replace(' ', '-') }}">
+                <img src="{{ url_for('staff.uploaded_file', filename=s.photo_url.split('/')[-1]) if s.photo_url and 'default' not in s.photo_url else url_for('static', filename='images/default_avatar.png') }}" alt="{{ s.nickname }}">
+                <div class="dispatch-card-info">
+                    <strong>{{ s.nickname }}</strong>
+                    {% if s.preferred_position %}
+                        <span class="role-badge">{{ s.preferred_position }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div class="dispatch-empty-state">
+                <p>No staff available.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% for v in venues %}
+    <div class="dispatch-column">
+        <div class="dispatch-column-header">
+            <h3>{{ v }}</h3>
+            <span class="staff-count">{{ dispatched_staff[v]|length }}</span>
+        </div>
+        <div class="dispatch-list" data-venue="{{ v }}">
+            {% for s in dispatched_staff[v] %}
+            <div class="dispatch-card" data-id="{{ s.id }}">
+                <img src="{{ url_for('staff.uploaded_file', filename=s.photo_url.split('/')[-1]) if s.photo_url and 'default' not in s.photo_url else url_for('static', filename='images/default_avatar.png') }}" alt="{{ s.nickname }}">
+                <div class="dispatch-card-info">
+                    <strong>{{ s.nickname }}</strong>
+                    <span class="role-badge">{{ s.current_assignment.role if s.current_assignment else 'Assigned' }}</span>
+                </div>
+            </div>
+            {% else %}
+            <div class="dispatch-empty-state">
+                <p>No staff assigned.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div id="assignmentModal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>New Assignment for <strong id="assignmentStaffName" class="text-primary">Staff</strong></h3>
+            <button id="closeAssignmentModalBtn" class="modal-close-btn" aria-label="Close">&times;</button>
+        </div>
+        <form id="assignmentForm" novalidate>
+            <div class="modal-body">
+                <input type="hidden" id="assignmentStaffId" name="staff_id">
+                
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="assignmentVenue">Venue</label>
+                        <input type="text" id="assignmentVenue" name="venue" readonly class="readonly-input">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="startDate">Start Date</label>
+                        <input type="date" id="startDate" name="start_date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contractType">Contract Type</label>
+                        <select id="contractType" name="contract_type" required>
+                            <option value="1jour">1 Day</option>
+                            <option value="10jours" selected>10 Days</option>
+                            <option value="1mois">1 Month</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="baseSalary">Base Salary (THB)</label>
+                        <input type="number" id="baseSalary" name="base_salary" step="100" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="assignmentRole">Role</label>
+                        <select id="assignmentRole" name="role" required>
+                            </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="assignmentManager">Managed By</label>
+                        <select id="assignmentManager" name="managed_by_user_id" required>
+                            </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="cancelAssignmentModalBtn" class="button button-secondary">Cancel</button>
+                <button type="submit" class="button button-primary">Create Assignment</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    /* Specific styles for this page */
+    .text-primary { color: var(--color-accent-primary); }
+    .readonly-input { background-color: var(--color-main-bg); cursor: not-allowed; }
+    .dispatch-empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: var(--color-text-secondary);
+        font-style: italic;
+    }
+</style>
+
+{% endblock %}

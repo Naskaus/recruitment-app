@@ -5,10 +5,22 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app.models import db, User
 from functools import wraps
 
-# Définition du Blueprint
+# Imports for WTF-Forms
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, SubmitField
+from wtforms.validators import DataRequired
+
+# Blueprint Definition
 auth_bp = Blueprint('auth', __name__, template_folder='../templates')
 
-# Décorateur pour les Super-Admins
+# --- Form Classes ---
+class LoginForm(FlaskForm):
+    """Login form."""
+    username = StringField('Username', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Login')
+
+# Decorator for Super-Admins
 def super_admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -22,18 +34,18 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('staff.staff_list'))
     
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        user = User.query.filter_by(username=username).first()
-        if not user or not user.check_password(password):
+    form = LoginForm()
+    if form.validate_on_submit():
+        # This block now only runs if the form is POSTed and is valid (including CSRF token)
+        user = User.query.filter_by(username=form.username.data).first()
+        if not user or not user.check_password(form.password.data):
             flash('Invalid username or password.', 'danger')
             return redirect(url_for('auth.login'))
         
         login_user(user, remember=True)
         return redirect(url_for('staff.staff_list'))
         
-    return render_template('login.html')
+    return render_template('login.html', form=form)
 
 @auth_bp.route('/logout')
 @login_required

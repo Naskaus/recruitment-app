@@ -27,7 +27,7 @@
     <div class="profile-detail-grid">
 
       <div class="profile-photo-section">
-        <img src="{{ profile.photo_url }}" alt="Photo of {{ profile.nickname }}" class="profile-photo-large">
+        <img src="{{ url_for('staff.uploaded_file', filename=profile.photo_url) if profile.photo_url else url_for('static', filename='images/default_avatar.png') }}" alt="Photo of {{ profile.nickname }}" class="profile-photo-large">
         <div class="profile-main-names">
           <h3>{{ profile.nickname }}</h3>
           <p>{{ profile.first_name or '' }} {{ profile.last_name or '' }}</p>

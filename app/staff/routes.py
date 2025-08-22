@@ -14,7 +14,7 @@ import pathlib
 # Blueprint definition
 staff_bp = Blueprint('staff', __name__, template_folder='../templates', url_prefix='/staff')
 
-# --- Constantes (à déplacer plus tard) ---
+# --- Constants (to be moved later) ---
 CONTRACT_TYPES = {"1jour": 1, "10jours": 10, "1mois": 30}
 DRINK_STAFF_COMMISSION = 100
 DRINK_BAR_PRICE = 120
@@ -103,7 +103,7 @@ def profile_detail(profile_id):
                (not start_date or a.end_date >= start_date)
         ]
 
-    # --- CORRECTED KPI CALCULATION LOGIC ---
+    # --- KPI CALCULATION LOGIC ---
     total_days_worked = 0
     total_drinks_sold = 0
     total_special_comm = 0
@@ -145,7 +145,6 @@ def profile_detail(profile_id):
         "total_commission_paid": total_commission_paid,
         "total_bar_profit": total_bar_profit
     }
-    # --- END OF CORRECTION ---
     
     return render_template('profile_detail.html', profile=profile, assignments=assignments_to_process, 
                            history_stats=history_stats, filter_start_date=start_date, filter_end_date=end_date)
@@ -177,7 +176,6 @@ def create_profile():
             unique_filename = f"{uuid.uuid4().hex}_{filename}"
             save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], unique_filename)
             file.save(save_path)
-            # Store only the filename, not the full URL
             new_profile.photo_url = unique_filename
             
     db.session.add(new_profile)
@@ -206,7 +204,6 @@ def update_profile(profile_id):
             unique_filename = f"{uuid.uuid4().hex}_{filename}"
             save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], unique_filename)
             file.save(save_path)
-            # Store only the filename
             profile.photo_url = unique_filename
             
     db.session.commit()
@@ -260,7 +257,6 @@ def profile_pdf(profile_id):
             photo_url_for_pdf = pathlib.Path(photo_path).as_uri()
             
     # Re-run calculation logic for the PDF context
-    # This is identical to the logic in profile_detail
     total_days_worked, total_drinks_sold, total_special_comm, total_salary_paid, total_commission_paid, total_bar_profit = 0, 0, 0, 0, 0, 0
     for assignment in profile.assignments:
         original_duration = CONTRACT_TYPES.get(assignment.contract_type, 1)
@@ -283,7 +279,8 @@ def profile_pdf(profile_id):
         "total_commission_paid": total_commission_paid, "total_bar_profit": total_bar_profit
     }
 
-    rendered_html = render_template('pdf/profile_pdf.html', profile=profile, photo_url=photo_url_for_pdf,
+    # CORRECTED: Template path does not include the 'pdf/' subdirectory
+    rendered_html = render_template('profile_pdf.html', profile=profile, photo_url=photo_url_for_pdf,
                                     history_stats=history_stats, assignments=profile.assignments, 
                                     report_date=datetime.utcnow())
     

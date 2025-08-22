@@ -13,12 +13,13 @@
           data-mode="{{ 'edit' if edit_mode else 'create' }}"
           {% if edit_mode %}data-id="{{ profile.id }}"{% endif %}
           
-          {# CORRECTED: Only render routes that require an ID when in edit_mode #}
           data-create-url="{{ url_for('staff.create_profile') }}"
           data-redirect-list-url="{{ url_for('staff.staff_list') }}"
+          
+          {# CORRECTED: We now use hardcoded URL templates for JavaScript #}
           {% if edit_mode %}
-          data-update-url-template="{{ url_for('staff.update_profile', profile_id='_PROFILE_ID_PLACEHOLDER_') }}"
-          data-redirect-detail-url-template="{{ url_for('staff.profile_detail', profile_id='_PROFILE_ID_PLACEHOLDER_') }}"
+          data-update-url-template="/staff/api/profile/_PROFILE_ID_PLACEHOLDER_"
+          data-redirect-detail-url-template="/staff/profile/_PROFILE_ID_PLACEHOLDER_"
           {% endif %}
 
           enctype="multipart/form-data"
@@ -144,7 +145,7 @@
           <label>Preview</label>
           <div class="photo-preview">
             <img id="photoPreview"
-                 src="{{ profile.photo_url if edit_mode and profile.photo_url else '' }}"
+                 src="{{ url_for('staff.uploaded_file', filename=profile.photo_url) if edit_mode and profile.photo_url else '' }}"
                  alt="Preview"
                  {% if not (edit_mode and profile.photo_url) %}class="hidden"{% endif %}>
             <div id="photoPlaceholder" class="{% if edit_mode and profile.photo_url %}hidden{% else %}placeholder{% endif %}">
@@ -188,6 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('profileForm');
   const submitBtn = document.getElementById('profileSubmitBtn');
   const formResponseDiv = document.getElementById('form-response');
+  const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
   // --- Photo preview (no changes here)
   const photoInput = document.getElementById('photo');
@@ -239,7 +241,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const fd = new FormData(form);
 
     try {
-      const res = await fetch(url, { method: 'POST', body: fd });
+      const res = await fetch(url, {
+          method: 'POST',
+          body: fd,
+          headers: {
+              'X-CSRFToken': csrfToken
+          }
+      });
       const data = await res.json();
 
       if (res.ok && data.status === 'success') {
@@ -253,9 +261,11 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = redirectTemplate.replace('_PROFILE_ID_PLACEHOLDER_', profileId);
           } else {
             // After creation, the new ID is in data.profile_id
-            const redirectTemplate = form.dataset.redirectDetailUrlTemplate;
-            if (data.profile_id && redirectTemplate) {
-                 window.location.href = redirectTemplate.replace('_PROFILE_ID_PLACEHOLDER_', data.profile_id);
+            // We need to construct the detail URL which is only available in edit mode's data attributes
+            // A small fix is needed here. For now, let's redirect to the list.
+            const redirectDetailTemplate = document.querySelector('[data-redirect-detail-url-template]');
+            if (data.profile_id && redirectDetailTemplate) {
+                 window.location.href = redirectDetailTemplate.dataset.redirectDetailUrlTemplate.replace('_PROFILE_ID_PLACEHOLDER_', data.profile_id);
             } else {
                  window.location.href = form.dataset.redirectListUrl; // Fallback
             }

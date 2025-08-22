@@ -163,18 +163,32 @@ def list_performance_for_assignment(assignment_id):
     records = PerformanceRecord.query.filter_by(assignment_id=assignment_id) \
                                      .order_by(PerformanceRecord.record_date.desc()).all()
     original_days = CONTRACT_TYPES.get(a.contract_type)
+    
+    contract_data = {
+        "start_date": a.start_date.isoformat(),
+        "end_date": a.end_date.isoformat(),
+        "base_salary": a.base_salary,
+        "contract_days": (a.end_date - a.start_date).days + 1,
+        "contract_type": a.contract_type,
+        "original_days": original_days,
+        "status": a.status
+    }
+
+    # --- START OF FINAL FIX ---
+    # A contract is considered complete and ready for summary if the number of records
+    # matches the total number of days in the contract.
+    total_contract_days = (a.end_date - a.start_date).days + 1
+    all_days_recorded = len(records) >= total_contract_days
+
+    # Override status to 'completed' only if all performance records have been filled.
+    if all_days_recorded and a.status == 'ongoing':
+        contract_data['status'] = 'completed'
+    # --- END OF FINAL FIX ---
+
     return jsonify({
         "status": "success",
         "records": [r.to_dict() for r in records],
-        "contract": {
-            "start_date": a.start_date.isoformat(),
-            "end_date": a.end_date.isoformat(),
-            "base_salary": a.base_salary,
-            "contract_days": (a.end_date - a.start_date).days + 1,
-            "contract_type": a.contract_type,
-            "original_days": original_days,
-            "status": a.status
-        }
+        "contract": contract_data
     }), 200
 
 @payroll_bp.route('/api/performance', methods=['POST'])
@@ -286,16 +300,16 @@ def payroll_pdf():
     }
 
     html_for_pdf = render_template('payroll_pdf.html', 
-                                  assignments=rows, 
-                                  summary=summary_stats,
-                                  filters=filter_data,
-                                  report_date=date.today())
+                                   assignments=rows, 
+                                   summary=summary_stats,
+                                   filters=filter_data,
+                                   report_date=date.today())
 
     pdf = HTML(string=html_for_pdf).write_pdf()
 
     return Response(pdf,
-                   mimetype='application/pdf',
-                   headers={'Content-Disposition': 'attachment; filename=payroll_report.pdf'})
+                  mimetype='application/pdf',
+                  headers={'Content-Disposition': 'attachment; filename=payroll_report.pdf'})
 
 @payroll_bp.route('/assignment/<int:assignment_id>/pdf')
 @login_required
@@ -336,11 +350,11 @@ def assignment_pdf(assignment_id):
     }
 
     html_for_pdf = render_template('assignment_pdf.html',
-                                  assignments=rows,
-                                  summary=summary_stats,
-                                  contract_stats=contract_stats,
-                                  filters={},
-                                  report_date=date.today())
+                                   assignments=rows,
+                                   summary=summary_stats,
+                                   contract_stats=contract_stats,
+                                   filters={},
+                                   report_date=date.today())
 
     pdf = HTML(string=html_for_pdf).write_pdf()
 
@@ -348,5 +362,5 @@ def assignment_pdf(assignment_id):
     filename = f"report_{staff_name}_{assignment.start_date.strftime('%Y-%m-%d')}.pdf"
 
     return Response(pdf,
-                   mimetype='application/pdf',
-                   headers={'Content-Disposition': f'attachment; filename={filename}'})
+                  mimetype='application/pdf',
+                  headers={'Content-Disposition': f'attachment; filename={filename}'})

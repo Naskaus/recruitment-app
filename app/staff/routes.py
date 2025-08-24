@@ -1,9 +1,9 @@
 # app/staff/routes.py
 
 from flask import (Blueprint, render_template, request, jsonify, redirect,
-                   url_for, current_app, Response, send_from_directory)
-from flask_login import login_required
-from app.models import db, StaffProfile, Assignment, User, PerformanceRecord
+                   url_for, current_app, Response, send_from_directory, abort)
+from flask_login import login_required, current_user
+from app.models import db, StaffProfile, Assignment, User, PerformanceRecord, Venue
 from werkzeug.utils import secure_filename
 from datetime import datetime, date
 import os
@@ -18,6 +18,7 @@ staff_bp = Blueprint('staff', __name__, template_folder='../templates', url_pref
 CONTRACT_TYPES = {"1jour": 1, "10jours": 10, "1mois": 30}
 DRINK_STAFF_COMMISSION = 100
 DRINK_BAR_PRICE = 120
+ALLOWED_STATUSES = ["Active", "Working", "Quiet", "Screening", "Rejected", "Blacklisted"]
 
 def allowed_file(filename):
     """Checks if the file extension is allowed."""
@@ -29,12 +30,15 @@ def allowed_file(filename):
 @staff_bp.route('/')
 @login_required
 def staff_list():
-    """Displays the list of staff with sorting and searching."""
+    """Displays the list of staff with sorting and searching, scoped by agency."""
+    if not current_user.agency_id:
+        abort(403, "User not associated with an agency.")
+
     search_nickname = request.args.get('search_nickname', '').strip()
     sort_by = request.args.get('sort_by', 'created_at')
     sort_order = request.args.get('sort_order', 'desc')
 
-    query = StaffProfile.query
+    query = StaffProfile.query.filter_by(agency_id=current_user.agency_id)
 
     if search_nickname:
         query = query.filter(StaffProfile.nickname.ilike(f'%{search_nickname}%'))
@@ -59,17 +63,26 @@ def staff_list():
         query = query.order_by(sort_column.asc())
 
     all_profiles = query.all()
-    return render_template('staff_list.html', profiles=all_profiles, statuses=["Active", "Working", "Quiet"],
-        current_filters={'search_nickname': search_nickname, 'sort_by': sort_by, 'sort_order': sort_order})
+    
+    # Get venues for the current agency
+    venues = Venue.query.filter_by(agency_id=current_user.agency_id).order_by(Venue.name).all()
+    
+    return render_template('staff_list.html', profiles=all_profiles, statuses=ALLOWED_STATUSES,
+        venues=venues, current_filters={'search_nickname': search_nickname, 'sort_by': sort_by, 'sort_order': sort_order})
 
 @staff_bp.route('/profile/new', methods=['GET'])
 @staff_bp.route('/profile/<int:profile_id>/edit', methods=['GET'])
 @login_required
 def profile_form(profile_id=None):
     """Renders the form for both creating a new profile and editing an existing one."""
+    if not current_user.agency_id:
+        abort(403, "User not associated with an agency.")
+
     edit_mode = profile_id is not None
-    profile = StaffProfile.query.get_or_404(profile_id) if edit_mode else None
-    
+    profile = None
+    if edit_mode:
+        profile = StaffProfile.query.filter_by(id=profile_id, agency_id=current_user.agency_id).first_or_404()
+
     current_year = date.today().year
     years = range(current_year - 18, current_year - 60, -1)
     
@@ -80,9 +93,12 @@ def profile_form(profile_id=None):
 @login_required
 def profile_detail(profile_id):
     """Displays the detailed view of a single staff profile."""
-    profile = StaffProfile.query.options(
+    if not current_user.agency_id:
+        abort(403, "User not associated with an agency.")
+
+    profile = StaffProfile.query.filter_by(id=profile_id, agency_id=current_user.agency_id).options(
         db.joinedload(StaffProfile.assignments).subqueryload(Assignment.performance_records)
-    ).get_or_404(profile_id)
+    ).first_or_404()
     
     start_date_str = request.args.get('start_date')
     end_date_str = request.args.get('end_date')
@@ -156,6 +172,9 @@ def profile_detail(profile_id):
 @login_required
 def create_profile():
     """API endpoint to create a new profile."""
+    if not current_user.agency_id:
+        return jsonify({'status': 'error', 'message': 'User not associated with an agency.'}), 403
+
     data = request.form
     if not data.get('nickname'):
         return jsonify({'status': 'error', 'message': 'Nickname is required.'}), 400
@@ -164,7 +183,9 @@ def create_profile():
     except (ValueError, KeyError):
         return jsonify({'status': 'error', 'message': 'Invalid date of birth provided.'}), 400
         
-    new_profile = StaffProfile(dob=dob)
+    # --- FIX: Associate the new profile with the user's agency ---
+    new_profile = StaffProfile(dob=dob, agency_id=current_user.agency_id)
+    
     for key, value in data.items():
         if hasattr(new_profile, key) and value:
             setattr(new_profile, key, value)
@@ -186,7 +207,7 @@ def create_profile():
 @login_required
 def update_profile(profile_id):
     """API endpoint to update an existing profile."""
-    profile = StaffProfile.query.get_or_404(profile_id)
+    profile = StaffProfile.query.filter_by(id=profile_id, agency_id=current_user.agency_id).first_or_404()
     data = request.form
     for key, value in data.items():
         if hasattr(profile, key) and key not in ['dob_day', 'dob_month', 'dob_year']:
@@ -213,7 +234,7 @@ def update_profile(profile_id):
 @login_required
 def delete_profile(profile_id):
     """API endpoint to delete a profile."""
-    profile = StaffProfile.query.get_or_404(profile_id)
+    profile = StaffProfile.query.filter_by(id=profile_id, agency_id=current_user.agency_id).first_or_404()
     if profile.photo_url and 'default' not in profile.photo_url:
         try:
             photo_path = os.path.join(current_app.config['UPLOAD_FOLDER'], profile.photo_url)
@@ -229,10 +250,10 @@ def delete_profile(profile_id):
 @login_required
 def update_staff_status(profile_id):
     """API endpoint to update a staff member's status."""
-    profile = StaffProfile.query.get_or_404(profile_id)
+    profile = StaffProfile.query.filter_by(id=profile_id, agency_id=current_user.agency_id).first_or_404()
     data = request.get_json()
     new_status = data.get('status')
-    if not new_status or new_status not in ["Active", "Working", "Quiet"]:
+    if not new_status or new_status not in ALLOWED_STATUSES:
         return jsonify({'status': 'error', 'message': 'Invalid status provided.'}), 400
     profile.status = new_status
     db.session.commit()
@@ -249,43 +270,75 @@ def uploaded_file(filename):
 @login_required
 def profile_pdf(profile_id):
     """Generates a PDF report for a staff profile."""
-    profile = StaffProfile.query.get_or_404(profile_id)
-    photo_url_for_pdf = None
-    if profile.photo_url and 'default' not in profile.photo_url:
-        photo_path = os.path.join(current_app.config['UPLOAD_FOLDER'], profile.photo_url)
-        if os.path.exists(photo_path):
-            photo_url_for_pdf = pathlib.Path(photo_path).as_uri()
+    try:
+        profile = StaffProfile.query.filter_by(id=profile_id, agency_id=current_user.agency_id).first_or_404()
+        photo_url_for_pdf = None
+        if profile.photo_url and 'default' not in profile.photo_url:
+            photo_path = os.path.join(current_app.config['UPLOAD_FOLDER'], profile.photo_url)
+            if os.path.exists(photo_path):
+                photo_url_for_pdf = pathlib.Path(photo_path).as_uri()
             
-    # Re-run calculation logic for the PDF context
-    total_days_worked, total_drinks_sold, total_special_comm, total_salary_paid, total_commission_paid, total_bar_profit = 0, 0, 0, 0, 0, 0
-    for assignment in profile.assignments:
-        original_duration = CONTRACT_TYPES.get(assignment.contract_type, 1)
-        base_daily_salary = (assignment.base_salary / original_duration) if original_duration > 0 else 0
-        for record in assignment.performance_records:
-            daily_salary = (base_daily_salary + (record.bonus or 0) - (record.malus or 0) - (record.lateness_penalty or 0))
-            daily_commission = (record.drinks_sold or 0) * DRINK_STAFF_COMMISSION
-            bar_revenue = ((record.drinks_sold or 0) * DRINK_BAR_PRICE) + (record.special_commissions or 0)
-            daily_profit = bar_revenue - daily_salary
-            total_salary_paid += daily_salary
-            total_commission_paid += daily_commission
-            total_bar_profit += daily_profit
-            total_drinks_sold += record.drinks_sold or 0
-            total_special_comm += record.special_commissions or 0
-        total_days_worked += len(assignment.performance_records)
+        # Re-run calculation logic for the PDF context
+        total_days_worked, total_drinks_sold, total_special_comm, total_salary_paid, total_commission_paid, total_bar_profit = 0, 0, 0, 0, 0, 0
+        
+        # Calculate stats for each assignment and create a list with stats
+        assignments_with_stats = []
+        for assignment in profile.assignments:
+            original_duration = CONTRACT_TYPES.get(assignment.contract_type, 1)
+            base_daily_salary = (assignment.base_salary / original_duration) if original_duration > 0 else 0
+            
+            assignment_stats = {"drinks": 0, "special_comm": 0, "salary": 0, "commission": 0, "profit": 0}
+            
+            for record in assignment.performance_records:
+                daily_salary = (base_daily_salary + (record.bonus or 0) - (record.malus or 0) - (record.lateness_penalty or 0))
+                daily_commission = (record.drinks_sold or 0) * DRINK_STAFF_COMMISSION
+                bar_revenue = ((record.drinks_sold or 0) * DRINK_BAR_PRICE) + (record.special_commissions or 0)
+                daily_profit = bar_revenue - daily_salary
+                
+                assignment_stats["drinks"] += record.drinks_sold or 0
+                assignment_stats["special_comm"] += record.special_commissions or 0
+                assignment_stats["salary"] += daily_salary
+                assignment_stats["commission"] += daily_commission
+                assignment_stats["profit"] += daily_profit
+                
+                total_salary_paid += daily_salary
+                total_commission_paid += daily_commission
+                total_bar_profit += daily_profit
+                total_drinks_sold += record.drinks_sold or 0
+                total_special_comm += record.special_commissions or 0
+            
+            total_days_worked += len(assignment.performance_records)
+            
+            # Create a dict with assignment and its stats
+            assignments_with_stats.append({
+                'assignment': assignment,
+                'contract_stats': assignment_stats
+            })
 
-    history_stats = {
-        "total_days_worked": total_days_worked, "total_drinks_sold": total_drinks_sold,
-        "total_special_comm": total_special_comm, "total_salary_paid": total_salary_paid,
-        "total_commission_paid": total_commission_paid, "total_bar_profit": total_bar_profit
-    }
+        history_stats = {
+            "total_days_worked": total_days_worked, "total_drinks_sold": total_drinks_sold,
+            "total_special_comm": total_special_comm, "total_salary_paid": total_salary_paid,
+            "total_commission_paid": total_commission_paid, "total_bar_profit": total_bar_profit
+        }
 
-    # CORRECTED: Template path does not include the 'pdf/' subdirectory
-    rendered_html = render_template('profile_pdf.html', profile=profile, photo_url=photo_url_for_pdf,
-                                    history_stats=history_stats, assignments=profile.assignments, 
-                                    report_date=datetime.utcnow())
-    
-    pdf = HTML(string=rendered_html).write_pdf()
-    filename = f"profile_{secure_filename(profile.nickname)}_{date.today()}.pdf"
-    
-    return Response(pdf, mimetype='application/pdf', 
-                    headers={'Content-Disposition': f'attachment; filename="{filename}"'})
+        rendered_html = render_template('profile_pdf.html', profile=profile, photo_url=photo_url_for_pdf,
+                                        history_stats=history_stats, assignments=assignments_with_stats, 
+                                        report_date=datetime.utcnow())
+        
+        # Generate PDF with better error handling
+        try:
+            pdf = HTML(string=rendered_html).write_pdf()
+        except Exception as pdf_error:
+            current_app.logger.error(f"PDF generation error for profile {profile_id}: {pdf_error}")
+            return jsonify({'status': 'error', 'message': 'PDF generation failed. Please try again.'}), 500
+        
+        filename = f"profile_{secure_filename(profile.nickname)}_{date.today()}.pdf"
+        
+        response = Response(pdf, mimetype='application/pdf')
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.headers['Content-Length'] = len(pdf)
+        return response
+        
+    except Exception as e:
+        current_app.logger.error(f"Error generating PDF for profile {profile_id}: {e}")
+        return jsonify({'status': 'error', 'message': 'Failed to generate PDF. Please try again.'}), 500

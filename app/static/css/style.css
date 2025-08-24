@@ -532,14 +532,31 @@
                     }
                 
                     /* Status Badge Colors */
-                .status-active { background-color: #67997f; color: #065f46; }
-                .status-working { background-color: #6da3ea; color: #1e40af; } /* NEW */
-                .status-quiet { background-color: #f3a642; color: #9a3412; } /* NEW */
-                .status-on-assignment { background-color: #dbeafe; color: #1e40af; }
-                .status-quiet-recent { background-color: #846742; color: #9a3412; }
-                .status-moderately-active { background-color: #576182; color: #3730a3; }
-                .status-on-holiday { background-color: #fce7f3; color: #9d266b; }
-                .status-inactive-long-time { background-color: #e5e7eb; color: #374151; }
+.status-active, 
+.status-working, 
+.status-quiet, 
+.status-screening, 
+.status-rejected, 
+.status-blacklisted, 
+.status-on-assignment, 
+.status-on-holiday {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: capitalize;
+    border: 1px solid transparent;
+}
+
+.status-active { background-color: #d1fae5; color: #065f46 !important; border-color: #a7f3d0; }
+.status-working { background-color: #dbeafe; color: #1e40af !important; border-color: #bfdbfe; }
+.status-quiet { background-color: #ffedd5; color: #9a3412 !important; border-color: #fed7aa; }
+.status-screening { background-color: #fef9c3; color: #713f12 !important; border-color: #fde68a; }
+.status-rejected { background-color: #e5e7eb; color: #374151 !important; border-color: #d1d5db; }
+.status-blacklisted { background-color: #fecaca; color: #991b1b !important; border-color: #f87171; }
+.status-on-assignment { background-color: #dbeafe; color: #1e40af !important; border-color: #bfdbfe; }
+.status-on-holiday { background-color: #fce7f3; color: #9d266b !important; border-color: #f9a8d4; }
                 
                     .staff-card-footer {
                         display: flex;
@@ -1795,23 +1812,30 @@
                 }
                 
                 /* Applying status colors */
-                .status-changer-select.status-active {
-                    background-color: #d1fae5;
-                    color: #065f46;
-                }
-                .status-changer-select.status-working {
-                    background-color: #dbeafe;
-                    color: #1e40af;
-                }
-                .status-changer-select.status-quiet {
-                    background-color: #ffedd5;
-                    color: #9a3412;
-                }
-                
-                .status-changer-select:disabled {
-                    cursor: not-allowed;
-                    opacity: 0.7;
-                }
+.status-changer-select.status-active {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+.status-changer-select.status-working {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+.status-changer-select.status-quiet {
+    background-color: #ffedd5;
+    color: #9a3412;
+}
+.status-changer-select.status-screening { /* NEW */
+    background-color: #fef9c3;
+    color: #854d0e;
+}
+.status-changer-select.status-rejected { /* NEW */
+    background-color: #e5e7eb;
+    color: #374151;
+}
+.status-changer-select.status-blacklisted { /* NEW */
+    background-color: #fecaca;
+    color: #991b1b;
+}
                 
                 /* ===================================
                    36. Payroll Responsive (DEFINITIVE FIX)

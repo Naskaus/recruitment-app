@@ -84,14 +84,16 @@
                 </tr>
             </thead>
             <tbody>
-                {% for a in assignments %}
+                {% for item in assignments %}
+                {% set a = item.assignment %}
+                {% set stats = item.contract_stats %}
                 <tr>
                     <td>{{ a.start_date.strftime('%d/%m/%y') }} - {{ a.end_date.strftime('%d/%m/%y') }}</td>
-                    <td>{{ a.venue }}</td>
+                    <td>{{ a.venue.name }}</td>
                     <td>{{ a.contract_type }}</td>
                     <td>{{ a.status }}</td>
-                    <td style="text-align: right;" class="{% if a.contract_stats.profit > 0 %}profit-positive{% elif a.contract_stats.profit < 0 %}profit-negative{% endif %}">
-                        {{ '%.0f'|format(a.contract_stats.profit) }} ฿
+                    <td style="text-align: right;" class="{% if stats.profit > 0 %}profit-positive{% elif stats.profit < 0 %}profit-negative{% endif %}">
+                        {{ '%.0f'|format(stats.profit) }} ฿
                     </td>
                 </tr>
                 {% else %}

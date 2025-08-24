@@ -146,21 +146,23 @@
     <div class="grid-container">
         <div class="info-box">
             <h4>Contract Details</h4>
-            <p><strong>Venue:</strong> {{ assignment.venue }}</p>
-            <p><strong>Period:</strong> {{ assignment.start_date.strftime('%d %b %Y') }} - {{ assignment.end_date.strftime('%d %b %Y') }}</p>
+                            <p><strong>Staff ID:</strong> {{ assignment.staff.id if assignment.staff else 'N/A' }}</p>
+            <p><strong>Position:</strong> {{ assignment.contract_role }}</p>
+            <p><strong>Venue:</strong> {{ assignment.venue.name }}</p>
+            <p><strong>Period:</strong> {{ assignment.start_date.strftime('%d %b %Y') }} - {{ (assignment.start_date + timedelta(days=9) if assignment.contract_type == '10jours' else assignment.start_date + timedelta(days=29) if assignment.contract_type == '1mois' else assignment.start_date).strftime('%d %b %Y') }}</p>
             <p><strong>Type:</strong> {{ '1-day' if assignment.contract_type == '1jour' else '10-days' if assignment.contract_type == '10jours' else '1-month' }}</p>
-            <p><strong>Base Salary:</strong> {{ '%.0f'|format(assignment.base_salary) }} ฿</p>
+            <p><strong>Base Salary:</strong> {{ '{:,}'.format(assignment.base_salary) }} ฿</p>
             <p><strong>Manager:</strong> {{ assignment.manager.username if assignment.manager else 'N/A' }}</p>
         </div>
         <div class="summary-box">
             <h4>Performance Summary</h4>
             <table>
-                <tr><td>Days Worked:</td><td>{{ assignments[0].days_worked }}</td></tr>
-                <tr><td>Drinks Sold:</td><td>{{ '%.0f'|format(contract_stats.drinks) }}</td></tr>
-                <tr><td>Special Comm:</td><td>{{ '%.0f'|format(contract_stats.special_comm) }} ฿</td></tr>
-                <tr><td>Commission Paid:</td><td>{{ '%.0f'|format(contract_stats.commission) }} ฿</td></tr>
-                <tr><td>Salary Paid:</td><td>{{ '%.0f'|format(contract_stats.salary) }} ฿</td></tr>
-                <tr><td><strong>Total Bar Profit:</strong></td><td class="{% if contract_stats.profit > 0 %}profit-positive{% elif contract_stats.profit < 0 %}profit-negative{% endif %}">{{ '%.0f'|format(contract_stats.profit) }} ฿</td></tr>
+                                 <tr><td>Days Worked:</td><td>{{ assignments[0].days_worked }}</td></tr>
+                 <tr><td>Drinks Sold:</td><td>{{ '{:,}'.format(contract_stats.drinks) }}</td></tr>
+                 <tr><td>Special Comm:</td><td>{{ '{:,}'.format(contract_stats.special_comm) }} ฿</td></tr>
+                 <tr><td>Commission Paid:</td><td>{{ '{:,}'.format(contract_stats.commission) }} ฿</td></tr>
+                 <tr><td>Salary Paid:</td><td>{{ '{:,}'.format(contract_stats.salary) }} ฿</td></tr>
+                 <tr><td><strong>Total Bar Profit:</strong></td><td class="{% if contract_stats.profit > 0 %}profit-positive{% elif contract_stats.profit < 0 %}profit-negative{% endif %}">{{ '{:,}'.format(contract_stats.profit) }} ฿</td></tr>
             </table>
         </div>
     </div>
@@ -184,12 +186,12 @@
                 {% set daily_salary = base_daily + (record.bonus or 0) - (record.malus or 0) - penalty %}
                 {% set daily_profit = ((record.drinks_sold or 0) * 120 + (record.special_commissions or 0)) - daily_salary %}
                 <tr>
-                    <td>{{ record.record_date.strftime('%d %b %Y') }}</td>
-                    <td>{{ record.arrival_time.strftime('%H:%M') if record.arrival_time else 'N/A' }}</td>
-                    <td>{{ record.drinks_sold or 0 }}</td>
-                    <td>{{ '%.0f'|format((record.bonus or 0) - (record.malus or 0)) }} ฿</td>
-                    <td>{{ '%.0f'|format(daily_salary) }} ฿</td>
-                    <td class="{% if daily_profit > 0 %}profit-positive{% elif daily_profit < 0 %}profit-negative{% endif %}">{{ '%.0f'|format(daily_profit) }} ฿</td>
+                                         <td>{{ record.record_date.strftime('%d %b %Y') }}</td>
+                     <td>{{ record.arrival_time.strftime('%H:%M') if record.arrival_time else 'N/A' }}</td>
+                     <td>{{ '{:,}'.format(record.drinks_sold or 0) }}</td>
+                     <td>{{ '{:,}'.format((record.bonus or 0) - (record.malus or 0)) }} ฿</td>
+                     <td>{{ '{:,}'.format(daily_salary) }} ฿</td>
+                     <td class="{% if daily_profit > 0 %}profit-positive{% elif daily_profit < 0 %}profit-negative{% endif %}">{{ '{:,}'.format(daily_profit) }} ฿</td>
                 </tr>
             {% else %}
                 <tr><td colspan="6">No performance records found for this contract.</td></tr>

@@ -50,7 +50,7 @@
             {% for row in assignments %}
                 <tr>
                     <td>{{ row.assignment.staff.nickname if row.assignment.staff else row.assignment.archived_staff_name }}</td>
-                    <td>{{ row.assignment.venue }}</td>
+                    <td>{{ row.assignment.venue.name }}</td>
                     <td>{{ row.assignment.manager.username if row.assignment.manager else 'N/A' }}</td>
                     <td>{{ row.assignment.start_date.strftime('%d/%m/%y') }} - {{ row.assignment.end_date.strftime('%d/%m/%y') }}</td>
                     <td>{{ row.days_worked }}</td>

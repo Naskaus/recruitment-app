@@ -177,12 +177,9 @@
             <button id="closeVenueChoiceModalBtn" class="modal-close-btn" aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
-            {# This list should ideally be passed from the Python route later #}
-            {% set venues = ["Red Dragon", "Mandarin", "Shark"] %}
             <div class="venue-choice-buttons">
                 {% for venue in venues %}
-                    {# CORRECTED: Added 'button-primary' class for blue color #}
-                    <button class="button button-primary" data-venue="{{ venue }}">{{ venue }}</button>
+                    <button class="button button-primary" data-venue="{{ venue.name }}">{{ venue.name }}</button>
                 {% endfor %}
             </div>
         </div>

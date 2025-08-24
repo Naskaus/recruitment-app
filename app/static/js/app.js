@@ -251,49 +251,46 @@
         closeVenueChoiceBtn.addEventListener('click', closeVenueChoiceModal);
     }
 
-    // -----------------------------
     // Dispatch board: DnD + Create assignment modal
-    // -----------------------------
-    const lists = document.querySelectorAll(".dispatch-list");
-    if (lists.length && window.Sortable) {
-      let originalList = null;
+const lists = document.querySelectorAll(".dispatch-list");
+if (lists.length && window.Sortable) {
+  lists.forEach((list) => {
+    new Sortable(list, {
+      group: "dispatch",
+      animation: 150,
+      ghostClass: "sortable-ghost",
+      dragClass: "sortable-drag",
+      onEnd(evt) {
+        const item = evt.item;
+        const originalList = evt.from;
+        const profileId = item?.dataset?.id;
+        const newVenue = evt.to?.dataset?.venue;
+        const staffName = item?.dataset?.name || "Staff";
 
-      lists.forEach((list) => {
-        new Sortable(list, {
-          group: "dispatch",
-          animation: 150,
-          ghostClass: "dispatch-card-ghost",
-          dragClass: "dispatch-card-drag",
-          onStart(evt) {
-            originalList = evt.from;
-          },
-          onEnd(evt) {
-            const item = evt.item;
-            const profileId = item?.dataset?.id;
-            const newVenue = evt.to?.dataset?.venue;
-            const staffName = item?.querySelector("strong")?.textContent || "Staff";
+        // Visually return the card to its original list immediately
+        originalList.appendChild(item);
 
-            if (!profileId || !newVenue) {
-              originalList?.appendChild(item);
-              return;
-            }
-            if (newVenue === "available") {
-              originalList?.appendChild(item);
-              alert("De-assignment will be added later. For now, you cannot move back to 'Available'.");
-              return;
-            }
+        if (!profileId || !newVenue) {
+          return; // Abort if critical data is missing
+        }
 
-            if (typeof window.openAssignmentModal === "function") {
-              window.openAssignmentModal(profileId, staffName, newVenue);
-            } else {
-              alert("Assignment modal not found.");
-            }
-            originalList?.appendChild(item);
-          },
-        });
-      });
-    }
+        if (newVenue === "available") {
+          // Logic for de-assignment can be added here later
+          alert("To de-assign staff, please manage their contract in the Payroll section.");
+          return;
+        }
 
+        // If moved to a valid venue column, open the assignment modal
+        if (typeof window.openAssignmentModal === "function") {
+          window.openAssignmentModal(profileId, staffName, newVenue);
+        } else {
+          console.error("Assignment modal function not found.");
+          alert("Error: Cannot open assignment modal.");
+        }
+      },
+    });
+  });
+}
     // Modal elements (Dispatch)
     const assignmentModal = document.getElementById("assignmentModal");
     const form = document.getElementById("assignmentForm");
@@ -739,6 +736,11 @@
                     alert("Saved successfully");
                     await loadRecord(payload.assignment_id, payload.record_date);
                     await loadPerformanceHistory(payload.assignment_id);
+                    
+                    // Refresh the payroll page to update progress bars
+                    if (window.location.pathname === '/payroll/') {
+                        window.location.reload();
+                    }
                 } catch (err) {
                     alert(err.message || "Network error");
                 } finally {
@@ -795,4 +797,4 @@
       });
   });
 
-})();
+})(); 

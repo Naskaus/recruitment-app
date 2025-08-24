@@ -7,7 +7,7 @@
         <label for="statusFilter">Filter available staff:</label>
         <select id="statusFilter">
             <option value="all">All Statuses</option>
-            {% for status in statuses %}
+            {% for status in ['Active', 'Quiet', 'Screening', 'Rejected', 'Blacklisted'] %}
                 <option value="{{ status | lower | replace(' ', '-') }}">{{ status }}</option>
             {% endfor %}
         </select>
@@ -22,8 +22,8 @@
         </div>
         <div class="dispatch-list" data-venue="available">
             {% for s in available_staff %}
-            <div class="dispatch-card" data-id="{{ s.id }}" data-status="{{ s.status | lower | replace(' ', '-') }}">
-                <img src="{{ url_for('staff.uploaded_file', filename=s.photo_url.split('/')[-1]) if s.photo_url and 'default' not in s.photo_url else url_for('static', filename='images/default_avatar.png') }}" alt="{{ s.nickname }}">
+            <div class="dispatch-card" data-id="{{ s.id }}" data-status="{{ s.status | lower | replace(' ', '-') }}" data-name="{{ s.nickname }}">
+                <img src="{{ url_for('staff.uploaded_file', filename=s.photo_url) if s.photo_url != 'default_avatar.png' else url_for('static', filename='images/default_avatar.png') }}" alt="{{ s.nickname }}">
                 <div class="dispatch-card-info">
                     <strong>{{ s.nickname }}</strong>
                     {% if s.preferred_position %}
@@ -39,19 +39,23 @@
         </div>
     </div>
 
-    {% for v in venues %}
+    {% for venue in venues %}
     <div class="dispatch-column">
         <div class="dispatch-column-header">
-            <h3>{{ v }}</h3>
-            <span class="staff-count">{{ dispatched_staff[v]|length }}</span>
+            <h3>{{ venue.name }}</h3>
+            <span class="staff-count">{{ dispatched_staff.get(venue.name, [])|length }}</span>
         </div>
-        <div class="dispatch-list" data-venue="{{ v }}">
-            {% for s in dispatched_staff[v] %}
-            <div class="dispatch-card" data-id="{{ s.id }}">
-                <img src="{{ url_for('staff.uploaded_file', filename=s.photo_url.split('/')[-1]) if s.photo_url and 'default' not in s.photo_url else url_for('static', filename='images/default_avatar.png') }}" alt="{{ s.nickname }}">
+        <div class="dispatch-list" data-venue="{{ venue.name }}">
+            {% for s in dispatched_staff.get(venue.name, []) %}
+            <div class="dispatch-card" data-id="{{ s.id }}" data-name="{{ s.nickname }}">
+                <img src="{{ url_for('staff.uploaded_file', filename=s.photo_url) if s.photo_url != 'default_avatar.png' else url_for('static', filename='images/default_avatar.png') }}" alt="{{ s.nickname }}">
                 <div class="dispatch-card-info">
                     <strong>{{ s.nickname }}</strong>
-                    <span class="role-badge">{{ s.current_assignment.role if s.current_assignment else 'Assigned' }}</span>
+                    {# FIX: Use selectattr to filter the list of assignments #}
+                    {% set assignment = s.assignments|selectattr('status', 'equalto', 'ongoing')|first %}
+                    {% if assignment %}
+                    <span class="role-badge">{{ assignment.contract_role }}</span>
+                    {% endif %}
                 </div>
             </div>
             {% else %}
@@ -73,18 +77,15 @@
         <form id="assignmentForm" novalidate>
             <div class="modal-body">
                 <input type="hidden" id="assignmentStaffId" name="staff_id">
-                
                 <div class="form-grid-2">
                     <div class="form-group">
                         <label for="assignmentVenue">Venue</label>
-                        <input type="text" id="assignmentVenue" name="venue" readonly class="readonly-input">
+                        <input type="text" id="assignmentVenue" name="venue" readonly>
                     </div>
-
                     <div class="form-group">
                         <label for="startDate">Start Date</label>
                         <input type="date" id="startDate" name="start_date" required>
                     </div>
-
                     <div class="form-group">
                         <label for="contractType">Contract Type</label>
                         <select id="contractType" name="contract_type" required>
@@ -93,22 +94,17 @@
                             <option value="1mois">1 Month</option>
                         </select>
                     </div>
-
                     <div class="form-group">
                         <label for="baseSalary">Base Salary (THB)</label>
                         <input type="number" id="baseSalary" name="base_salary" step="100" required>
                     </div>
-                    
                     <div class="form-group">
                         <label for="assignmentRole">Role</label>
-                        <select id="assignmentRole" name="role" required>
-                            </select>
+                        <select id="assignmentRole" name="role" required></select>
                     </div>
-
                     <div class="form-group">
                         <label for="assignmentManager">Managed By</label>
-                        <select id="assignmentManager" name="managed_by_user_id" required>
-                            </select>
+                        <select id="assignmentManager" name="managed_by_user_id" required></select>
                     </div>
                 </div>
             </div>
@@ -119,17 +115,4 @@
         </form>
     </div>
 </div>
-
-<style>
-    /* Specific styles for this page */
-    .text-primary { color: var(--color-accent-primary); }
-    .readonly-input { background-color: var(--color-main-bg); cursor: not-allowed; }
-    .dispatch-empty-state {
-        text-align: center;
-        padding: 2rem;
-        color: var(--color-text-secondary);
-        font-style: italic;
-    }
-</style>
-
 {% endblock %}

@@ -21,11 +21,17 @@ def compute_end_date(start_date: date, contract_type: str) -> date:
 @dispatch_bp.route('/')
 @login_required
 def dispatch_board():
-    if not current_user.agency_id:
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    if not agency_id:
         abort(403, "User not associated with an agency.")
 
-    agency_id = current_user.agency_id
-    
     all_staff = StaffProfile.query.filter_by(agency_id=agency_id).order_by(StaffProfile.nickname).all()
     venues = Venue.query.filter_by(agency_id=agency_id).order_by(Venue.name).all()
     
@@ -37,7 +43,8 @@ def dispatch_board():
     for s in all_staff:
         if s.id in ongoing_assignments:
             assignment = ongoing_assignments[s.id]
-            if assignment.venue.name in dispatched_staff_map:
+            # Fix: Check if venue exists before accessing its name
+            if assignment.venue and assignment.venue.name in dispatched_staff_map:
                 dispatched_staff_map[assignment.venue.name].append(s)
         else:
             if s.status != 'Working':
@@ -53,11 +60,19 @@ def dispatch_board():
 @login_required
 def get_assignment_form_data():
     """Provides necessary data to populate the assignment form dynamically."""
-    if not current_user.agency_id:
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    if not agency_id:
         return jsonify({"status": "error", "message": "User not associated with an agency."}), 403
 
     try:
-        agency_users = User.query.filter_by(agency_id=current_user.agency_id).order_by(User.username).all()
+        agency_users = User.query.filter_by(agency_id=agency_id).order_by(User.username).all()
         managers = [{"id": user.id, "username": user.username} for user in agency_users]
         
         # --- FIX: Use updated static list for staff positions ---
@@ -75,7 +90,15 @@ def get_assignment_form_data():
 @dispatch_bp.route('/api/assignment', methods=['POST'])
 @login_required
 def create_assignment():
-    if not current_user.agency_id:
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    if not agency_id:
         return jsonify({"status": "error", "message": "User not associated with an agency."}), 403
 
     data = request.get_json() or {}
@@ -89,8 +112,6 @@ def create_assignment():
         managed_by_user_id = int(data.get('managed_by_user_id'))
     except (ValueError, TypeError):
         return jsonify({"status": "error", "message": "Invalid payload. Check data types."}), 400
-    
-    agency_id = current_user.agency_id
     staff = StaffProfile.query.filter_by(id=staff_id, agency_id=agency_id).first()
     if not staff: return jsonify({"status": "error", "message": "Staff not found in your agency."}), 404
     
@@ -123,7 +144,15 @@ def create_assignment():
 @dispatch_bp.route('/api/assignment/<int:assignment_id>/end', methods=['POST'])
 @login_required
 def end_assignment_now(assignment_id):
-    a = Assignment.query.filter_by(id=assignment_id, agency_id=current_user.agency_id).first_or_404()
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    a = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).first_or_404()
     if a.status != 'ongoing':
         return jsonify({"status": "error", "message": "Assignment is not ongoing."}), 400
     
@@ -136,7 +165,7 @@ def end_assignment_now(assignment_id):
             Assignment.staff_id == a.staff_id,
             Assignment.status == 'ongoing',
             Assignment.id != a.id,
-            Assignment.agency_id == current_user.agency_id
+            Assignment.agency_id == agency_id
         ).first()
         if not other_ongoing:
             a.staff.status = 'Active'
@@ -151,7 +180,15 @@ def end_assignment_now(assignment_id):
 @dispatch_bp.route('/api/assignment/<int:assignment_id>', methods=['DELETE'])
 @login_required
 def delete_assignment(assignment_id):
-    a = Assignment.query.filter_by(id=assignment_id, agency_id=current_user.agency_id).first_or_404()
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    a = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).first_or_404()
     db.session.delete(a)
     db.session.commit()
     return jsonify({"status": "success"}), 200
@@ -159,7 +196,15 @@ def delete_assignment(assignment_id):
 @dispatch_bp.route('/api/assignment/<int:assignment_id>/finalize', methods=['POST'])
 @login_required
 def finalize_assignment(assignment_id):
-    a = Assignment.query.filter_by(id=assignment_id, agency_id=current_user.agency_id).first_or_404()
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    a = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).first_or_404()
     data = request.get_json() or {}
     final_status = data.get('status')
 
@@ -175,7 +220,7 @@ def finalize_assignment(assignment_id):
             Assignment.staff_id == a.staff_id,
             Assignment.status == 'ongoing',
             Assignment.id != a.id,
-            Assignment.agency_id == current_user.agency_id
+            Assignment.agency_id == agency_id
         ).first()
         if not other_ongoing:
             a.staff.status = 'Active'

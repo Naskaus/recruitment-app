@@ -70,6 +70,9 @@
                             <a href="{{ url_for('auth.contracts') }}">Manage Contracts</a>
                             <a href="{{ url_for('auth.venues') }}">Manage Venues</a>
                             <a href="{{ url_for('auth.profile_form_config') }}">Manage Profile Form</a>
+                            {% if current_user.role_name == 'WebDev' %}
+                            <a href="{{ url_for('auth.add_agency') }}">Add Agency</a>
+                            {% endif %}
                         </div>
                  </div>
                 {% endif %}
@@ -111,6 +114,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-    <script src="{{ url_for('static', filename='js/app.js') }}?v=1.8"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}?v=2.0"></script>
 </body>
 </html>

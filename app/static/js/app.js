@@ -143,7 +143,7 @@
                     
                     // Close modal and redirect to staff list
                     agencySwitchModal.classList.add('hidden');
-                    window.location.href = '/staff/list';
+                    window.location.href = '/staff/';
                 } else {
                     console.error('Failed to switch agency:', data.message);
                 }

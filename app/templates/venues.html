@@ -210,24 +210,34 @@ document.addEventListener('DOMContentLoaded', function() {
          });
     }
 
-        function deleteVenue(venueId) {
-        fetch(`/auth/api/venues/${venueId}`, {
-            method: 'DELETE'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showMessage(data.message, 'success');
-                loadVenues();
-            } else {
-                showMessage(data.message || 'Error deleting venue', 'error');
+        // Make deleteVenue globally accessible
+        window.deleteVenue = function(venueId) {
+            // Find venue name for confirmation message
+            const venue = venues.find(v => v.id == venueId);
+            const venueName = venue ? venue.name : 'this venue';
+            
+            // Show confirmation dialog
+            if (!confirm(`Are you sure you want to delete "${venueName}"? This action cannot be undone.`)) {
+                return; // User cancelled
             }
-        })
-        .catch(error => {
-            console.error('Error deleting venue:', error);
-            showMessage('Error deleting venue', 'error');
-        });
-    }
+            
+            fetch(`/auth/api/venues/${venueId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    loadVenues();
+                } else {
+                    showMessage(data.message || 'Error deleting venue', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting venue:', error);
+                showMessage('Error deleting venue', 'error');
+            });
+        };
 
     function showMessage(message, type = 'info') {
         // Create message element

@@ -31,14 +31,22 @@ def allowed_file(filename):
 @login_required
 def staff_list():
     """Displays the list of staff with sorting and searching, scoped by agency."""
-    if not current_user.agency_id:
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    if not agency_id:
         abort(403, "User not associated with an agency.")
 
     search_nickname = request.args.get('search_nickname', '').strip()
     sort_by = request.args.get('sort_by', 'created_at')
     sort_order = request.args.get('sort_order', 'desc')
 
-    query = StaffProfile.query.filter_by(agency_id=current_user.agency_id)
+    query = StaffProfile.query.filter_by(agency_id=agency_id)
 
     if search_nickname:
         query = query.filter(StaffProfile.nickname.ilike(f'%{search_nickname}%'))
@@ -65,7 +73,7 @@ def staff_list():
     all_profiles = query.all()
     
     # Get venues for the current agency
-    venues = Venue.query.filter_by(agency_id=current_user.agency_id).order_by(Venue.name).all()
+    venues = Venue.query.filter_by(agency_id=agency_id).order_by(Venue.name).all()
     
     return render_template('staff_list.html', profiles=all_profiles, statuses=ALLOWED_STATUSES,
         venues=venues, current_filters={'search_nickname': search_nickname, 'sort_by': sort_by, 'sort_order': sort_order})
@@ -75,13 +83,21 @@ def staff_list():
 @login_required
 def profile_form(profile_id=None):
     """Renders the form for both creating a new profile and editing an existing one."""
-    if not current_user.agency_id:
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    if not agency_id:
         abort(403, "User not associated with an agency.")
 
     edit_mode = profile_id is not None
     profile = None
     if edit_mode:
-        profile = StaffProfile.query.filter_by(id=profile_id, agency_id=current_user.agency_id).first_or_404()
+        profile = StaffProfile.query.filter_by(id=profile_id, agency_id=agency_id).first_or_404()
 
     current_year = date.today().year
     years = range(current_year - 18, current_year - 60, -1)
@@ -93,10 +109,18 @@ def profile_form(profile_id=None):
 @login_required
 def profile_detail(profile_id):
     """Displays the detailed view of a single staff profile."""
-    if not current_user.agency_id:
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    if not agency_id:
         abort(403, "User not associated with an agency.")
 
-    profile = StaffProfile.query.filter_by(id=profile_id, agency_id=current_user.agency_id).options(
+    profile = StaffProfile.query.filter_by(id=profile_id, agency_id=agency_id).options(
         db.joinedload(StaffProfile.assignments).subqueryload(Assignment.performance_records)
     ).first_or_404()
     
@@ -172,7 +196,15 @@ def profile_detail(profile_id):
 @login_required
 def create_profile():
     """API endpoint to create a new profile."""
-    if not current_user.agency_id:
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    if not agency_id:
         return jsonify({'status': 'error', 'message': 'User not associated with an agency.'}), 403
 
     data = request.form
@@ -184,7 +216,7 @@ def create_profile():
         return jsonify({'status': 'error', 'message': 'Invalid date of birth provided.'}), 400
         
     # --- FIX: Associate the new profile with the user's agency ---
-    new_profile = StaffProfile(dob=dob, agency_id=current_user.agency_id)
+    new_profile = StaffProfile(dob=dob, agency_id=agency_id)
     
     for key, value in data.items():
         if hasattr(new_profile, key) and value:
@@ -207,7 +239,15 @@ def create_profile():
 @login_required
 def update_profile(profile_id):
     """API endpoint to update an existing profile."""
-    profile = StaffProfile.query.filter_by(id=profile_id, agency_id=current_user.agency_id).first_or_404()
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    profile = StaffProfile.query.filter_by(id=profile_id, agency_id=agency_id).first_or_404()
     data = request.form
     for key, value in data.items():
         if hasattr(profile, key) and key not in ['dob_day', 'dob_month', 'dob_year']:
@@ -234,7 +274,15 @@ def update_profile(profile_id):
 @login_required
 def delete_profile(profile_id):
     """API endpoint to delete a profile."""
-    profile = StaffProfile.query.filter_by(id=profile_id, agency_id=current_user.agency_id).first_or_404()
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    profile = StaffProfile.query.filter_by(id=profile_id, agency_id=agency_id).first_or_404()
     if profile.photo_url and 'default' not in profile.photo_url:
         try:
             photo_path = os.path.join(current_app.config['UPLOAD_FOLDER'], profile.photo_url)
@@ -250,7 +298,15 @@ def delete_profile(profile_id):
 @login_required
 def update_staff_status(profile_id):
     """API endpoint to update a staff member's status."""
-    profile = StaffProfile.query.filter_by(id=profile_id, agency_id=current_user.agency_id).first_or_404()
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    profile = StaffProfile.query.filter_by(id=profile_id, agency_id=agency_id).first_or_404()
     data = request.get_json()
     new_status = data.get('status')
     if not new_status or new_status not in ALLOWED_STATUSES:
@@ -270,8 +326,16 @@ def uploaded_file(filename):
 @login_required
 def profile_pdf(profile_id):
     """Generates a PDF report for a staff profile."""
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
     try:
-        profile = StaffProfile.query.filter_by(id=profile_id, agency_id=current_user.agency_id).first_or_404()
+        profile = StaffProfile.query.filter_by(id=profile_id, agency_id=agency_id).first_or_404()
         photo_url_for_pdf = None
         if profile.photo_url and 'default' not in profile.photo_url:
             photo_path = os.path.join(current_app.config['UPLOAD_FOLDER'], profile.photo_url)

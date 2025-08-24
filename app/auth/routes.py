@@ -406,3 +406,33 @@ def delete_venue(venue_id):
         'success': True,
         'message': message
     })
+
+@auth_bp.route('/add-agency', methods=['GET', 'POST'])
+@login_required
+def add_agency():
+    """Add a new agency - WebDev only."""
+    if current_user.role_name != 'WebDev':
+        abort(403, "Only WebDev users can add agencies.")
+    
+    if request.method == 'POST':
+        agency_name = request.form.get('agency_name')
+        if not agency_name:
+            flash('Agency name is required.', 'danger')
+            return redirect(url_for('auth.add_agency'))
+        
+        # Check if agency with same name already exists
+        from app.models import Agency
+        existing_agency = Agency.query.filter_by(name=agency_name).first()
+        if existing_agency:
+            flash(f'Agency "{agency_name}" already exists.', 'danger')
+            return redirect(url_for('auth.add_agency'))
+        
+        # Create new agency
+        new_agency = Agency(name=agency_name)
+        db.session.add(new_agency)
+        db.session.commit()
+        
+        flash(f'Agency "{agency_name}" created successfully.', 'success')
+        return redirect(url_for('auth.add_agency'))
+    
+    return render_template('add_agency.html')

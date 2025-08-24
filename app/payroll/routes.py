@@ -36,10 +36,16 @@ def _get_or_create_daily_record(assignment_id: int, ymd: date) -> 'PerformanceRe
 @payroll_bp.route('/')
 @login_required
 def payroll_page():
-    if not current_user.agency_id:
-        abort(403, "User not associated with an agency.")
+    from flask import session
     
-    agency_id = current_user.agency_id
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    if not agency_id:
+        abort(403, "User not associated with an agency.")
 
     # Get filter arguments from request
     selected_venue_id = request.args.get('venue_id', type=int)
@@ -142,8 +148,16 @@ def payroll_page():
 @payroll_bp.route('/api/performance/<int:assignment_id>/<string:ymd>', methods=['GET'])
 @login_required
 def get_performance(assignment_id, ymd):
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
     # Security: Ensure the requested assignment belongs to the user's agency
-    Assignment.query.filter_by(id=assignment_id, agency_id=current_user.agency_id).first_or_404()
+    Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).first_or_404()
     
     try:
         day = datetime.fromisoformat(ymd).date()
@@ -157,7 +171,15 @@ def get_performance(assignment_id, ymd):
 @payroll_bp.route('/api/performance/<int:assignment_id>', methods=['GET'])
 @login_required
 def list_performance_for_assignment(assignment_id):
-    a = Assignment.query.filter_by(id=assignment_id, agency_id=current_user.agency_id).first_or_404()
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    a = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).first_or_404()
     
     records = PerformanceRecord.query.filter_by(assignment_id=assignment_id) \
                                      .order_by(PerformanceRecord.record_date.desc()).all()
@@ -186,7 +208,15 @@ def upsert_performance():
     except Exception:
         return jsonify({"status": "error", "message": "Invalid assignment_id or record_date"}), 400
 
-    a = Assignment.query.filter_by(id=assignment_id, agency_id=current_user.agency_id).first()
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    a = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).first()
     if not a or a.status != 'ongoing':
         return jsonify({"status": "error", "message": "Performance can only be added to ongoing assignments."}), 400
     if not (a.start_date <= ymd <= a.end_date):
@@ -216,13 +246,19 @@ def upsert_performance():
 @login_required
 def payroll_pdf():
     """Generates a PDF report for the filtered payroll data."""
+    from flask import session
+    
     current_app.logger.info("PDF generation started")
     
-    if not current_user.agency_id:
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    if not agency_id:
         current_app.logger.error("User not associated with an agency")
         abort(403, "User not associated with an agency.")
-    
-    agency_id = current_user.agency_id
     current_app.logger.info(f"Processing PDF for agency_id: {agency_id}")
 
     # Get filter arguments from request (same as payroll_page)
@@ -333,8 +369,16 @@ def payroll_pdf():
 @payroll_bp.route('/assignment/<int:assignment_id>/pdf')
 @login_required
 def assignment_pdf(assignment_id):
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
     # Security: Ensure the assignment belongs to the user's agency
-    assignment = Assignment.query.filter_by(id=assignment_id, agency_id=current_user.agency_id).options(
+    assignment = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).options(
         db.joinedload(Assignment.staff),
         db.joinedload(Assignment.manager),
         db.joinedload(Assignment.venue),

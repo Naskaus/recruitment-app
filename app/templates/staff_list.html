@@ -67,9 +67,11 @@
     <div id="staff-grid-view" class="staff-grid view-hidden">
         {% for profile in profiles %}
             <div class="staff-card" data-id="{{ profile.id }}" data-status="{{ profile.status | lower | replace(' ', '-') }}">
-                <div class="card-delete-button" data-id="{{ profile.id }}" data-name="{{ profile.nickname }}">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z"/></svg>
-                </div>
+                        {% if current_user.role_name == 'WebDev' %}
+        <div class="card-delete-button" data-id="{{ profile.id }}" data-name="{{ profile.nickname }}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z"/></svg>
+        </div>
+        {% endif %}
                 
                 <div class="staff-card-header">
                     <img src="{{ url_for('staff.uploaded_file', filename=profile.photo_url.split('/')[-1]) if profile.photo_url and 'default' not in profile.photo_url else url_for('static', filename='images/default_avatar.png') }}" alt="Photo of {{ profile.nickname }}">
@@ -146,9 +148,11 @@
                                 <div class="list-actions">
                                     <button class="button button-primary dispatch-from-list-btn" data-id="{{ profile.id }}" data-name="{{ profile.nickname }}">Dispatch</button>
                                     <a href="{{ url_for('staff.profile_detail', profile_id=profile.id) }}" class="button button-secondary">Details</a>
+                                    {% if current_user.role_name == 'WebDev' %}
                                     <button class="button-table-delete card-delete-button" data-id="{{ profile.id }}" data-name="{{ profile.nickname }}" title="Delete">
                                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z"/></svg>
                                     </button>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>

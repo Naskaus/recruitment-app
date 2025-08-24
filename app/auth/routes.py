@@ -1,6 +1,6 @@
 # app/auth/routes.py
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
+from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from app.models import db, User
 from functools import wraps
@@ -20,11 +20,11 @@ class LoginForm(FlaskForm):
     password = PasswordField('Password', validators=[DataRequired()])
     submit = SubmitField('Login')
 
-# Decorator for Super-Admins
+# Decorator for Super-Admins and WebDev
 def super_admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or current_user.role != 'Super-Admin':
+        if not current_user.is_authenticated or current_user.role_name not in ['Super-Admin', 'WebDev']:
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
@@ -71,7 +71,19 @@ def users():
             flash(f'Username "{username}" already exists.', 'danger')
             # CORRECTED: url_for target updated to 'auth.users'
             return redirect(url_for('auth.users'))
-        new_user = User(username=username, role=role)
+        # Get the role object
+        from app.models import Role
+        role_obj = Role.query.filter_by(name=role).first()
+        if not role_obj:
+            flash(f'Role "{role}" not found.', 'danger')
+            return redirect(url_for('auth.users'))
+        
+        # Super-Admin cannot create WebDev users
+        if current_user.role_name == 'Super-Admin' and role_obj.name == 'WebDev':
+            flash('Super-Admin cannot create WebDev users.', 'danger')
+            return redirect(url_for('auth.users'))
+            
+        new_user = User(username=username, role_id=role_obj.id)
         new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
@@ -79,8 +91,125 @@ def users():
         # CORRECTED: url_for target updated to 'auth.users'
         return redirect(url_for('auth.users'))
 
-    all_users = User.query.order_by(User.id).all()
-    return render_template('users.html', users=all_users)
+    # Get all roles for the form
+    from app.models import Role
+    # Super-Admin cannot create WebDev users
+    if current_user.role_name == 'Super-Admin':
+        all_roles = Role.query.filter(Role.name != 'WebDev').order_by(Role.name).all()
+    else:
+        # WebDev can create any role
+        all_roles = Role.query.order_by(Role.name).all()
+    
+    # Get all users with their roles and agencies
+    # Super-Admin cannot see WebDev users
+    if current_user.role_name == 'Super-Admin':
+        all_users = User.query.options(
+            db.joinedload(User.role),
+            db.joinedload(User.agency)
+        ).join(Role).filter(Role.name != 'WebDev').order_by(User.id).all()
+    else:
+        # WebDev can see all users
+        all_users = User.query.options(
+            db.joinedload(User.role),
+            db.joinedload(User.agency)
+        ).order_by(User.id).all()
+    
+    return render_template('users.html', users=all_users, roles=all_roles)
+
+@auth_bp.route('/auth/api/agencies')
+@login_required
+def get_agencies():
+    """Get all agencies available to the current user."""
+    from app.models import Agency
+    from flask import session
+    
+    # For WebDev, show all agencies
+    if current_user.role_name == 'WebDev':
+        agencies = Agency.query.all()
+        # Use session agency for WebDev if set, otherwise use first agency
+        current_agency_id = session.get('current_agency_id', agencies[0].id if agencies else None)
+    else:
+        # For other users, only show their assigned agency
+        agencies = [current_user.agency] if current_user.agency else []
+        current_agency_id = current_user.agency_id
+    
+    return jsonify({
+        'agencies': [{'id': agency.id, 'name': agency.name} for agency in agencies],
+        'current_agency_id': current_agency_id
+    })
+
+@auth_bp.route('/auth/api/switch-agency', methods=['POST'])
+@login_required
+def switch_agency():
+    # Only WebDev can switch agencies
+    if current_user.role_name != 'WebDev':
+        return jsonify({'message': 'Access denied. Only WebDev can switch agencies.'}), 403
+    """Switch the current user's agency."""
+    from app.models import Agency
+    from flask import session
+    
+    data = request.get_json()
+    agency_id = data.get('agency_id')
+    
+    if not agency_id:
+        return jsonify({'message': 'Agency ID is required'}), 400
+    
+    # Check if user can access this agency
+    if current_user.role_name == 'WebDev':
+        # WebDev can access any agency
+        agency = Agency.query.get(agency_id)
+    else:
+        # Other users can only access their assigned agency
+        if current_user.agency_id != agency_id:
+            return jsonify({'message': 'Access denied'}), 403
+        agency = current_user.agency
+    
+    if not agency:
+        return jsonify({'message': 'Agency not found'}), 404
+    
+    # Store the selected agency in session for WebDev users
+    if current_user.role_name == 'WebDev':
+        session['current_agency_id'] = agency_id
+        session['current_agency_name'] = agency.name
+    
+    return jsonify({
+        'message': 'Agency switched successfully',
+        'agency_name': agency.name
+    })
+
+@auth_bp.route('/auth/api/contracts', methods=['POST'])
+@login_required
+@super_admin_required
+def create_contract():
+    """Create a new contract type."""
+    data = request.get_json()
+    
+    # For now, just return success (we'll implement the database model later)
+    return jsonify({
+        'message': 'Contract created successfully',
+        'contract': data
+    })
+
+@auth_bp.route('/contracts')
+@login_required
+@super_admin_required
+def contracts():
+    """Manage contracts page."""
+    return render_template('contracts.html')
+
+@auth_bp.route('/venues')
+@login_required
+@super_admin_required
+def venues():
+    """Manage venues page."""
+    return render_template('venues.html')
+
+@auth_bp.route('/profile-form-config')
+@login_required
+@super_admin_required
+def profile_form_config():
+    """Manage profile form configuration page."""
+    return render_template('profile_form_config.html')
 
 @auth_bp.route('/users/delete/<int:user_id>', methods=['POST'])
 @login_required
@@ -96,3 +225,184 @@ def delete_user(user_id):
     flash(f'User "{user_to_delete.username}" has been deleted.', 'success')
     # CORRECTED: url_for target updated to 'auth.users'
     return redirect(url_for('auth.users'))
+
+# Venues API routes
+@auth_bp.route('/auth/api/venues')
+@login_required
+@super_admin_required
+def get_venues():
+    """Get all venues for the current agency."""
+    from app.models import Venue
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    if not agency_id:
+        return jsonify({'message': 'No agency assigned'}), 400
+    
+    venues = Venue.query.filter_by(agency_id=agency_id).all()
+    return jsonify({
+        'venues': [{
+            'id': venue.id,
+            'name': venue.name,
+            'logo_url': venue.logo_url,
+            'assignments_count': venue.assignments.count()
+        } for venue in venues]
+    })
+
+@auth_bp.route('/auth/api/venues', methods=['POST'])
+@login_required
+@super_admin_required
+def create_venue():
+    """Create a new venue."""
+    from app.models import Venue
+    from flask import session
+    import os
+    from werkzeug.utils import secure_filename
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    if not agency_id:
+        return jsonify({'success': False, 'message': 'No agency assigned'}), 400
+    
+    name = request.form.get('name')
+    if not name:
+        return jsonify({'success': False, 'message': 'Venue name is required'}), 400
+    
+    # Handle logo upload
+    logo_url = None
+    if 'logo' in request.files:
+        logo_file = request.files['logo']
+        if logo_file and logo_file.filename:
+            # Create uploads directory if it doesn't exist
+            upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'uploads', 'venues')
+            os.makedirs(upload_dir, exist_ok=True)
+            
+            # Save the file
+            filename = secure_filename(logo_file.filename)
+            filepath = os.path.join(upload_dir, filename)
+            logo_file.save(filepath)
+            logo_url = f'/static/uploads/venues/{filename}'
+    
+    # Check if venue with same name already exists in this agency
+    existing_venue = Venue.query.filter_by(name=name, agency_id=agency_id).first()
+    if existing_venue:
+        return jsonify({'success': False, 'message': f'Venue "{name}" already exists in this agency'}), 400
+    
+    # Create new venue
+    new_venue = Venue(name=name, logo_url=logo_url, agency_id=agency_id)
+    db.session.add(new_venue)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': f'Venue "{name}" created successfully',
+        'venue': {
+            'id': new_venue.id,
+            'name': new_venue.name,
+            'logo_url': new_venue.logo_url
+        }
+    })
+
+@auth_bp.route('/auth/api/venues/<int:venue_id>', methods=['PUT'])
+@login_required
+@super_admin_required
+def update_venue(venue_id):
+    """Update an existing venue."""
+    from app.models import Venue
+    from flask import session
+    import os
+    from werkzeug.utils import secure_filename
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    venue = Venue.query.filter_by(id=venue_id, agency_id=agency_id).first()
+    if not venue:
+        return jsonify({'success': False, 'message': 'Venue not found'}), 404
+    
+    name = request.form.get('name')
+    if not name:
+        return jsonify({'success': False, 'message': 'Venue name is required'}), 400
+    
+    # Check if venue with same name already exists in this agency (excluding current venue)
+    existing_venue = Venue.query.filter_by(name=name, agency_id=agency_id).filter(Venue.id != venue_id).first()
+    if existing_venue:
+        return jsonify({'success': False, 'message': f'Venue "{name}" already exists in this agency'}), 400
+    
+    # Handle logo upload
+    if 'logo' in request.files:
+        logo_file = request.files['logo']
+        if logo_file and logo_file.filename:
+            # Create uploads directory if it doesn't exist
+            upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'uploads', 'venues')
+            os.makedirs(upload_dir, exist_ok=True)
+            
+            # Save the file
+            filename = secure_filename(logo_file.filename)
+            filepath = os.path.join(upload_dir, filename)
+            logo_file.save(filepath)
+            venue.logo_url = f'/static/uploads/venues/{filename}'
+    
+    venue.name = name
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': f'Venue "{name}" updated successfully',
+        'venue': {
+            'id': venue.id,
+            'name': venue.name,
+            'logo_url': venue.logo_url
+        }
+    })
+
+@auth_bp.route('/auth/api/venues/<int:venue_id>', methods=['DELETE'])
+@login_required
+@super_admin_required
+def delete_venue(venue_id):
+    """Delete a venue."""
+    from app.models import Venue, Assignment
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    venue = Venue.query.filter_by(id=venue_id, agency_id=agency_id).first()
+    if not venue:
+        return jsonify({'success': False, 'message': 'Venue not found'}), 404
+    
+    # Check if there are assignments linked to this venue
+    linked_assignments = Assignment.query.filter_by(venue_id=venue_id).all()
+    venue_name = venue.name
+    
+    # Keep assignments but set venue_id to NULL
+    if linked_assignments:
+        for assignment in linked_assignments:
+            assignment.venue_id = None
+        message = f'Venue "{venue_name}" deleted successfully. {len(linked_assignments)} assignments were kept but are now unassigned.'
+    else:
+        message = f'Venue "{venue_name}" deleted successfully'
+    
+    # Delete the venue
+    db.session.delete(venue)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': message
+    })

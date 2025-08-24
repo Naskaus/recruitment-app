@@ -199,7 +199,7 @@
               data-start-date="{{ a.start_date.isoformat() }}"
               data-end-date="{{ a.end_date.isoformat() }}"
               data-base-salary="{{ a.base_salary or 0 }}"
-              data-contract-days="{{ row.contract_days or 1 }}"
+              data-contract-days="{{ row.original_duration or 1 }}"
               data-contract-type="{{ a.contract_type }}"
               data-current-status="{{ a.status }}"
               data-role="{{ a.contract_role }}"
@@ -267,11 +267,15 @@
                   {% if a.status == 'ongoing' %}
                     <button class="button button-primary manage-performance-btn">Manage</button>
                     <button class="button button-secondary end-contract-btn">End</button>
+                    {% if current_user.role_name == 'WebDev' %}
                     <button class="button button-danger delete-contract-btn">Del</button>
+                    {% endif %}
                   {% elif a.status == 'archived' %}
                     <span class="status-badge status-badge-archived">Archived</span>
                     <button class="button button-secondary manage-performance-btn">Details</button>
+                    {% if current_user.role_name == 'WebDev' %}
                     <button class="button button-danger delete-contract-btn" data-assignment-id="{{ a.id }}" data-staff-name="{{ a.staff.nickname if a.staff else a.archived_staff_name }}" style="padding: 4px 8px; font-size: 0.8rem;" title="Permanently delete this contract">Del</button>
+                    {% endif %}
                   {% endif %}
                 </div>
               </td>

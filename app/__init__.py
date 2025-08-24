@@ -48,7 +48,7 @@ def create_app():
         app.register_blueprint(payroll_bp)
 
     # --- Custom CLI Commands ---
-    from .models import User # Import User model here
+    from .models import User, Role, Agency # Import User, Role and Agency models here
 
     @app.cli.command("create-super-admin")
     @click.argument("username")
@@ -59,12 +59,124 @@ def create_app():
             print(f"Error: User '{username}' already exists.")
             return
         
-        new_user = User(username=username, role='Super-Admin')
+        # Get Super-Admin role
+        super_admin_role = Role.query.filter_by(name='Super-Admin').first()
+        if not super_admin_role:
+            print("Error: Super-Admin role not found. Please create it first.")
+            return
+        
+        new_user = User(username=username, role_id=super_admin_role.id)
         new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
         print(f"Success! Super-Admin user '{username}' was created.")
 
+    @app.cli.command("create-role")
+    @click.argument("role_name")
+    def create_role(role_name):
+        """Creates a new role."""
+        if Role.query.filter_by(name=role_name).first():
+            print(f"Error: Role '{role_name}' already exists.")
+            return
+        
+        new_role = Role(name=role_name)
+        db.session.add(new_role)
+        db.session.commit()
+        print(f"Success! Role '{role_name}' was created.")
+
+    @app.cli.command("promote-user")
+    @click.argument("username")
+    @click.argument("role_name")
+    def promote_user(username, role_name):
+        """Promotes a user to a specific role."""
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            print(f"Error: User '{username}' not found.")
+            return
+        
+        role = Role.query.filter_by(name=role_name).first()
+        if not role:
+            print(f"Error: Role '{role_name}' not found.")
+            return
+        
+        user.role_id = role.id
+        db.session.commit()
+        print(f"Success! User '{username}' was promoted to '{role_name}'.")
+
+    @app.cli.command("list-users")
+    def list_users():
+        """Lists all users with their roles."""
+        users = User.query.all()
+        print("📊 Users:")
+        for user in users:
+            role_name = user.role_name if user.role else "No role"
+            print(f"  - {user.username}: {role_name}")
+
+    @app.cli.command("list-roles")
+    def list_roles():
+        """Lists all roles."""
+        roles = Role.query.all()
+        print("📊 Roles:")
+        for role in roles:
+            print(f"  - {role.id}: {role.name}")
+
+    @app.cli.command("link-user-agency")
+    @click.argument("username")
+    @click.argument("agency_name")
+    def link_user_agency(username, agency_name):
+        """Links a user to an agency."""
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            print(f"Error: User '{username}' not found.")
+            return
+        
+        agency = Agency.query.filter_by(name=agency_name).first()
+        if not agency:
+            print(f"Error: Agency '{agency_name}' not found.")
+            return
+        
+        user.agency_id = agency.id
+        db.session.commit()
+        print(f"Success! User '{username}' linked to agency '{agency_name}'.")
+
+    @app.cli.command("list-agencies")
+    def list_agencies():
+        """Lists all agencies."""
+        agencies = Agency.query.all()
+        print("📊 Agencies:")
+        for agency in agencies:
+            print(f"  - {agency.id}: {agency.name}")
+
+    @app.cli.command("create-agency")
+    @click.argument("agency_name")
+    def create_agency(agency_name):
+        """Creates a new agency."""
+        if Agency.query.filter_by(name=agency_name).first():
+            print(f"Error: Agency '{agency_name}' already exists.")
+            return
+        
+        new_agency = Agency(name=agency_name)
+        db.session.add(new_agency)
+        db.session.commit()
+        print(f"Success! Agency '{agency_name}' was created.")
+
+    @app.cli.command("rename-agency")
+    @click.argument("old_name")
+    @click.argument("new_name")
+    def rename_agency(old_name, new_name):
+        """Renames an agency."""
+        agency = Agency.query.filter_by(name=old_name).first()
+        if not agency:
+            print(f"Error: Agency '{old_name}' not found.")
+            return
+        
+        if Agency.query.filter_by(name=new_name).first():
+            print(f"Error: Agency '{new_name}' already exists.")
+            return
+        
+        agency.name = new_name
+        db.session.commit()
+        print(f"Success! Agency '{old_name}' renamed to '{new_name}'.")
 
     return app
 

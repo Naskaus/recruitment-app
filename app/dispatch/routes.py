@@ -135,7 +135,8 @@ def end_assignment_now(assignment_id):
         other_ongoing = Assignment.query.filter(
             Assignment.staff_id == a.staff_id,
             Assignment.status == 'ongoing',
-            Assignment.id != a.id
+            Assignment.id != a.id,
+            Assignment.agency_id == current_user.agency_id
         ).first()
         if not other_ongoing:
             a.staff.status = 'Active'
@@ -173,7 +174,8 @@ def finalize_assignment(assignment_id):
         other_ongoing = Assignment.query.filter(
             Assignment.staff_id == a.staff_id,
             Assignment.status == 'ongoing',
-            Assignment.id != a.id
+            Assignment.id != a.id,
+            Assignment.agency_id == current_user.agency_id
         ).first()
         if not other_ongoing:
             a.staff.status = 'Active'

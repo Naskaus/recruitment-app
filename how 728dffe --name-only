@@ -1,0 +1,10 @@
+[33m5803ca8[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mv0.64-stable[m[33m, [m[1;33mtag: [m[1;33mv0.9.5[m[33m, [m[1;31morigin/v0.64-stable[m[33m)[m v0.9.5: Fix bugs and implement mini-updates
+[33m728dffe[m[33m ([m[1;33mtag: [m[1;33mv0.9.4[m[33m)[m repair bug edit profil, and contract summary moda
+[33m760222f[m[33m ([m[1;33mtag: [m[1;33mv0.9.3[m[33m)[m Bugfix: Corrected image paths, template loading, and PDF generation
+[33m0c5ba7b[m[33m ([m[1;33mtag: [m[1;33mv0.9.2[m[33m)[m Phase 1 Complete: Security and configuration overhaul
+[33m898aca8[m[33m ([m[1;33mtag: [m[1;33mv0.9.1[m[33m)[m Refactor: Introduce Blueprints and Application Factory
+[33m843c516[m[33m ([m[1;33mtag: [m[1;33mv0.9[m[33m)[m 0.9 Major UPGRADE : mySQL to Postgres and New app Structure
+[33m0f92309[m Configure app for Heroku Postgres connection
+[33m3b8c417[m[33m ([m[1;33mtag: [m[1;33mv0.84[m[33m)[m Better Responsive Profile
+[33m8c562fd[m[33m ([m[1;33mtag: [m[1;33mv0.83[m[33m)[m v0.83: add PWA manifest and images; prep for deploy
+[33m2367587[m fix(deps): Downgrade click to 8.1.7 for Python 3.9 compatibility

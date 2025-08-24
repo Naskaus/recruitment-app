@@ -27,6 +27,7 @@ class Venue(db.Model):
     __tablename__ = "venue"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
+    logo_url = db.Column(db.String(200), nullable=True)
     agency_id = db.Column(db.Integer, db.ForeignKey('agency.id'), nullable=False)
     
     # Relationships
@@ -129,7 +130,7 @@ class Assignment(db.Model):
     archived_staff_name = db.Column(db.String(100), nullable=True)
     archived_staff_photo = db.Column(db.String(200), nullable=True)
     
-    venue_id = db.Column(db.Integer, db.ForeignKey('venue.id'), nullable=False)
+    venue_id = db.Column(db.Integer, db.ForeignKey('venue.id'), nullable=True)
     venue = db.relationship('Venue', back_populates='assignments')
     
     contract_role = db.Column(db.String(50), nullable=False, server_default='Dancer')

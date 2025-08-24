@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1>Profile Form Configuration</h1>
+        <p>Configure positions and form settings for each agency</p>
+    </div>
+
+    <div class="profile-config-container">
+        <!-- Agency Positions Configuration -->
+        <div class="config-section">
+            <div class="section-header">
+                <h3>Agency Positions</h3>
+                <button class="btn btn-primary" id="addPositionBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add Position
+                </button>
+            </div>
+
+            <div class="positions-list">
+                <div class="position-item">
+                    <div class="position-header">
+                        <h4>Bangkok Agency Positions</h4>
+                        <button class="btn btn-sm btn-outline" onclick="editPositions('bangkok')">Edit</button>
+                    </div>
+                    <div class="position-tags">
+                        <span class="tag">Dancer</span>
+                        <span class="tag">PR</span>
+                        <span class="tag">Manager</span>
+                    </div>
+                </div>
+
+                <div class="position-item">
+                    <div class="position-header">
+                        <h4>PATTAYA Agency Positions</h4>
+                        <button class="btn btn-sm btn-outline" onclick="editPositions('pattaya')">Edit</button>
+                    </div>
+                    <div class="position-tags">
+                        <span class="tag">Coyote</span>
+                        <span class="tag">Model</span>
+                        <span class="tag">Super Model</span>
+                        <span class="tag">PR</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Fields Configuration -->
+        <div class="config-section">
+            <div class="section-header">
+                <h3>Form Fields</h3>
+                <button class="btn btn-primary" id="addFieldBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add Field
+                </button>
+            </div>
+
+            <div class="fields-list">
+                <div class="field-item">
+                    <div class="field-info">
+                        <span class="field-name">Nickname</span>
+                        <span class="field-type">Text Input</span>
+                        <span class="field-required">Required</span>
+                    </div>
+                    <div class="field-actions">
+                        <button class="btn btn-sm btn-outline">Edit</button>
+                        <button class="btn btn-sm btn-danger">Delete</button>
+                    </div>
+                </div>
+
+                <div class="field-item">
+                    <div class="field-info">
+                        <span class="field-name">Position</span>
+                        <span class="field-type">Dropdown</span>
+                        <span class="field-required">Required</span>
+                    </div>
+                    <div class="field-actions">
+                        <button class="btn btn-sm btn-outline">Edit</button>
+                        <button class="btn btn-sm btn-danger">Delete</button>
+                    </div>
+                </div>
+
+                <div class="field-item">
+                    <div class="field-info">
+                        <span class="field-name">Phone</span>
+                        <span class="field-type">Phone Input</span>
+                        <span class="field-required">Required</span>
+                    </div>
+                    <div class="field-actions">
+                        <button class="btn btn-sm btn-outline">Edit</button>
+                        <button class="btn btn-sm btn-danger">Delete</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Position Edit Modal -->
+<div class="modal-overlay hidden" id="positionModal">
+    <div class="modal-content modal-md">
+        <div class="modal-header">
+            <h3 id="positionModalTitle">Edit Agency Positions</h3>
+            <button class="modal-close-btn" id="closePositionModal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="agencySelect">Agency:</label>
+                <select id="agencySelect" class="form-control">
+                    <option value="bangkok">Bangkok Agency</option>
+                    <option value="pattaya">PATTAYA Agency</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Positions:</label>
+                <div id="positionsList">
+                    <div class="position-input-group">
+                        <input type="text" class="form-control position-input" placeholder="Enter position name">
+                        <button type="button" class="btn btn-sm btn-danger remove-position">×</button>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline" id="addPositionInput">+ Add Position</button>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancelPositionEdit">Cancel</button>
+            <button class="btn btn-primary" id="savePositions">Save Positions</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function editPositions(agency) {
+    const modal = document.getElementById('positionModal');
+    const title = document.getElementById('positionModalTitle');
+    const agencySelect = document.getElementById('agencySelect');
+    
+    title.textContent = `Edit ${agency.toUpperCase()} Agency Positions`;
+    agencySelect.value = agency;
+    
+    // Load current positions for this agency
+    loadAgencyPositions(agency);
+    
+    modal.classList.remove('hidden');
+}
+
+function loadAgencyPositions(agency) {
+    // This would load from the database
+    const positions = agency === 'bangkok' 
+        ? ['Dancer', 'PR', 'Manager']
+        : ['Coyote', 'Model', 'Super Model', 'PR'];
+    
+    const positionsList = document.getElementById('positionsList');
+    positionsList.innerHTML = '';
+    
+    positions.forEach(position => {
+        addPositionInput(position);
+    });
+}
+
+function addPositionInput(value = '') {
+    const positionsList = document.getElementById('positionsList');
+    const inputGroup = document.createElement('div');
+    inputGroup.className = 'position-input-group';
+    inputGroup.innerHTML = `
+        <input type="text" class="form-control position-input" placeholder="Enter position name" value="${value}">
+        <button type="button" class="btn btn-sm btn-danger remove-position">×</button>
+    `;
+    positionsList.appendChild(inputGroup);
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    const addPositionInputBtn = document.getElementById('addPositionInput');
+    const closePositionModal = document.getElementById('closePositionModal');
+    const cancelPositionEdit = document.getElementById('cancelPositionEdit');
+    const savePositions = document.getElementById('savePositions');
+    const positionModal = document.getElementById('positionModal');
+
+    addPositionInputBtn.addEventListener('click', () => addPositionInput());
+    
+    closePositionModal.addEventListener('click', () => positionModal.classList.add('hidden'));
+    cancelPositionEdit.addEventListener('click', () => positionModal.classList.add('hidden'));
+    
+    savePositions.addEventListener('click', () => {
+        // Save positions logic here
+        positionModal.classList.add('hidden');
+        // Reload the page or update the UI
+        location.reload();
+    });
+
+    // Remove position input
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-position')) {
+            e.target.closest('.position-input-group').remove();
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -17,8 +17,10 @@
                         --color-accent-secondary:   #FFD4DC; /* soft light pink */
                         --color-hover-bg:           #F4F6F8; /* very light grey for hover */
                         --color-border:             #E1E5EB;
-                        --color-danger:             #F28B9E; /* Light rose red */
-                        --color-danger-dark:        #E05A75; /* Darker rose red */
+                                                 --color-danger:             #F28B9E; /* Light rose red */
+                         --color-danger-dark:        #E05A75; /* Darker rose red */
+                         --color-success:            #28a745;
+                         --color-success-light:      #d4edda;
                 
                         /* Status Colors */
                         --success-bg: #d1e7dd;
@@ -82,15 +84,60 @@
                         border-bottom: 1px solid rgba(255, 255, 255, 0.05); /* Subtle separator */
                     }
                 
-                    .sidebar-header h2 {
-                        font-size: 2.2rem;  /* SIGNIFICANTLY LARGER */
-                        font-weight: 700;   /* Bolder font */
-                        color: #FFFFFF;
-                        text-align: center;
-                        text-transform: uppercase; /* Feels more like a brand logo */
-                        letter-spacing: 2px;       /* Wider spacing for impact */
-                        margin: 0;                 /* Reset margin */
-                    }
+                                         .sidebar-header h2 {
+                         font-size: 2.2rem;  /* SIGNIFICANTLY LARGER */
+                         font-weight: 700;   /* Bolder font */
+                         color: #FFFFFF;
+                         text-align: center;
+                         text-transform: uppercase; /* Feels more like a brand logo */
+                         letter-spacing: 2px;       /* Wider spacing for impact */
+                         margin: 0;                 /* Reset margin */
+                     }
+
+                     /* Agency Indicator */
+                     .agency-indicator {
+                         display: flex;
+                         align-items: center;
+                         justify-content: center;
+                         gap: 8px;
+                         margin-top: 12px;
+                         padding: 8px 12px;
+                         background-color: rgba(255, 255, 255, 0.1);
+                         border-radius: var(--border-radius-sm);
+                         border: 1px solid rgba(255, 255, 255, 0.2);
+                     }
+
+                     .current-agency {
+                         font-size: 0.9rem;
+                         font-weight: 600;
+                         color: var(--color-accent-primary);
+                         text-align: center;
+                     }
+
+                     .switch-agency-btn {
+                         background: none;
+                         border: none;
+                         padding: 4px;
+                         cursor: pointer;
+                         border-radius: 4px;
+                         display: flex;
+                         align-items: center;
+                         justify-content: center;
+                         transition: background-color 0.2s ease;
+                     }
+
+                     .switch-agency-btn:hover {
+                         background-color: rgba(255, 255, 255, 0.1);
+                     }
+
+                     .switch-agency-btn svg {
+                         stroke: var(--color-sidebar-text);
+                         transition: stroke 0.2s ease;
+                     }
+
+                     .switch-agency-btn:hover svg {
+                         stroke: var(--color-accent-primary);
+                     }
                 
                     .sidebar-nav {
                         flex-grow: 1;
@@ -1490,9 +1537,10 @@
                         overflow: hidden;
                         transition: max-height 0.3s ease-in-out;
                     }
-                    .sidebar-dropdown:hover .dropdown-content {
+                    .sidebar-dropdown:hover .dropdown-content,
+                    .sidebar-dropdown.active .dropdown-content {
                         display: block;
-                        max-height: 100px; /* Animate opening */
+                        max-height: 300px; /* Animate opening - increased for 4 items */
                     }
                     .sidebar-dropdown .dropdown-content a {
                         font-size: 0.9rem;
@@ -1540,6 +1588,10 @@
                     .role-badge-table.role-admin {
                         background-color: var(--color-border, #E1E5EB);
                         color: var(--color-text-secondary, #7F8C99);
+                    }
+                    .role-badge-table.role-webdev {
+                        background-color: var(--color-accent-primary, #6366F1);
+                        color: white;
                     }
                     /* Style for the delete button in the user table */
                     .button-table-delete {
@@ -1770,11 +1822,324 @@
                     margin-top: 1.5rem;
                 }
                 
-                .venue-choice-buttons .button {
-                    width: 100%;
-                    padding: 12px;
-                    font-size: 1.1rem;
-                }
+                                     .venue-choice-buttons .button {
+                         width: 100%;
+                         padding: 12px;
+                         font-size: 1.1rem;
+                     }
+
+                     /* Agency List in Modal */
+                     .agency-list {
+                         display: flex;
+                         flex-direction: column;
+                         gap: 12px;
+                     }
+
+                     .agency-item {
+                         display: flex;
+                         align-items: center;
+                         justify-content: space-between;
+                         padding: 12px 16px;
+                         background-color: var(--color-main-bg);
+                         border: 1px solid var(--color-border);
+                         border-radius: var(--border-radius-sm);
+                         cursor: pointer;
+                         transition: all 0.2s ease;
+                     }
+
+                     .agency-item:hover {
+                         background-color: var(--color-hover-bg);
+                         border-color: var(--color-accent-primary);
+                     }
+
+                     .agency-item.current {
+                         background-color: var(--color-accent-focus);
+                         border-color: var(--color-accent-primary);
+                     }
+
+                     .agency-item .agency-name {
+                         font-weight: 600;
+                         color: var(--color-text-primary);
+                     }
+
+                     .agency-item .agency-status {
+                         font-size: 0.8rem;
+                         color: var(--color-text-secondary);
+                     }
+
+                     .agency-item.current .agency-status {
+                         color: var(--color-accent-primary);
+                         font-weight: 600;
+                     }
+
+                     /* ===================================
+                        39. Contracts & Venues Management
+                        =================================== */
+                     
+                     /* ===================================
+                        40. Profile Form Configuration
+                        =================================== */
+                     
+                     .profile-config-container {
+                         max-width: 100%;
+                     }
+                     
+                     .config-section {
+                         background-color: var(--color-surface);
+                         border: 1px solid var(--color-border);
+                         border-radius: var(--border-radius-sm);
+                         padding: 24px;
+                         margin-bottom: 24px;
+                     }
+                     
+                     .section-header {
+                         display: flex;
+                         justify-content: space-between;
+                         align-items: center;
+                         margin-bottom: 20px;
+                     }
+                     
+                     .section-header h3 {
+                         margin: 0;
+                         color: var(--color-text-primary);
+                     }
+                     
+                     .positions-list,
+                     .fields-list {
+                         display: flex;
+                         flex-direction: column;
+                         gap: 16px;
+                     }
+                     
+                     .position-item,
+                     .field-item {
+                         background-color: var(--color-main-bg);
+                         border: 1px solid var(--color-border);
+                         border-radius: var(--border-radius-sm);
+                         padding: 16px;
+                         transition: all 0.2s ease;
+                     }
+                     
+                     .position-item:hover,
+                     .field-item:hover {
+                         border-color: var(--color-accent-primary);
+                         box-shadow: 0 2px 8px rgba(74, 144, 226, 0.1);
+                     }
+                     
+                     .position-header {
+                         display: flex;
+                         justify-content: space-between;
+                         align-items: center;
+                         margin-bottom: 12px;
+                     }
+                     
+                     .position-header h4 {
+                         margin: 0;
+                         color: var(--color-text-primary);
+                         font-size: 1rem;
+                     }
+                     
+                     .position-tags {
+                         display: flex;
+                         flex-wrap: wrap;
+                         gap: 8px;
+                     }
+                     
+                     .tag {
+                         background-color: var(--color-accent-focus);
+                         color: var(--color-accent-primary);
+                         padding: 4px 8px;
+                         border-radius: var(--border-radius-sm);
+                         font-size: 0.8rem;
+                         font-weight: 500;
+                     }
+                     
+                     .field-info {
+                         display: flex;
+                         align-items: center;
+                         gap: 16px;
+                         margin-bottom: 12px;
+                     }
+                     
+                     .field-name {
+                         font-weight: 600;
+                         color: var(--color-text-primary);
+                         min-width: 100px;
+                     }
+                     
+                     .field-type {
+                         color: var(--color-text-secondary);
+                         font-size: 0.9rem;
+                     }
+                     
+                     .field-required {
+                         background-color: var(--color-success-light);
+                         color: var(--color-success);
+                         padding: 2px 6px;
+                         border-radius: var(--border-radius-sm);
+                         font-size: 0.7rem;
+                         font-weight: 600;
+                     }
+                     
+                     .field-actions {
+                         display: flex;
+                         gap: 8px;
+                     }
+                     
+                     .position-input-group {
+                         display: flex;
+                         gap: 8px;
+                         margin-bottom: 8px;
+                     }
+                     
+                     .position-input-group .form-control {
+                         flex: 1;
+                     }
+                     
+                     .position-input-group .btn {
+                         flex-shrink: 0;
+                     }
+                     
+                     .contracts-container,
+                     .venues-container {
+                         max-width: 100%;
+                     }
+                     
+                     .contracts-header,
+                     .venues-header {
+                         display: flex;
+                         justify-content: space-between;
+                         align-items: center;
+                         margin-bottom: 24px;
+                     }
+                     
+                     .contracts-header h3,
+                     .venues-header h3 {
+                         margin: 0;
+                         color: var(--color-text-primary);
+                     }
+                     
+                     .contracts-list,
+                     .venues-list {
+                         display: flex;
+                         flex-direction: column;
+                         gap: 16px;
+                     }
+                     
+                     .contract-item,
+                     .venue-item {
+                         background-color: var(--color-surface);
+                         border: 1px solid var(--color-border);
+                         border-radius: var(--border-radius-sm);
+                         padding: 20px;
+                         transition: all 0.2s ease;
+                     }
+                     
+                     .contract-item:hover,
+                     .venue-item:hover {
+                         border-color: var(--color-accent-primary);
+                         box-shadow: 0 2px 8px rgba(74, 144, 226, 0.1);
+                     }
+                     
+                     .contract-header,
+                     .venue-header {
+                         display: flex;
+                         justify-content: space-between;
+                         align-items: center;
+                         margin-bottom: 16px;
+                     }
+                     
+                     .contract-header h4,
+                     .venue-header h4 {
+                         margin: 0;
+                         color: var(--color-text-primary);
+                         font-size: 1.1rem;
+                     }
+                     
+                     .contract-actions,
+                     .venue-actions {
+                         display: flex;
+                         gap: 8px;
+                     }
+                     
+                     .contract-details,
+                     .venue-details {
+                         display: grid;
+                         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                         gap: 12px;
+                     }
+                     
+                     .detail-row {
+                         display: flex;
+                         justify-content: space-between;
+                         align-items: center;
+                         padding: 8px 0;
+                         border-bottom: 1px solid var(--color-hover-bg);
+                     }
+                     
+                     .detail-row:last-child {
+                         border-bottom: none;
+                     }
+                     
+                     .detail-label {
+                         font-weight: 500;
+                         color: var(--color-text-secondary);
+                         font-size: 0.9rem;
+                     }
+                     
+                     .detail-value {
+                         font-weight: 600;
+                         color: var(--color-text-primary);
+                     }
+                     
+                     .detail-value.status-active {
+                         color: #28a745;
+                     }
+                     
+                     .detail-value.status-inactive {
+                         color: #dc3545;
+                     }
+                     
+                     /* Venue specific styles */
+                     .venue-info {
+                         display: flex;
+                         align-items: center;
+                         gap: 12px;
+                     }
+                     
+                     .venue-logo {
+                         width: 40px;
+                         height: 40px;
+                         object-fit: cover;
+                         border-radius: var(--border-radius-sm);
+                         border: 1px solid var(--color-border);
+                     }
+                     
+                     .no-venues-message {
+                         text-align: center;
+                         padding: 40px;
+                         color: var(--color-text-secondary);
+                     }
+                     
+                     .current-logo {
+                         margin-top: 12px;
+                         padding: 12px;
+                         background-color: var(--color-hover-bg);
+                         border-radius: var(--border-radius-sm);
+                         text-align: center;
+                     }
+                     
+                     .current-logo img {
+                         max-width: 100px;
+                         max-height: 100px;
+                         object-fit: cover;
+                         border-radius: var(--border-radius-sm);
+                         margin-bottom: 8px;
+                     }
+                     
+                     .current-logo.hidden {
+                         display: none;
+                     }
                 /* ===================================
                    35. Staff Card Status Changer (NEW)
                    =================================== */
@@ -2006,5 +2371,70 @@
 .sort-arrow {
     font-size: 0.7em;
     color: var(--color-accent-primary);
+}
+                
+/* ===================================
+39. Venue Delete Warning Styles (NEW)
+=================================== */
+
+.warning-message {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: var(--border-radius-sm);
+    padding: 16px;
+    margin: 16px 0;
+}
+
+.warning-message p {
+    margin: 0 0 12px 0;
+    color: #856404;
+    font-weight: 500;
+}
+
+.warning-message p:last-child {
+    margin-bottom: 0;
+}
+
+.checkbox-group {
+    margin-top: 12px;
+}
+
+.checkbox-group label {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #856404;
+    line-height: 1.4;
+}
+
+.checkbox-group input[type="checkbox"] {
+    margin: 0;
+    margin-top: 2px;
+    cursor: pointer;
+}
+
+.checkbox-group input[type="checkbox"]:checked {
+    accent-color: var(--color-danger);
+}
+
+/* Message types for showMessage function */
+.message-success {
+    background-color: var(--color-success-light);
+    color: var(--color-success);
+    border: 1px solid var(--color-success);
+}
+
+.message-warning {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.message-error {
+    background-color: var(--error-bg);
+    color: var(--error-text);
+    border: 1px solid var(--error-text);
 }
                 

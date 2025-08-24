@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>Manage Venues</h2>
+    </div>
+    <div class="card-body">
+        <div class="venues-container">
+            <div class="venues-header">
+                <h3>Venues Configuration</h3>
+                <button class="button button-primary" id="addVenueBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Add New Venue
+                </button>
+            </div>
+            
+                         <div class="venues-list" id="venuesList">
+                 <!-- Venues will be loaded here dynamically -->
+                 <div class="no-venues-message">
+                     <p>No venues configured. Click "Add New Venue" to get started.</p>
+                 </div>
+             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Venue Modal -->
+<div class="modal-overlay hidden" id="venueModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="venueModalTitle">Add New Venue</h3>
+            <button class="modal-close-btn" id="closeVenueModalBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="venueForm">
+                <input type="hidden" id="venueId" name="id">
+                                 <div class="form-group">
+                     <label for="venueName">Venue Name *</label>
+                     <input type="text" id="venueName" name="name" required>
+                 </div>
+                 <div class="form-group">
+                     <label for="venueLogo">Venue Logo (optional)</label>
+                     <input type="file" id="venueLogo" name="logo" accept="image/*">
+                     <div id="currentLogo" class="current-logo hidden">
+                         <img id="logoPreview" src="" alt="Current logo">
+                         <button type="button" id="removeLogoBtn" class="button button-danger">Remove Logo</button>
+                     </div>
+                 </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="button button-secondary" id="cancelVenueBtn">Cancel</button>
+            <button type="submit" class="button button-primary" form="venueForm">Save Venue</button>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const addVenueBtn = document.getElementById('addVenueBtn');
+    const venueModal = document.getElementById('venueModal');
+    const venueForm = document.getElementById('venueForm');
+    const venueModalTitle = document.getElementById('venueModalTitle');
+    const closeVenueModalBtn = document.getElementById('closeVenueModalBtn');
+    const cancelVenueBtn = document.getElementById('cancelVenueBtn');
+    const venuesList = document.getElementById('venuesList');
+    
+    let venues = [];
+
+    // Load venues on page load
+    loadVenues();
+
+    // Add venue button
+    addVenueBtn.addEventListener('click', function() {
+        openVenueModal();
+    });
+
+    // Close modal buttons
+    closeVenueModalBtn.addEventListener('click', closeVenueModal);
+    cancelVenueBtn.addEventListener('click', closeVenueModal);
+
+    // Form submission
+    venueForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        saveVenue();
+    });
+
+    // Logo file input change
+    document.getElementById('venueLogo').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('logoPreview').src = e.target.result;
+                document.getElementById('currentLogo').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Remove logo button
+    document.getElementById('removeLogoBtn').addEventListener('click', function() {
+        document.getElementById('venueLogo').value = '';
+        document.getElementById('currentLogo').classList.add('hidden');
+    });
+
+    function loadVenues() {
+        fetch('/auth/api/venues')
+            .then(response => response.json())
+            .then(data => {
+                venues = data.venues || [];
+                renderVenues();
+            })
+                         .catch(error => {
+                 console.error('Error loading venues:', error);
+                 showMessage('Error loading venues', 'error');
+             });
+    }
+
+    function renderVenues() {
+                 if (venues.length === 0) {
+             venuesList.innerHTML = '<div class="no-venues-message"><p>No venues configured. Click "Add New Venue" to get started.</p></div>';
+             return;
+         }
+
+        venuesList.innerHTML = venues.map(venue => `
+            <div class="venue-item" data-id="${venue.id}">
+                <div class="venue-header">
+                    <div class="venue-info">
+                        <h4>${venue.name}</h4>
+                        ${venue.logo_url ? `<img src="${venue.logo_url}" alt="Logo ${venue.name}" class="venue-logo">` : ''}
+                    </div>
+                    <div class="venue-actions">
+                        <button class="button button-secondary edit-venue-btn" data-id="${venue.id}">Edit</button>
+                        <button class="button button-danger delete-venue-btn" data-id="${venue.id}" onclick="deleteVenue(${venue.id})">Delete</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        // Add event listeners to edit buttons
+        document.querySelectorAll('.edit-venue-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const venueId = this.getAttribute('data-id');
+                const venue = venues.find(v => v.id == venueId);
+                if (venue) {
+                    openVenueModal(venue);
+                }
+            });
+        });
+    }
+
+    function openVenueModal(venue = null) {
+        venueForm.reset();
+        document.getElementById('venueId').value = '';
+        document.getElementById('currentLogo').classList.add('hidden');
+        document.getElementById('venueLogo').value = '';
+
+        if (venue) {
+            // Edit mode
+            venueModalTitle.textContent = 'Edit Venue';
+            document.getElementById('venueId').value = venue.id;
+            document.getElementById('venueName').value = venue.name;
+            
+            if (venue.logo_url) {
+                document.getElementById('logoPreview').src = venue.logo_url;
+                document.getElementById('currentLogo').classList.remove('hidden');
+            }
+        } else {
+            // Add mode
+            venueModalTitle.textContent = 'Add New Venue';
+        }
+
+        venueModal.classList.remove('hidden');
+    }
+
+    function closeVenueModal() {
+        venueModal.classList.add('hidden');
+        venueForm.reset();
+    }
+
+
+
+    function saveVenue() {
+        const formData = new FormData(venueForm);
+        const venueId = formData.get('id');
+        const url = venueId ? `/auth/api/venues/${venueId}` : '/auth/api/venues';
+        const method = venueId ? 'PUT' : 'POST';
+
+        fetch(url, {
+            method: method,
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showMessage(data.message, 'success');
+                closeVenueModal();
+                loadVenues();
+                         } else {
+                 showMessage(data.message || 'Error saving venue', 'error');
+             }
+        })
+                 .catch(error => {
+             console.error('Error saving venue:', error);
+             showMessage('Error saving venue', 'error');
+         });
+    }
+
+        function deleteVenue(venueId) {
+        fetch(`/auth/api/venues/${venueId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showMessage(data.message, 'success');
+                loadVenues();
+            } else {
+                showMessage(data.message || 'Error deleting venue', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting venue:', error);
+            showMessage('Error deleting venue', 'error');
+        });
+    }
+
+    function showMessage(message, type = 'info') {
+        // Create message element
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message message-${type}`;
+        messageDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            z-index: 10000;
+            max-width: 400px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideIn 0.3s ease;
+        `;
+        messageDiv.textContent = message;
+        
+        // Add to page
+        document.body.appendChild(messageDiv);
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+            messageDiv.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.parentNode.removeChild(messageDiv);
+                }
+            }, 300);
+        }, 5000);
+    }
+    
+    // Add CSS animations
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>Manage Contracts</h2>
+    </div>
+    <div class="card-body">
+        <div class="contracts-container">
+            <div class="contracts-header">
+                <h3>Contract Types Configuration</h3>
+                <button class="button button-primary" id="addContractBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Add New Contract
+                </button>
+            </div>
+            
+            <div class="contracts-list">
+                <!-- Contract types will be loaded here -->
+                <div class="contract-item">
+                    <div class="contract-header">
+                        <h4>1 Day Contract</h4>
+                        <div class="contract-actions">
+                            <button class="button button-secondary edit-contract-btn">Edit</button>
+                            <button class="button button-danger delete-contract-btn">Delete</button>
+                        </div>
+                    </div>
+                    <div class="contract-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Duration:</span>
+                            <span class="detail-value">1 day</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">First Minute Penalty:</span>
+                            <span class="detail-value">$50</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Additional Minutes Penalty:</span>
+                            <span class="detail-value">$25/min</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Drink Price:</span>
+                            <span class="detail-value">$15</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Commission Rate:</span>
+                            <span class="detail-value">20%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Contract Modal -->
+<div class="modal-overlay hidden" id="contractModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="contractModalTitle">Add New Contract</h3>
+            <button class="modal-close-btn" id="closeContractModalBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="contractForm">
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label for="contractName">Contract Name</label>
+                        <input type="text" id="contractName" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="contractDays">Duration (days)</label>
+                        <input type="number" id="contractDays" name="days" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="firstMinutePenalty">First Minute Penalty ($)</label>
+                        <input type="number" id="firstMinutePenalty" name="first_minute_penalty" min="0" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="additionalMinutePenalty">Additional Minutes Penalty ($/min)</label>
+                        <input type="number" id="additionalMinutePenalty" name="additional_minute_penalty" min="0" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="drinkPrice">Drink Price ($)</label>
+                        <input type="number" id="drinkPrice" name="drink_price" min="0" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="commissionRate">Commission Rate (%)</label>
+                        <input type="number" id="commissionRate" name="commission_rate" min="0" max="100" step="0.01" required>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="button button-secondary" id="cancelContractBtn">Cancel</button>
+            <button type="submit" class="button button-primary" form="contractForm">Save Contract</button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const addContractBtn = document.getElementById('addContractBtn');
+    const contractModal = document.getElementById('contractModal');
+    const closeContractModalBtn = document.getElementById('closeContractModalBtn');
+    const cancelContractBtn = document.getElementById('cancelContractBtn');
+    const contractForm = document.getElementById('contractForm');
+    const contractModalTitle = document.getElementById('contractModalTitle');
+
+    // Open modal
+    addContractBtn.addEventListener('click', () => {
+        contractModalTitle.textContent = 'Add New Contract';
+        contractForm.reset();
+        contractModal.classList.remove('hidden');
+    });
+
+    // Close modal
+    closeContractModalBtn.addEventListener('click', () => {
+        contractModal.classList.add('hidden');
+    });
+
+    cancelContractBtn.addEventListener('click', () => {
+        contractModal.classList.add('hidden');
+    });
+
+    // Close modal when clicking outside
+    contractModal.addEventListener('click', (e) => {
+        if (e.target === contractModal) {
+            contractModal.classList.add('hidden');
+        }
+    });
+
+    // Handle form submission
+    contractForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(contractForm);
+        const contractData = {
+            name: formData.get('name'),
+            days: parseInt(formData.get('days')),
+            first_minute_penalty: parseFloat(formData.get('first_minute_penalty')),
+            additional_minute_penalty: parseFloat(formData.get('additional_minute_penalty')),
+            drink_price: parseFloat(formData.get('drink_price')),
+            commission_rate: parseFloat(formData.get('commission_rate'))
+        };
+
+        try {
+            const response = await fetch('/auth/api/contracts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify(contractData)
+            });
+
+            if (response.ok) {
+                contractModal.classList.add('hidden');
+                location.reload(); // Reload to show new contract
+            } else {
+                const data = await response.json();
+                alert('Error: ' + data.message);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred while saving the contract.');
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -46,6 +46,127 @@
     }
 
     // -----------------------------
+    // Sidebar Dropdown Menu
+    // -----------------------------
+    const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
+    dropdownToggles.forEach(toggle => {
+      toggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        const dropdown = toggle.closest('.sidebar-dropdown');
+        const dropdownContent = dropdown.querySelector('.dropdown-content');
+        
+        // Close other dropdowns
+        document.querySelectorAll('.sidebar-dropdown').forEach(otherDropdown => {
+          if (otherDropdown !== dropdown) {
+            otherDropdown.classList.remove('active');
+          }
+        });
+        
+        // Toggle current dropdown
+        dropdown.classList.toggle('active');
+      });
+    });
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.sidebar-dropdown')) {
+        document.querySelectorAll('.sidebar-dropdown').forEach(dropdown => {
+          dropdown.classList.remove('active');
+        });
+      }
+    });
+
+    // -----------------------------
+    // Agency Switch Modal
+    // -----------------------------
+    const switchAgencyBtn = document.getElementById('switchAgencyBtn');
+    const agencySwitchModal = document.getElementById('agencySwitchModal');
+    const closeAgencyModalBtn = document.getElementById('closeAgencyModalBtn');
+    const agencyList = document.querySelector('.agency-list');
+
+    if (switchAgencyBtn && agencySwitchModal) {
+        // Open agency switch modal
+        switchAgencyBtn.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/auth/api/agencies');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    renderAgencyList(data.agencies, data.current_agency_id);
+                    agencySwitchModal.classList.remove('hidden');
+                } else {
+                    console.error('Failed to load agencies:', data.message);
+                }
+            } catch (error) {
+                console.error('Error loading agencies:', error);
+            }
+        });
+
+        // Close modal
+        closeAgencyModalBtn.addEventListener('click', () => {
+            agencySwitchModal.classList.add('hidden');
+        });
+
+        // Close modal when clicking outside
+        agencySwitchModal.addEventListener('click', (e) => {
+            if (e.target === agencySwitchModal) {
+                agencySwitchModal.classList.add('hidden');
+            }
+        });
+
+        // Handle agency selection
+        agencyList.addEventListener('click', async (e) => {
+            const agencyItem = e.target.closest('.agency-item');
+            if (!agencyItem) return;
+
+            const agencyId = agencyItem.dataset.agencyId;
+            if (!agencyId) return;
+
+            try {
+                const response = await fetch('/auth/api/switch-agency', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({ agency_id: agencyId })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Update current agency display
+                    const currentAgencySpan = document.querySelector('.current-agency');
+                    if (currentAgencySpan) {
+                        currentAgencySpan.textContent = data.agency_name;
+                    }
+                    
+                    // Close modal and redirect to staff list
+                    agencySwitchModal.classList.add('hidden');
+                    window.location.href = '/staff/list';
+                } else {
+                    console.error('Failed to switch agency:', data.message);
+                }
+            } catch (error) {
+                console.error('Error switching agency:', error);
+            }
+        });
+    }
+
+    function renderAgencyList(agencies, currentAgencyId) {
+        if (!agencyList) return;
+
+        agencyList.innerHTML = agencies.map(agency => `
+            <div class="agency-item ${agency.id == currentAgencyId ? 'current' : ''}" data-agency-id="${agency.id}">
+                <div>
+                    <div class="agency-name">${agency.name}</div>
+                    <div class="agency-status">${agency.id == currentAgencyId ? 'Current Agency' : 'Click to switch'}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // -----------------------------
     // Dispatch Page - Status Filter
     // -----------------------------
     const statusFilter = document.getElementById('statusFilter');
@@ -759,6 +880,11 @@ if (lists.length && window.Sortable) {
   });
   
   document.body.addEventListener("click", (e) => {
+    // Only handle delete buttons on staff-related pages
+    if (!location.pathname.includes('/staff/') && !location.pathname.includes('/payroll/')) {
+      return;
+    }
+    
     const getTargetData = (el) => {
         const btn = el.closest(".card-delete-button, .button.button-danger");
         if (!btn) return null;

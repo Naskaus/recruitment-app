@@ -7,15 +7,16 @@ from datetime import datetime, date, timedelta
 
 dispatch_bp = Blueprint('dispatch', __name__, template_folder='../templates', url_prefix='/dispatch')
 
-# --- Constants ---
-CONTRACT_TYPES = {"1jour": 1, "10jours": 10, "1mois": 30}
-
 # --- Helper function ---
-def compute_end_date(start_date: date, contract_type: str) -> date:
-    days = CONTRACT_TYPES.get(contract_type)
-    if not days:
-        raise ValueError("Invalid contract_type")
-    return start_date + timedelta(days=days - 1)
+def compute_end_date(start_date: date, contract_name: str, agency_id: int) -> date:
+    """Compute end date based on contract name and agency."""
+    from app.models import AgencyContract
+    
+    contract = AgencyContract.query.filter_by(name=contract_name, agency_id=agency_id).first()
+    if not contract:
+        raise ValueError(f"Contract '{contract_name}' not found for this agency")
+    
+    return start_date + timedelta(days=contract.days - 1)
 
 # --- VIEWS (HTML PAGE) ---
 @dispatch_bp.route('/')
@@ -85,10 +86,16 @@ def get_assignment_form_data():
         agency_positions = AgencyPosition.query.filter_by(agency_id=agency_id).order_by(AgencyPosition.name).all()
         staff_positions = [position.name for position in agency_positions]
 
+        # Get agency contracts dynamically
+        from app.models import AgencyContract
+        agency_contracts = AgencyContract.query.filter_by(agency_id=agency_id).order_by(AgencyContract.days).all()
+        contracts = [{'name': contract.name, 'days': contract.days} for contract in agency_contracts]
+
         return jsonify({
             "status": "success",
-            "positions": staff_positions, # Changed from 'roles' to 'positions'
-            "managers": managers
+            "positions": staff_positions,
+            "managers": managers,
+            "contracts": contracts
         })
     except Exception as e:
         current_app.logger.error(f"Error getting form data: {e}")
@@ -113,7 +120,7 @@ def create_assignment():
         staff_id = int(data.get('staff_id'))
         venue_name = data.get('venue')
         role_name = data.get('role')
-        contract_type = data.get('contract_type')
+        contract_name = data.get('contract_type')  # Now contains contract name
         start_date = datetime.fromisoformat(data.get('start_date')).date()
         base_salary = float(data.get('base_salary', 0))
         managed_by_user_id = int(data.get('managed_by_user_id'))
@@ -126,7 +133,7 @@ def create_assignment():
     if not venue: 
         return jsonify({"status": "error", "message": "Venue not found in your agency."}), 404
 
-    end_date = compute_end_date(start_date, contract_type)
+    end_date = compute_end_date(start_date, contract_name, agency_id)
     
     # Final clean version of the constructor
     new_a = Assignment(
@@ -134,7 +141,7 @@ def create_assignment():
         staff_id=staff_id,
         venue_id=venue.id,
         contract_role=role_name,
-        contract_type=contract_type,
+        contract_type=contract_name,  # Now stores the contract name
         start_date=start_date,
         end_date=end_date,
         base_salary=base_salary,

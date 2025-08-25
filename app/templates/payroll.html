@@ -187,13 +187,12 @@
           {% for row in assignments %}
             {% set a = row.assignment %}
             {% set stats = row.contract_stats %}
-            {% set label = '1-day' if a.contract_type == '1jour'
-                           else '10-days' if a.contract_type == '10jours'
-                           else '1-month' %}
+            {# Use the contract name directly since it's now stored as the contract name #}
+            {% set label = a.contract_type %}
             
             <tr
               id="assignment-row-{{ a.id }}"
-              class="row-contract-{{ a.contract_type }} status-{{ a.status }}"
+              class="row-contract-{{ a.contract_type | lower | replace(' ', '-') }} status-{{ a.status }}"
               data-assignment-id="{{ a.id }}"
               data-staff-name="{{ a.staff.nickname if a.staff else a.archived_staff_name }}"
               data-start-date="{{ a.start_date.isoformat() }}"
@@ -204,28 +203,30 @@
               data-current-status="{{ a.status }}"
               data-role="{{ a.contract_role }}"
             >
-              <td>
-                {% if a.staff %}
-                  <div class="staff-cell">
-                    <img src="{{ url_for('staff.uploaded_file', filename=a.staff.photo_url.split('/')[-1]) if a.staff.photo_url and 'default' not in a.staff.photo_url else url_for('static', filename='images/default_avatar.png') }}" alt="{{ a.staff.nickname }}">
-                                         <div class="staff-cell-info">
-                       <a href="{{ url_for('staff.profile_detail', profile_id=a.staff.id) }}">
-                         <strong>{{ a.staff.nickname }}</strong>
-                       </a>
-                       <span class="role-badge">{{ a.contract_role or 'N/A' }}</span>
-                     </div>
-                  </div>
-                {% else %}
-                  <div class="staff-cell deleted-staff-cell">
-                    <img src="{{ a.archived_staff_photo if a.archived_staff_photo else url_for('static', filename='images/default_avatar.png') }}" alt="{{ a.archived_staff_name }}">
-                                         <div class="staff-cell-info">
-                       <strong>{{ a.archived_staff_name }}</strong>
-                       <span class="role-badge">{{ a.contract_role or 'N/A' }}</span>
-                       <small class="muted" style="display: block;">(Deleted)</small>
-                     </div>
-                  </div>
-                {% endif %}
-              </td>
+                             <td>
+                 {% if a.staff %}
+                   <div class="staff-cell">
+                     <img src="{{ url_for('staff.uploaded_file', filename=a.staff.photo_url.split('/')[-1]) if a.staff.photo_url and 'default' not in a.staff.photo_url else url_for('static', filename='images/default_avatar.png') }}" alt="{{ a.staff.nickname }}">
+                                          <div class="staff-cell-info">
+                        <a href="{{ url_for('staff.profile_detail', profile_id=a.staff.id) }}">
+                          <strong>{{ a.staff.nickname }}</strong>
+                        </a>
+                        <small class="muted">ID: {{ a.staff.id }}</small>
+                        <span class="role-badge">{{ a.contract_role or 'N/A' }}</span>
+                      </div>
+                   </div>
+                 {% else %}
+                   <div class="staff-cell deleted-staff-cell">
+                     <img src="{{ a.archived_staff_photo if a.archived_staff_photo else url_for('static', filename='images/default_avatar.png') }}" alt="{{ a.archived_staff_name }}">
+                                          <div class="staff-cell-info">
+                        <strong>{{ a.archived_staff_name }}</strong>
+                        <small class="muted">ID: {{ a.staff_id or 'N/A' }}</small>
+                        <span class="role-badge">{{ a.contract_role or 'N/A' }}</span>
+                        <small class="muted" style="display: block;">(Deleted)</small>
+                      </div>
+                   </div>
+                 {% endif %}
+               </td>
               <td data-label="Venue">{{ a.venue.name }}</td>
               <td data-label="Managed By">
                   {% if a.manager %} {{ a.manager.username }} {% else %} <span class="muted">—</span> {% endif %}
@@ -319,7 +320,7 @@
           <small class="muted">Contract period: <span id="periodText"></span></small>
         </div>
         <div class="form-grid-2">
-          <div class="form-group"><label for="arrivalTime">Arrival time (e.g., 19:30)</label><input type="time" id="arrivalTime" name="arrival_time"><small class="muted">Late after 19:30 = 5 THB/min</small></div>
+                     <div class="form-group"><label for="arrivalTime">Arrival time (e.g., 19:30)</label><input type="time" id="arrivalTime" name="arrival_time"><small class="muted" id="penaltyRuleText">Late after 19:30 = 5 THB/min</small></div>
           <div class="form-group"><label for="departureTime">Departure time (e.g., 02:00)</label><input type="time" id="departureTime" name="departure_time"></div>
         </div>
         <div class="form-grid-2">

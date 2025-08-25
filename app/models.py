@@ -20,6 +20,7 @@ class Agency(db.Model):
     staff_profiles = db.relationship('StaffProfile', back_populates='agency', lazy='dynamic')
     venues = db.relationship('Venue', back_populates='agency', lazy='dynamic')
     positions = db.relationship('AgencyPosition', back_populates='agency', lazy='dynamic')
+    contracts = db.relationship('AgencyContract', back_populates='agency', lazy='dynamic')
     
     def __repr__(self):
         return f'<Agency {self.name}>'
@@ -54,6 +55,28 @@ class AgencyPosition(db.Model):
     
     def __repr__(self):
         return f'<AgencyPosition {self.name} for {self.agency.name}>'
+
+class AgencyContract(db.Model):
+    __tablename__ = "agency_contract"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    days = db.Column(db.Integer, nullable=False)
+    agency_id = db.Column(db.Integer, db.ForeignKey('agency.id'), nullable=False)
+    
+    # Contract rules
+    late_cutoff_time = db.Column(db.String(5), nullable=False, default="19:30")  # Format: HH:MM
+    first_minute_penalty = db.Column(db.Float, nullable=False, default=0.0)
+    additional_minute_penalty = db.Column(db.Float, nullable=False, default=5.0)
+    drink_price = db.Column(db.Float, nullable=False, default=220.0)
+    staff_commission = db.Column(db.Float, nullable=False, default=100.0)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    agency = db.relationship('Agency', back_populates='contracts')
+    
+    __table_args__ = (db.UniqueConstraint('name', 'agency_id', name='_contract_name_agency_uc'),)
+    
+    def __repr__(self):
+        return f'<AgencyContract {self.name} ({self.days} days) for {self.agency.name}>'
 
 class Role(db.Model):
     __tablename__ = 'role'

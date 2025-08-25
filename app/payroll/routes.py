@@ -2,7 +2,7 @@
 
 from flask import Blueprint, render_template, request, flash, Response, jsonify, abort, redirect, url_for, current_app
 from flask_login import login_required, current_user
-from app.models import db, Assignment, StaffProfile, User, PerformanceRecord, Venue
+from app.models import db, Assignment, StaffProfile, User, PerformanceRecord, Venue, AgencyContract
 from datetime import datetime, date, time as dt_time, timedelta
 from weasyprint import HTML
 
@@ -11,17 +11,41 @@ payroll_bp = Blueprint('payroll', __name__, template_folder='../templates', url_
 # --- Constants ---
 CONTRACT_TYPES = {"1jour": 1, "10jours": 10, "1mois": 30}
 DRINK_STAFF_COMMISSION = 100
-DRINK_BAR_PRICE = 120
+DRINK_BAR_PRICE = 220
+BAR_COMMISSION = DRINK_BAR_PRICE - DRINK_STAFF_COMMISSION  # 220 - 100 = 120 THB per drink
 
 # --- Helper Functions ---
-def calc_lateness_penalty(arrival_time):
+def calc_lateness_penalty(arrival_time, agency_id):
     if not arrival_time:
         return 0
-    cutoff = dt_time(19, 30)
-    if arrival_time <= cutoff:
+    
+    # Get contract rules from AgencyContract
+    # Get the first contract to use its rules (they should be the same for all contracts in an agency)
+    contract = AgencyContract.query.filter_by(agency_id=agency_id).first()
+    if not contract:
+        # Fallback to default values
+        cutoff_time = dt_time(19, 30)
+        first_minute_penalty = 0
+        additional_minute_penalty = 5
+    else:
+        # Parse cutoff time from string (format: "19:30")
+        hour, minute = map(int, contract.late_cutoff_time.split(':'))
+        cutoff_time = dt_time(hour, minute)
+        first_minute_penalty = contract.first_minute_penalty
+        additional_minute_penalty = contract.additional_minute_penalty
+    
+    if arrival_time <= cutoff_time:
         return 0
-    minutes = (datetime.combine(date.today(), arrival_time) - datetime.combine(date.today(), cutoff)).seconds // 60
-    return minutes * 5
+    
+    minutes_late = (datetime.combine(date.today(), arrival_time) - datetime.combine(date.today(), cutoff_time)).seconds // 60
+    
+    if minutes_late == 0:
+        return 0
+    elif minutes_late == 1:
+        return first_minute_penalty
+    else:
+        # First minute penalty + additional minutes penalty
+        return first_minute_penalty + (minutes_late - 1) * additional_minute_penalty
 
 def _get_or_create_daily_record(assignment_id: int, ymd: date) -> 'PerformanceRecord':
     rec = PerformanceRecord.query.filter_by(assignment_id=assignment_id, record_date=ymd).first()
@@ -100,13 +124,16 @@ def payroll_page():
     total_days_worked = 0
     for a in all_assignments:
         contract_stats = { "drinks": 0, "special_comm": 0, "salary": 0, "commission": 0, "profit": 0 }
-        original_duration = CONTRACT_TYPES.get(a.contract_type, 1)
+        
+        # Get contract duration from AgencyContract table
+        contract = AgencyContract.query.filter_by(name=a.contract_type, agency_id=agency_id).first()
+        original_duration = contract.days if contract else 1
         base_daily_salary = (a.base_salary / original_duration) if original_duration > 0 else 0
 
         for record in a.performance_records:
             daily_salary = (base_daily_salary + (record.bonus or 0) - (record.malus or 0) - (record.lateness_penalty or 0))
             daily_commission = (record.drinks_sold or 0) * DRINK_STAFF_COMMISSION
-            bar_revenue = ((record.drinks_sold or 0) * DRINK_BAR_PRICE) + (record.special_commissions or 0)
+            bar_revenue = ((record.drinks_sold or 0) * BAR_COMMISSION) + (record.special_commissions or 0)
             daily_profit = bar_revenue - daily_salary
             
             contract_stats["profit"] += daily_profit
@@ -184,12 +211,32 @@ def list_performance_for_assignment(assignment_id):
     records = PerformanceRecord.query.filter_by(assignment_id=assignment_id) \
                                      .order_by(PerformanceRecord.record_date.desc()).all()
     
+    # Get contract rules for penalty calculation
+    contract = AgencyContract.query.filter_by(name=a.contract_type, agency_id=agency_id).first()
+    
+    # Debug: Log contract lookup
+    current_app.logger.info(f"Looking for contract: name='{a.contract_type}', agency_id={agency_id}")
+    current_app.logger.info(f"Found contract: {contract}")
+    if contract:
+        current_app.logger.info(f"Contract rules: first_minute_penalty={contract.first_minute_penalty}, additional_minute_penalty={contract.additional_minute_penalty}")
+    
+    contract_rules = {
+        "late_cutoff_time": contract.late_cutoff_time if contract else "19:30",
+        "first_minute_penalty": contract.first_minute_penalty if contract else 0,
+        "additional_minute_penalty": contract.additional_minute_penalty if contract else 5
+    } if contract else {
+        "late_cutoff_time": "19:30",
+        "first_minute_penalty": 0,
+        "additional_minute_penalty": 5
+    }
+    
     contract_data = {
         "start_date": a.start_date.isoformat(),
         "end_date": a.end_date.isoformat(),
         "base_salary": a.base_salary,
         "contract_type": a.contract_type,
-        "status": a.status
+        "status": a.status,
+        "contract_rules": contract_rules
     }
 
     return jsonify({
@@ -234,7 +281,7 @@ def upsert_performance():
     rec.special_commissions = float(data.get('special_commissions') or 0.0)
     rec.bonus = float(data.get('bonus') or 0.0)
     rec.malus = float(data.get('malus') or 0.0)
-    rec.lateness_penalty = float(calc_lateness_penalty(rec.arrival_time))
+    rec.lateness_penalty = float(calc_lateness_penalty(rec.arrival_time, agency_id))
     db.session.commit()
     return jsonify({"status": "success", "record": rec.to_dict()}), 200
 
@@ -314,13 +361,16 @@ def payroll_pdf():
     total_days_worked = 0
     for a in all_assignments:
         contract_stats = { "drinks": 0, "special_comm": 0, "salary": 0, "commission": 0, "profit": 0 }
-        original_duration = CONTRACT_TYPES.get(a.contract_type, 1)
+        
+        # Get contract duration from AgencyContract table
+        contract = AgencyContract.query.filter_by(name=a.contract_type, agency_id=agency_id).first()
+        original_duration = contract.days if contract else 1
         base_daily_salary = (a.base_salary / original_duration) if original_duration > 0 else 0
 
         for record in a.performance_records:
             daily_salary = (base_daily_salary + (record.bonus or 0) - (record.malus or 0) - (record.lateness_penalty or 0))
             daily_commission = (record.drinks_sold or 0) * DRINK_STAFF_COMMISSION
-            bar_revenue = ((record.drinks_sold or 0) * DRINK_BAR_PRICE) + (record.special_commissions or 0)
+            bar_revenue = ((record.drinks_sold or 0) * BAR_COMMISSION) + (record.special_commissions or 0)
             daily_profit = bar_revenue - daily_salary
             
             contract_stats["drinks"] += record.drinks_sold or 0
@@ -386,13 +436,16 @@ def assignment_pdf(assignment_id):
     ).first_or_404()
 
     contract_stats = { "drinks": 0, "special_comm": 0, "salary": 0, "commission": 0, "profit": 0 }
-    original_duration = CONTRACT_TYPES.get(assignment.contract_type, 1)
+    
+    # Get contract duration from AgencyContract table
+    contract = AgencyContract.query.filter_by(name=assignment.contract_type, agency_id=agency_id).first()
+    original_duration = contract.days if contract else 1
     base_daily_salary = (assignment.base_salary / original_duration) if original_duration > 0 else 0
 
     for record in assignment.performance_records:
         daily_salary = (base_daily_salary + (record.bonus or 0) - (record.malus or 0) - (record.lateness_penalty or 0))
         daily_commission = (record.drinks_sold or 0) * DRINK_STAFF_COMMISSION
-        bar_revenue = ((record.drinks_sold or 0) * DRINK_BAR_PRICE) + (record.special_commissions or 0)
+        bar_revenue = ((record.drinks_sold or 0) * BAR_COMMISSION) + (record.special_commissions or 0)
         daily_profit = bar_revenue - daily_salary
 
         contract_stats["drinks"] += record.drinks_sold or 0

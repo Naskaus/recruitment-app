@@ -268,25 +268,166 @@ def switch_agency():
         'agency_name': agency.name
     })
 
-@auth_bp.route('/auth/api/contracts', methods=['POST'])
+@auth_bp.route('/auth/api/contracts', methods=['GET', 'POST', 'PUT', 'DELETE'])
 @login_required
 @super_admin_required
-def create_contract():
-    """Create a new contract type."""
-    data = request.get_json()
+def manage_contracts():
+    """API for managing agency contracts."""
+    from app.models import AgencyContract
+    from flask import session
     
-    # For now, just return success (we'll implement the database model later)
-    return jsonify({
-        'message': 'Contract created successfully',
-        'contract': data
-    })
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    if not agency_id:
+        abort(403, "User not associated with an agency.")
+    
+    if request.method == 'GET':
+        # Get all contracts for the agency
+        contracts = AgencyContract.query.filter_by(agency_id=agency_id).order_by(AgencyContract.days).all()
+        return jsonify({
+            'contracts': [{
+                'id': c.id,
+                'name': c.name,
+                'days': c.days,
+                'late_cutoff_time': c.late_cutoff_time,
+                'first_minute_penalty': c.first_minute_penalty,
+                'additional_minute_penalty': c.additional_minute_penalty,
+                'drink_price': c.drink_price,
+                'staff_commission': c.staff_commission
+            } for c in contracts]
+        })
+    
+    elif request.method == 'POST':
+        # Create new contract
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['name', 'days', 'late_cutoff_time', 'first_minute_penalty', 
+                          'additional_minute_penalty', 'drink_price', 'staff_commission']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        # Check if contract name already exists for this agency
+        existing = AgencyContract.query.filter_by(name=data['name'], agency_id=agency_id).first()
+        if existing:
+            return jsonify({'error': 'Contract name already exists for this agency'}), 400
+        
+        # Create new contract
+        contract = AgencyContract(
+            name=data['name'],
+            days=data['days'],
+            agency_id=agency_id,
+            late_cutoff_time=data['late_cutoff_time'],
+            first_minute_penalty=data['first_minute_penalty'],
+            additional_minute_penalty=data['additional_minute_penalty'],
+            drink_price=data['drink_price'],
+            staff_commission=data['staff_commission']
+        )
+        
+        db.session.add(contract)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Contract created successfully',
+            'contract': {
+                'id': contract.id,
+                'name': contract.name,
+                'days': contract.days,
+                'late_cutoff_time': contract.late_cutoff_time,
+                'first_minute_penalty': contract.first_minute_penalty,
+                'additional_minute_penalty': contract.additional_minute_penalty,
+                'drink_price': contract.drink_price,
+                'staff_commission': contract.staff_commission
+            }
+        })
+    
+    elif request.method == 'PUT':
+        # Update existing contract
+        data = request.get_json()
+        contract_id = data.get('id')
+        
+        if not contract_id:
+            return jsonify({'error': 'Contract ID is required'}), 400
+        
+        contract = AgencyContract.query.filter_by(id=contract_id, agency_id=agency_id).first()
+        if not contract:
+            return jsonify({'error': 'Contract not found'}), 404
+        
+        # Update fields
+        contract.name = data.get('name', contract.name)
+        contract.days = data.get('days', contract.days)
+        contract.late_cutoff_time = data.get('late_cutoff_time', contract.late_cutoff_time)
+        contract.first_minute_penalty = data.get('first_minute_penalty', contract.first_minute_penalty)
+        contract.additional_minute_penalty = data.get('additional_minute_penalty', contract.additional_minute_penalty)
+        contract.drink_price = data.get('drink_price', contract.drink_price)
+        contract.staff_commission = data.get('staff_commission', contract.staff_commission)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Contract updated successfully',
+            'contract': {
+                'id': contract.id,
+                'name': contract.name,
+                'days': contract.days,
+                'late_cutoff_time': contract.late_cutoff_time,
+                'first_minute_penalty': contract.first_minute_penalty,
+                'additional_minute_penalty': contract.additional_minute_penalty,
+                'drink_price': contract.drink_price,
+                'staff_commission': contract.staff_commission
+            }
+        })
+    
+    elif request.method == 'DELETE':
+        # Delete contract
+        contract_id = request.args.get('id')
+        
+        if not contract_id:
+            return jsonify({'error': 'Contract ID is required'}), 400
+        
+        contract = AgencyContract.query.filter_by(id=contract_id, agency_id=agency_id).first()
+        if not contract:
+            return jsonify({'error': 'Contract not found'}), 404
+        
+        db.session.delete(contract)
+        db.session.commit()
+        
+        return jsonify({'message': 'Contract deleted successfully'})
 
 @auth_bp.route('/contracts')
 @login_required
 @super_admin_required
 def contracts():
     """Manage contracts page."""
-    return render_template('contracts.html')
+    from app.models import AgencyContract
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    if not agency_id:
+        abort(403, "User not associated with an agency.")
+    
+    # Get current agency
+    from app.models import Agency
+    current_agency = Agency.query.get(agency_id)
+    if not current_agency:
+        abort(403, "Agency not found.")
+    
+    # Get existing contracts
+    contracts = AgencyContract.query.filter_by(agency_id=agency_id).order_by(AgencyContract.days).all()
+    
+    return render_template('contracts.html', 
+                         current_agency=current_agency,
+                         contracts=contracts)
 
 @auth_bp.route('/venues')
 @login_required

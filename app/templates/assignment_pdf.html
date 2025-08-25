@@ -149,8 +149,8 @@
                             <p><strong>Staff ID:</strong> {{ assignment.staff.id if assignment.staff else 'N/A' }}</p>
             <p><strong>Position:</strong> {{ assignment.contract_role }}</p>
             <p><strong>Venue:</strong> {{ assignment.venue.name }}</p>
-            <p><strong>Period:</strong> {{ assignment.start_date.strftime('%d %b %Y') }} - {{ (assignment.start_date + timedelta(days=9) if assignment.contract_type == '10jours' else assignment.start_date + timedelta(days=29) if assignment.contract_type == '1mois' else assignment.start_date).strftime('%d %b %Y') }}</p>
-            <p><strong>Type:</strong> {{ '1-day' if assignment.contract_type == '1jour' else '10-days' if assignment.contract_type == '10jours' else '1-month' }}</p>
+            <p><strong>Period:</strong> {{ assignment.start_date.strftime('%d %b %Y') }} - {{ assignment.end_date.strftime('%d %b %Y') }}</p>
+            <p><strong>Type:</strong> {{ assignment.contract_type }}</p>
             <p><strong>Base Salary:</strong> {{ '{:,}'.format(assignment.base_salary) }} ฿</p>
             <p><strong>Manager:</strong> {{ assignment.manager.username if assignment.manager else 'N/A' }}</p>
         </div>

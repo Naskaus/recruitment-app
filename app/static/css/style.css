@@ -1111,6 +1111,16 @@
                     .payroll-table .row-contract-1mois {
                         border-left: 4px solid var(--contract-1mois-border);
                     }
+                    /* Dynamic contract row borders for new contract names */
+                    .payroll-table .row-contract-1-day {
+                        border-left: 4px solid var(--contract-1jour-border);
+                    }
+                    .payroll-table .row-contract-10-days {
+                        border-left: 4px solid var(--contract-10jours-border);
+                    }
+                    .payroll-table .row-contract-1-month {
+                        border-left: 4px solid var(--contract-1mois-border);
+                    }
                 
                     /* Contract STATUS is shown by the background color. */
                     .payroll-table tr.status-archived {
@@ -1147,6 +1157,22 @@
                         color: #1E6B24;
                     }
                     .badge-1mois {
+                        background-color: var(--contract-1mois-bg);
+                        border-color: var(--contract-1mois-border);
+                        color: #0D47A1;
+                    }
+                    /* Dynamic contract badges for new contract names */
+                    .badge-1-day {
+                        background-color: var(--contract-1jour-bg);
+                        border-color: var(--contract-1jour-border);
+                        color: #8B6B00;
+                    }
+                    .badge-10-days {
+                        background-color: var(--contract-10jours-bg);
+                        border-color: var(--contract-10jours-border);
+                        color: #1E6B24;
+                    }
+                    .badge-1-month {
                         background-color: var(--contract-1mois-bg);
                         border-color: var(--contract-1mois-border);
                         color: #0D47A1;

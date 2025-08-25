@@ -426,12 +426,6 @@ if (lists.length && window.Sortable) {
     const positionInput = document.getElementById("assignmentRole"); // Keep same ID for compatibility
     const managerInput = document.getElementById("assignmentManager");
 
-    const SALARY_DEFAULTS = {
-      '1jour': 1000,
-      '10jours': 10000,
-      '1mois': 30000
-    };
-
     async function populateAssignmentModalDropdowns() {
         try {
             const response = await fetch('/dispatch/api/assignment/form-data');
@@ -440,35 +434,34 @@ if (lists.length && window.Sortable) {
             const data = await response.json();
 
             if (data.status === 'success') {
+                // Populate positions
                 positionInput.innerHTML = '';
                 data.positions.forEach(position => {
                     const option = new Option(position, position);
                     positionInput.add(option);
                 });
 
+                // Populate managers
                 managerInput.innerHTML = '<option value="" disabled selected>-- Select a Manager --</option>';
                 data.managers.forEach(manager => {
                     const option = new Option(manager.username, manager.id);
                     managerInput.add(option);
+                });
+
+                // Populate contracts
+                contractTypeInput.innerHTML = '';
+                data.contracts.forEach(contract => {
+                    const option = new Option(contract.name, contract.name);
+                    contractTypeInput.add(option);
                 });
             } else {
                 throw new Error(data.message || 'Failed to load form data');
             }
         } catch (error) {
             console.error("Error populating assignment modal:", error);
-            alert("Could not load roles and managers. Please check the console and try again.");
+            alert("Could not load form data. Please check the console and try again.");
         }
     }
-
-    function updateDefaultSalary() {
-        if (!contractTypeInput) return;
-        const selectedType = contractTypeInput.value;
-        if (SALARY_DEFAULTS[selectedType]) {
-            baseSalaryInput.value = SALARY_DEFAULTS[selectedType];
-        }
-    }
-
-    contractTypeInput?.addEventListener('change', updateDefaultSalary);
 
     async function openModal(staffId, staffName, venue) {
       if (!assignmentModal) return;
@@ -584,18 +577,41 @@ if (lists.length && window.Sortable) {
             const summaryTotalCommission = document.getElementById("summaryTotalCommission");
             const summaryTotalSalary = document.getElementById("summaryTotalSalary");
             const summaryTotalProfit = document.getElementById("summaryTotalProfit");
-            const summaryPdfBtn = document.getElementById("summaryPdfBtn");
-            const summaryArchiveBtn = document.getElementById("summaryArchiveBtn");
+                         const summaryPdfBtn = document.getElementById("summaryPdfBtn");
+             const summaryArchiveBtn = document.getElementById("summaryArchiveBtn");
+             const penaltyRuleText = document.getElementById("penaltyRuleText");
             const DRINK_STAFF = 100;
-            const DRINK_BAR = 120;
+            const DRINK_BAR = 220;
+            const BAR_COMMISSION = DRINK_BAR - DRINK_STAFF; // 220 - 100 = 120 THB per drink
             const LATE_CUTOFF = "19:30";
             const TYPE_TO_DAYS = { '1jour': 1, '1day': 1, '10jours': 10, '10days': 10, '1mois': 30, '1month': 30 };
             const toTypeKey = (v) => String(v || '').trim().toLowerCase();
+            
+            // Contract rules will be loaded dynamically
+            let currentContractRules = {
+                late_cutoff_time: "19:30",
+                first_minute_penalty: 0,
+                additional_minute_penalty: 5
+            };
 
-            function openPerformanceModal() { performanceModal?.classList.remove("hidden"); }
-            function closePerformanceModal() { performanceModal?.classList.add("hidden"); }
-            function openSummaryModal() { summaryModal?.classList.remove("hidden"); }
-            function closeSummaryModal() { summaryModal?.classList.add("hidden"); }
+                         function openPerformanceModal() { performanceModal?.classList.remove("hidden"); }
+             function closePerformanceModal() { performanceModal?.classList.add("hidden"); }
+             function openSummaryModal() { summaryModal?.classList.remove("hidden"); }
+             function closeSummaryModal() { summaryModal?.classList.add("hidden"); }
+             
+             function updatePenaltyRuleText() {
+                 if (penaltyRuleText) {
+                     const firstMin = currentContractRules.first_minute_penalty;
+                     const additionalMin = currentContractRules.additional_minute_penalty;
+                     const cutoff = currentContractRules.late_cutoff_time;
+                     
+                     if (firstMin === 0) {
+                         penaltyRuleText.textContent = `Late after ${cutoff} = ${additionalMin} THB/min from minute 1`;
+                     } else {
+                         penaltyRuleText.textContent = `Late after ${cutoff} = ${firstMin} THB first minute, then ${additionalMin} THB/min`;
+                     }
+                 }
+             }
 
             closePerfBtn?.addEventListener("click", closePerformanceModal);
             cancelPerfBtn?.addEventListener("click", closePerformanceModal);
@@ -603,11 +619,22 @@ if (lists.length && window.Sortable) {
 
             function computePenalty(arrival) {
                 if (!arrival) return 0;
-                const cutoff = new Date(`1970-01-01T${LATE_CUTOFF}:00`);
+                const cutoff = new Date(`1970-01-01T${currentContractRules.late_cutoff_time}:00`);
                 const when = new Date(`1970-01-01T${arrival}:00`);
                 if (when <= cutoff) return 0;
                 const minutes = Math.round((when - cutoff) / 60000);
-                return minutes * 5;
+                
+                console.log('Penalty calculation:', {
+                    arrival,
+                    cutoff: currentContractRules.late_cutoff_time,
+                    minutes,
+                    firstMinutePenalty: currentContractRules.first_minute_penalty,
+                    additionalMinutePenalty: currentContractRules.additional_minute_penalty
+                });
+                
+                if (minutes === 0) return 0;
+                else if (minutes === 1) return currentContractRules.first_minute_penalty;
+                else return currentContractRules.first_minute_penalty + (minutes - 1) * currentContractRules.additional_minute_penalty;
             }
 
             function recomputeDailySummary() {
@@ -625,7 +652,7 @@ if (lists.length && window.Sortable) {
                 proratedBaseInput.value = baseDaily.toFixed(0);
                 const salaryPaid = baseDaily + bonus - malus - penalty;
                 salaryPaidInput.value = salaryPaid.toFixed(0);
-                const profit = (drinks * DRINK_BAR + special) - salaryPaid;
+                const profit = (drinks * BAR_COMMISSION + special) - salaryPaid;
                 barProfitInput.value = profit.toFixed(0);
             }
             [arrivalInput, departureInput, drinksInput, specialInput, bonusInput, malusInput].forEach(el => {
@@ -663,10 +690,17 @@ if (lists.length && window.Sortable) {
                         historyBox.innerHTML = `<p class="text-center" style="padding:.5rem;">Could not load contract data.</p>`;
                         return;
                     }
-                    const list = data.records;
-                    const contract = data.contract;
-                    let originalContractDays = contract.original_days || TYPE_TO_DAYS[toTypeKey(contract.contract_type)] || contract.contract_days || 1;
-                    const baseDaily = originalContractDays > 0 ? (contract.base_salary / originalContractDays) : 0;
+                                         const list = data.records;
+                     const contract = data.contract;
+                     
+                     // Update current contract rules
+                     if (contract.contract_rules) {
+                         currentContractRules = contract.contract_rules;
+                         updatePenaltyRuleText();
+                     }
+                     
+                     let originalContractDays = contract.original_days || TYPE_TO_DAYS[toTypeKey(contract.contract_type)] || contract.contract_days || 1;
+                     const baseDaily = originalContractDays > 0 ? (contract.base_salary / originalContractDays) : 0;
                     if (list.length === 0) {
                         historyBox.innerHTML = `<p class="text-center" style="padding:.5rem;">No history yet.</p>`;
                     } else {
@@ -679,7 +713,7 @@ if (lists.length && window.Sortable) {
                             const tr = document.createElement("tr");
                             const commission = (r.drinks_sold || 0) * DRINK_STAFF;
                             const salary = baseDaily + (r.bonus || 0) - (r.malus || 0) - (r.lateness_penalty || 0);
-                            const profit = ((r.drinks_sold || 0) * DRINK_BAR + (r.special_commissions || 0)) - salary;
+                            const profit = ((r.drinks_sold || 0) * BAR_COMMISSION + (r.special_commissions || 0)) - salary;
                             tr.innerHTML = `<td>${new Date(r.record_date + 'T00:00:00').toLocaleDateString('en-GB', {day:'2-digit', month:'2-digit'})}</td><td>${r.drinks_sold || 0}</td><td>${(r.special_commissions || 0).toFixed(0)}฿</td><td>${salary.toFixed(0)}฿</td><td>${commission.toFixed(0)}฿</td><td>${profit.toFixed(0)}฿</td>`;
                             tr.addEventListener("click", () => { recordDateInput.value = r.record_date; loadRecord(assignmentId, r.record_date); });
                             tbody.appendChild(tr);
@@ -781,8 +815,11 @@ if (lists.length && window.Sortable) {
                     contractEndInput.value = endIso;
                     modalStaffName.textContent = staffName || "";
                     const cType = (tr.dataset.contractType || "").trim();
-                    modalContractBadge.textContent = cType === "1jour" ? "1-day" : (cType === "10jours" ? "10-days" : "1-month");
-                    modalContractBadge.className = "contract-badge badge-" + cType;
+                    // Use the contract name directly since it's now stored as the contract name
+                    modalContractBadge.textContent = cType;
+                    // Generate a CSS class based on the contract name for styling
+                    const badgeClass = "contract-badge badge-" + cType.toLowerCase().replace(/\s+/g, '-');
+                    modalContractBadge.className = badgeClass;
                     const role = tr.dataset.role || "";
                     if (modalRoleBadge) {
                         modalRoleBadge.textContent = role;

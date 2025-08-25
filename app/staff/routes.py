@@ -11,6 +11,29 @@ import uuid
 from weasyprint import HTML
 import pathlib
 
+# Helper function to get current agency ID
+def get_current_agency_id():
+    """Get the current agency ID for the user, handling WebDev users properly."""
+    from flask import session
+    
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+        # For WebDev, if no agency is selected, use the first available agency
+        if not agency_id:
+            from app.models import Agency
+            first_agency = Agency.query.first()
+            if first_agency:
+                agency_id = first_agency.id
+                session['current_agency_id'] = agency_id
+            else:
+                abort(403, "No agencies available.")
+        return agency_id
+    else:
+        agency_id = current_user.agency_id
+        if not agency_id:
+            abort(403, "User not associated with an agency.")
+        return agency_id
+
 # Blueprint definition
 staff_bp = Blueprint('staff', __name__, template_folder='../templates', url_prefix='/staff')
 
@@ -31,16 +54,7 @@ def allowed_file(filename):
 @login_required
 def staff_list():
     """Displays the list of staff with sorting and searching, scoped by agency."""
-    from flask import session
-    
-    # Get current agency ID
-    if current_user.role_name == 'WebDev':
-        agency_id = session.get('current_agency_id', current_user.agency_id)
-    else:
-        agency_id = current_user.agency_id
-    
-    if not agency_id:
-        abort(403, "User not associated with an agency.")
+    agency_id = get_current_agency_id()
 
     search_nickname = request.args.get('search_nickname', '').strip()
     sort_by = request.args.get('sort_by', 'created_at')
@@ -83,16 +97,7 @@ def staff_list():
 @login_required
 def profile_form(profile_id=None):
     """Renders the form for both creating a new profile and editing an existing one."""
-    from flask import session
-    
-    # Get current agency ID
-    if current_user.role_name == 'WebDev':
-        agency_id = session.get('current_agency_id', current_user.agency_id)
-    else:
-        agency_id = current_user.agency_id
-    
-    if not agency_id:
-        abort(403, "User not associated with an agency.")
+    agency_id = get_current_agency_id()
 
     edit_mode = profile_id is not None
     profile = None
@@ -109,16 +114,7 @@ def profile_form(profile_id=None):
 @login_required
 def profile_detail(profile_id):
     """Displays the detailed view of a single staff profile."""
-    from flask import session
-    
-    # Get current agency ID
-    if current_user.role_name == 'WebDev':
-        agency_id = session.get('current_agency_id', current_user.agency_id)
-    else:
-        agency_id = current_user.agency_id
-    
-    if not agency_id:
-        abort(403, "User not associated with an agency.")
+    agency_id = get_current_agency_id()
 
     profile = StaffProfile.query.filter_by(id=profile_id, agency_id=agency_id).options(
         db.joinedload(StaffProfile.assignments).subqueryload(Assignment.performance_records)

@@ -72,7 +72,12 @@ def get_assignment_form_data():
         return jsonify({"status": "error", "message": "User not associated with an agency."}), 403
 
     try:
-        agency_users = User.query.filter_by(agency_id=agency_id).order_by(User.username).all()
+        # For WebDev, show all users. For others, show only agency users
+        if current_user.role_name == 'WebDev':
+            agency_users = User.query.order_by(User.username).all()
+        else:
+            agency_users = User.query.filter_by(agency_id=agency_id).order_by(User.username).all()
+        
         managers = [{"id": user.id, "username": user.username} for user in agency_users]
         
         # --- FIX: Use updated static list for staff positions ---

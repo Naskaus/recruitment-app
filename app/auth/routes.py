@@ -82,8 +82,26 @@ def users():
         if current_user.role_name == 'Super-Admin' and role_obj.name == 'WebDev':
             flash('Super-Admin cannot create WebDev users.', 'danger')
             return redirect(url_for('auth.users'))
-            
-        new_user = User(username=username, role_id=role_obj.id)
+        
+        # Get current agency ID for association
+        from flask import session
+        if current_user.role_name == 'WebDev':
+            agency_id = session.get('current_agency_id', current_user.agency_id)
+            # For WebDev, ensure we have a valid agency_id for non-WebDev users
+            if not agency_id and role_obj.name != 'WebDev':
+                flash('Please select an agency before creating non-WebDev users.', 'danger')
+                return redirect(url_for('auth.users'))
+        else:
+            agency_id = current_user.agency_id
+        
+        # Associate user with agency based on role
+        if role_obj.name == 'WebDev':
+            # WebDev users are not associated with any specific agency (can access all)
+            new_user = User(username=username, role_id=role_obj.id, agency_id=None)
+        else:
+            # All other roles must be associated with the current agency
+            new_user = User(username=username, role_id=role_obj.id, agency_id=agency_id)
+        
         new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
@@ -101,20 +119,93 @@ def users():
         all_roles = Role.query.order_by(Role.name).all()
     
     # Get all users with their roles and agencies
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
     # Super-Admin cannot see WebDev users
     if current_user.role_name == 'Super-Admin':
         all_users = User.query.options(
             db.joinedload(User.role),
             db.joinedload(User.agency)
-        ).join(Role).filter(Role.name != 'WebDev').order_by(User.id).all()
+        ).join(Role).filter(Role.name != 'WebDev').filter(User.agency_id == agency_id).order_by(User.id).all()
     else:
-        # WebDev can see all users
+        # WebDev can see users from current agency + WebDev users
         all_users = User.query.options(
             db.joinedload(User.role),
             db.joinedload(User.agency)
+        ).filter(
+            db.or_(
+                User.agency_id == agency_id,  # Users from current agency
+                User.role_id == Role.query.filter_by(name='WebDev').first().id  # WebDev users
+            )
         ).order_by(User.id).all()
     
     return render_template('users.html', users=all_users, roles=all_roles)
+
+@auth_bp.route('/users/edit', methods=['POST'])
+@login_required
+@super_admin_required
+def edit_user():
+    user_id = request.form.get('user_id')
+    username = request.form.get('username')
+    role = request.form.get('role')
+    password = request.form.get('password')
+    
+    if not user_id or not username or not role:
+        flash('All fields are required.', 'danger')
+        return redirect(url_for('auth.users'))
+    
+    user_to_edit = User.query.get_or_404(user_id)
+    
+    # Check if username already exists (excluding current user)
+    existing_user = User.query.filter_by(username=username).filter(User.id != user_id).first()
+    if existing_user:
+        flash(f'Username "{username}" already exists.', 'danger')
+        return redirect(url_for('auth.users'))
+    
+    # Get the role object
+    from app.models import Role
+    role_obj = Role.query.filter_by(name=role).first()
+    if not role_obj:
+        flash(f'Role "{role}" not found.', 'danger')
+        return redirect(url_for('auth.users'))
+    
+    # Super-Admin cannot edit WebDev users
+    if current_user.role_name == 'Super-Admin' and role_obj.name == 'WebDev':
+        flash('Super-Admin cannot edit WebDev users.', 'danger')
+        return redirect(url_for('auth.users'))
+    
+    # Get current agency ID for association
+    from flask import session
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    # Update user
+    user_to_edit.username = username
+    user_to_edit.role_id = role_obj.id
+    
+    # Update agency association based on role
+    if role_obj.name == 'WebDev':
+        # WebDev users are not associated with any specific agency
+        user_to_edit.agency_id = None
+    else:
+        # All other roles must be associated with the current agency
+        user_to_edit.agency_id = agency_id
+    
+    # Update password if provided
+    if password:
+        user_to_edit.set_password(password)
+    
+    db.session.commit()
+    flash(f'User "{username}" updated successfully.', 'success')
+    return redirect(url_for('auth.users'))
 
 @auth_bp.route('/auth/api/agencies')
 @login_required
@@ -436,3 +527,4 @@ def add_agency():
         return redirect(url_for('auth.add_agency'))
     
     return render_template('add_agency.html')
+

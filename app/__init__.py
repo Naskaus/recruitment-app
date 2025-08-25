@@ -103,6 +103,70 @@ def create_app():
         db.session.commit()
         print(f"Success! User '{username}' was promoted to '{role_name}'.")
 
+    @app.cli.command("check-users")
+    def check_users():
+        """Check and display all users with their roles and agencies."""
+        print("=== USERS ===")
+        users = User.query.all()
+        for user in users:
+            print(f"ID: {user.id}, Username: {user.username}, Role: {user.role.name if user.role else 'None'}, Agency: {user.agency.name if user.agency else 'None'}")
+        
+        print("\n=== AGENCIES ===")
+        agencies = Agency.query.all()
+        for agency in agencies:
+            print(f"ID: {agency.id}, Name: {agency.name}")
+        
+        print("\n=== ROLES ===")
+        roles = Role.query.all()
+        for role in roles:
+            print(f"ID: {role.id}, Name: {role.name}")
+
+    @app.cli.command("fix-webdev")
+    def fix_webdev():
+        """Fix WebDev user to have correct role and no agency association."""
+        # Find WebDev role
+        webdev_role = Role.query.filter_by(name='WebDev').first()
+        if not webdev_role:
+            print("WebDev role not found!")
+            return
+        
+        # Find WebDev user
+        webdev_user = User.query.filter_by(username='WebDev').first()
+        if not webdev_user:
+            print("WebDev user not found!")
+            return
+        
+        # Fix WebDev user
+        webdev_user.role_id = webdev_role.id
+        webdev_user.agency_id = None  # WebDev should not be associated with any specific agency
+        db.session.commit()
+        
+        print(f"Fixed WebDev user: role_id={webdev_user.role_id}, agency_id={webdev_user.agency_id}")
+
+    @app.cli.command("fix-user-agency")
+    @click.argument("username")
+    @click.argument("agency_name")
+    def fix_user_agency(username, agency_name):
+        """Fix a user's agency association."""
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            print(f"Error: User '{username}' not found.")
+            return
+        
+        agency = Agency.query.filter_by(name=agency_name).first()
+        if not agency:
+            print(f"Error: Agency '{agency_name}' not found.")
+            return
+        
+        # Don't change WebDev users
+        if user.role and user.role.name == 'WebDev':
+            print(f"Warning: User '{username}' is WebDev and should not be associated with any agency.")
+            return
+        
+        user.agency_id = agency.id
+        db.session.commit()
+        print(f"Fixed user '{username}': agency_id={user.agency_id} (Agency: {agency.name})")
+
     @app.cli.command("list-users")
     def list_users():
         """Lists all users with their roles."""

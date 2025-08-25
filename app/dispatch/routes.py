@@ -80,12 +80,14 @@ def get_assignment_form_data():
         
         managers = [{"id": user.id, "username": user.username} for user in agency_users]
         
-        # --- FIX: Use updated static list for staff positions ---
-        staff_positions = ["Dancer", "Hostess (P.R.)"]
+        # Get agency positions dynamically
+        from app.models import AgencyPosition
+        agency_positions = AgencyPosition.query.filter_by(agency_id=agency_id).order_by(AgencyPosition.name).all()
+        staff_positions = [position.name for position in agency_positions]
 
         return jsonify({
             "status": "success",
-            "roles": staff_positions, # This key is 'roles' for frontend JS compatibility
+            "positions": staff_positions, # Changed from 'roles' to 'positions'
             "managers": managers
         })
     except Exception as e:

@@ -423,7 +423,7 @@ if (lists.length && window.Sortable) {
     const startDateInput = document.getElementById("startDate");
     const contractTypeInput = document.getElementById("contractType");
     const baseSalaryInput = document.getElementById("baseSalary");
-    const roleInput = document.getElementById("assignmentRole");
+    const positionInput = document.getElementById("assignmentRole"); // Keep same ID for compatibility
     const managerInput = document.getElementById("assignmentManager");
 
     const SALARY_DEFAULTS = {
@@ -440,10 +440,10 @@ if (lists.length && window.Sortable) {
             const data = await response.json();
 
             if (data.status === 'success') {
-                roleInput.innerHTML = '';
-                data.roles.forEach(role => {
-                    const option = new Option(role, role);
-                    roleInput.add(option);
+                positionInput.innerHTML = '';
+                data.positions.forEach(position => {
+                    const option = new Option(position, position);
+                    positionInput.add(option);
                 });
 
                 managerInput.innerHTML = '<option value="" disabled selected>-- Select a Manager --</option>';
@@ -475,7 +475,7 @@ if (lists.length && window.Sortable) {
 
       staffNameSpan.textContent = staffName;
       venueInput.value = venue;
-      roleInput.innerHTML = '<option>Loading...</option>';
+      positionInput.innerHTML = '<option>Loading...</option>';
       managerInput.innerHTML = '<option>Loading...</option>';
       assignmentModal.classList.remove("hidden");
 
@@ -506,7 +506,7 @@ if (lists.length && window.Sortable) {
       const payload = {
         staff_id: staffIdInput.value,
         venue: venueInput.value,
-        role: roleInput.value,
+        role: positionInput.value,
         managed_by_user_id: managerInput.value,
         contract_type: contractTypeInput.value,
         start_date: startDateInput.value,

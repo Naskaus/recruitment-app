@@ -54,7 +54,7 @@
                     {# FIX: Use selectattr to filter the list of assignments #}
                     {% set assignment = s.assignments|selectattr('status', 'equalto', 'ongoing')|first %}
                     {% if assignment %}
-                    <span class="role-badge">{{ assignment.contract_role }}</span>
+                    <span class="position-badge">{{ assignment.contract_role }}</span>
                     {% endif %}
                 </div>
             </div>
@@ -99,7 +99,7 @@
                         <input type="number" id="baseSalary" name="base_salary" step="100" required>
                     </div>
                     <div class="form-group">
-                        <label for="assignmentRole">Role</label>
+                        <label for="assignmentRole">Position</label>
                         <select id="assignmentRole" name="role" required></select>
                     </div>
                     <div class="form-group">

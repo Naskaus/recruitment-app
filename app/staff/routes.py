@@ -97,6 +97,8 @@ def staff_list():
 @login_required
 def profile_form(profile_id=None):
     """Renders the form for both creating a new profile and editing an existing one."""
+    from app.models import AgencyPosition
+    
     agency_id = get_current_agency_id()
 
     edit_mode = profile_id is not None
@@ -104,11 +106,15 @@ def profile_form(profile_id=None):
     if edit_mode:
         profile = StaffProfile.query.filter_by(id=profile_id, agency_id=agency_id).first_or_404()
 
+    # Get agency positions for the dropdown
+    agency_positions = AgencyPosition.query.filter_by(agency_id=agency_id).order_by(AgencyPosition.name).all()
+
     current_year = date.today().year
     years = range(current_year - 18, current_year - 60, -1)
     
     return render_template('profile_form.html', profile=profile, years=years, 
-                           months=range(1, 13), days=range(1, 32), edit_mode=edit_mode)
+                           months=range(1, 13), days=range(1, 32), edit_mode=edit_mode,
+                           agency_positions=agency_positions)
 
 @staff_bp.route('/profile/<int:profile_id>')
 @login_required

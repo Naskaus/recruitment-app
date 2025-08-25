@@ -300,7 +300,29 @@ def venues():
 @super_admin_required
 def profile_form_config():
     """Manage profile form configuration page."""
-    return render_template('profile_form_config.html')
+    from app.models import AgencyPosition, Agency
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    if not agency_id:
+        abort(403, "User not associated with an agency.")
+    
+    # Get current agency
+    current_agency = Agency.query.get(agency_id)
+    if not current_agency:
+        abort(403, "Agency not found.")
+    
+    # Get positions for current agency
+    positions = AgencyPosition.query.filter_by(agency_id=agency_id).order_by(AgencyPosition.name).all()
+    
+    return render_template('profile_form_config.html', 
+                         current_agency=current_agency,
+                         positions=positions)
 
 @auth_bp.route('/users/delete/<int:user_id>', methods=['POST'])
 @login_required
@@ -527,4 +549,146 @@ def add_agency():
         return redirect(url_for('auth.add_agency'))
     
     return render_template('add_agency.html')
+
+# Agency Positions API routes
+@auth_bp.route('/auth/api/positions')
+@login_required
+@super_admin_required
+def get_positions():
+    """Get all positions for the current agency."""
+    from app.models import AgencyPosition
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    if not agency_id:
+        return jsonify({'message': 'No agency assigned'}), 400
+    
+    positions = AgencyPosition.query.filter_by(agency_id=agency_id).order_by(AgencyPosition.name).all()
+    return jsonify({
+        'positions': [{
+            'id': position.id,
+            'name': position.name
+        } for position in positions]
+    })
+
+@auth_bp.route('/auth/api/positions', methods=['POST'])
+@login_required
+@super_admin_required
+def create_position():
+    """Create a new position for the current agency."""
+    from app.models import AgencyPosition
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    if not agency_id:
+        return jsonify({'success': False, 'message': 'No agency assigned'}), 400
+    
+    data = request.get_json()
+    name = data.get('name', '').strip()
+    
+    if not name:
+        return jsonify({'success': False, 'message': 'Position name is required'}), 400
+    
+    # Check if position with same name already exists in this agency
+    existing_position = AgencyPosition.query.filter_by(name=name, agency_id=agency_id).first()
+    if existing_position:
+        return jsonify({'success': False, 'message': f'Position "{name}" already exists in this agency'}), 400
+    
+    # Create new position
+    new_position = AgencyPosition(name=name, agency_id=agency_id)
+    db.session.add(new_position)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': f'Position "{name}" created successfully',
+        'position': {
+            'id': new_position.id,
+            'name': new_position.name
+        }
+    })
+
+@auth_bp.route('/auth/api/positions/<int:position_id>', methods=['PUT'])
+@login_required
+@super_admin_required
+def update_position(position_id):
+    """Update a position."""
+    from app.models import AgencyPosition
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    if not agency_id:
+        return jsonify({'success': False, 'message': 'No agency assigned'}), 400
+    
+    position = AgencyPosition.query.filter_by(id=position_id, agency_id=agency_id).first()
+    if not position:
+        return jsonify({'success': False, 'message': 'Position not found'}), 404
+    
+    data = request.get_json()
+    name = data.get('name', '').strip()
+    
+    if not name:
+        return jsonify({'success': False, 'message': 'Position name is required'}), 400
+    
+    # Check if position with same name already exists in this agency (excluding current)
+    existing_position = AgencyPosition.query.filter_by(name=name, agency_id=agency_id).filter(AgencyPosition.id != position_id).first()
+    if existing_position:
+        return jsonify({'success': False, 'message': f'Position "{name}" already exists in this agency'}), 400
+    
+    position.name = name
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': f'Position updated successfully',
+        'position': {
+            'id': position.id,
+            'name': position.name
+        }
+    })
+
+@auth_bp.route('/auth/api/positions/<int:position_id>', methods=['DELETE'])
+@login_required
+@super_admin_required
+def delete_position(position_id):
+    """Delete a position."""
+    from app.models import AgencyPosition
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    if not agency_id:
+        return jsonify({'success': False, 'message': 'No agency assigned'}), 400
+    
+    position = AgencyPosition.query.filter_by(id=position_id, agency_id=agency_id).first()
+    if not position:
+        return jsonify({'success': False, 'message': 'Position not found'}), 404
+    
+    position_name = position.name
+    db.session.delete(position)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': f'Position "{position_name}" deleted successfully'
+    })
 

@@ -19,6 +19,7 @@ class Agency(db.Model):
     users = db.relationship('User', back_populates='agency', lazy='dynamic')
     staff_profiles = db.relationship('StaffProfile', back_populates='agency', lazy='dynamic')
     venues = db.relationship('Venue', back_populates='agency', lazy='dynamic')
+    positions = db.relationship('AgencyPosition', back_populates='agency', lazy='dynamic')
     
     def __repr__(self):
         return f'<Agency {self.name}>'
@@ -38,6 +39,21 @@ class Venue(db.Model):
     
     def __repr__(self):
         return f'<Venue {self.name}>'
+
+class AgencyPosition(db.Model):
+    __tablename__ = "agency_position"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), nullable=False)
+    agency_id = db.Column(db.Integer, db.ForeignKey('agency.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    agency = db.relationship('Agency', back_populates='positions')
+    
+    __table_args__ = (db.UniqueConstraint('name', 'agency_id', name='_position_name_agency_uc'),)
+    
+    def __repr__(self):
+        return f'<AgencyPosition {self.name} for {self.agency.name}>'
 
 class Role(db.Model):
     __tablename__ = 'role'

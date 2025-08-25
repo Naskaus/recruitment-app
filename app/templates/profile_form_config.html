@@ -4,102 +4,32 @@
 <div class="page-container">
     <div class="page-header">
         <h1>Profile Form Configuration</h1>
-        <p>Configure positions and form settings for each agency</p>
+        <p>Configure positions for {{ current_agency.name }}</p>
     </div>
 
     <div class="profile-config-container">
-        <!-- Agency Positions Configuration -->
-        <div class="config-section">
-            <div class="section-header">
-                <h3>Agency Positions</h3>
-                <button class="btn btn-primary" id="addPositionBtn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    Add Position
-                </button>
-            </div>
+                 <!-- Agency Positions Configuration -->
+         <div class="config-section">
+             <div class="section-header">
+                 <h3>Agency Positions</h3>
+             </div>
 
             <div class="positions-list">
                 <div class="position-item">
                     <div class="position-header">
-                        <h4>Bangkok Agency Positions</h4>
-                        <button class="btn btn-sm btn-outline" onclick="editPositions('bangkok')">Edit</button>
+                        <h4>{{ current_agency.name }} Positions</h4>
+                        <button class="btn btn-sm btn-outline" onclick="editPositions()">Edit</button>
                     </div>
-                    <div class="position-tags">
-                        <span class="tag">Dancer</span>
-                        <span class="tag">PR</span>
-                        <span class="tag">Manager</span>
-                    </div>
-                </div>
-
-                <div class="position-item">
-                    <div class="position-header">
-                        <h4>PATTAYA Agency Positions</h4>
-                        <button class="btn btn-sm btn-outline" onclick="editPositions('pattaya')">Edit</button>
-                    </div>
-                    <div class="position-tags">
-                        <span class="tag">Coyote</span>
-                        <span class="tag">Model</span>
-                        <span class="tag">Super Model</span>
-                        <span class="tag">PR</span>
+                    <div class="position-tags" id="positionsContainer">
+                        {% for position in positions %}
+                            <span class="tag" data-id="{{ position.id }}">{{ position.name }}</span>
+                        {% else %}
+                            <span class="no-positions">No positions defined yet</span>
+                        {% endfor %}
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Form Fields Configuration -->
-        <div class="config-section">
-            <div class="section-header">
-                <h3>Form Fields</h3>
-                <button class="btn btn-primary" id="addFieldBtn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    Add Field
-                </button>
-            </div>
-
-            <div class="fields-list">
-                <div class="field-item">
-                    <div class="field-info">
-                        <span class="field-name">Nickname</span>
-                        <span class="field-type">Text Input</span>
-                        <span class="field-required">Required</span>
-                    </div>
-                    <div class="field-actions">
-                        <button class="btn btn-sm btn-outline">Edit</button>
-                        <button class="btn btn-sm btn-danger">Delete</button>
-                    </div>
-                </div>
-
-                <div class="field-item">
-                    <div class="field-info">
-                        <span class="field-name">Position</span>
-                        <span class="field-type">Dropdown</span>
-                        <span class="field-required">Required</span>
-                    </div>
-                    <div class="field-actions">
-                        <button class="btn btn-sm btn-outline">Edit</button>
-                        <button class="btn btn-sm btn-danger">Delete</button>
-                    </div>
-                </div>
-
-                <div class="field-item">
-                    <div class="field-info">
-                        <span class="field-name">Phone</span>
-                        <span class="field-type">Phone Input</span>
-                        <span class="field-required">Required</span>
-                    </div>
-                    <div class="field-actions">
-                        <button class="btn btn-sm btn-outline">Edit</button>
-                        <button class="btn btn-sm btn-danger">Delete</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+                 </div>
     </div>
 </div>
 
@@ -112,19 +42,9 @@
         </div>
         <div class="modal-body">
             <div class="form-group">
-                <label for="agencySelect">Agency:</label>
-                <select id="agencySelect" class="form-control">
-                    <option value="bangkok">Bangkok Agency</option>
-                    <option value="pattaya">PATTAYA Agency</option>
-                </select>
-            </div>
-            <div class="form-group">
                 <label>Positions:</label>
                 <div id="positionsList">
-                    <div class="position-input-group">
-                        <input type="text" class="form-control position-input" placeholder="Enter position name">
-                        <button type="button" class="btn btn-sm btn-danger remove-position">×</button>
-                    </div>
+                    <!-- Position inputs will be loaded here -->
                 </div>
                 <button type="button" class="btn btn-sm btn-outline" id="addPositionInput">+ Add Position</button>
             </div>
@@ -137,43 +57,134 @@
 </div>
 
 <script>
-function editPositions(agency) {
+let positions = [];
+
+function editPositions() {
     const modal = document.getElementById('positionModal');
     const title = document.getElementById('positionModalTitle');
-    const agencySelect = document.getElementById('agencySelect');
     
-    title.textContent = `Edit ${agency.toUpperCase()} Agency Positions`;
-    agencySelect.value = agency;
+    title.textContent = `Edit {{ current_agency.name }} Positions`;
     
-    // Load current positions for this agency
-    loadAgencyPositions(agency);
+    // Load current positions
+    loadAgencyPositions();
     
     modal.classList.remove('hidden');
 }
 
-function loadAgencyPositions(agency) {
-    // This would load from the database
-    const positions = agency === 'bangkok' 
-        ? ['Dancer', 'PR', 'Manager']
-        : ['Coyote', 'Model', 'Super Model', 'PR'];
-    
+async function loadAgencyPositions() {
+    try {
+        const response = await fetch('/auth/api/positions');
+        const data = await response.json();
+        
+        if (response.ok) {
+            positions = data.positions;
+            renderPositionInputs();
+        } else {
+            console.error('Failed to load positions:', data.message);
+            alert('Failed to load positions: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error loading positions:', error);
+        alert('Error loading positions');
+    }
+}
+
+function renderPositionInputs() {
     const positionsList = document.getElementById('positionsList');
     positionsList.innerHTML = '';
     
     positions.forEach(position => {
-        addPositionInput(position);
+        addPositionInput(position.name, position.id);
     });
 }
 
-function addPositionInput(value = '') {
+function addPositionInput(value = '', id = null) {
     const positionsList = document.getElementById('positionsList');
     const inputGroup = document.createElement('div');
     inputGroup.className = 'position-input-group';
     inputGroup.innerHTML = `
-        <input type="text" class="form-control position-input" placeholder="Enter position name" value="${value}">
+        <input type="text" class="form-control position-input" placeholder="Enter position name" value="${value}" data-id="${id || ''}">
         <button type="button" class="btn btn-sm btn-danger remove-position">×</button>
     `;
     positionsList.appendChild(inputGroup);
+}
+
+async function savePositions() {
+    console.log('savePositions function called');
+    
+    const positionInputs = document.querySelectorAll('.position-input');
+    const newPositions = [];
+    const updatedPositions = [];
+    
+    console.log('Found position inputs:', positionInputs.length);
+    
+    // Collect all positions
+    positionInputs.forEach(input => {
+        const name = input.value.trim();
+        const id = input.dataset.id;
+        
+        console.log('Processing input:', { name, id });
+        
+        if (name) {
+            if (id) {
+                updatedPositions.push({ id: parseInt(id), name: name });
+            } else {
+                newPositions.push({ name: name });
+            }
+        }
+    });
+    
+    console.log('New positions:', newPositions);
+    console.log('Updated positions:', updatedPositions);
+    
+    try {
+        console.log('Starting API calls...');
+        
+        // Create new positions
+        for (const position of newPositions) {
+            console.log('Creating position:', position);
+            const response = await fetch('/auth/api/positions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify(position)
+            });
+            
+            console.log('Create response status:', response.status);
+            
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || 'Failed to create position');
+            }
+        }
+        
+        // Update existing positions
+        for (const position of updatedPositions) {
+            const response = await fetch(`/auth/api/positions/${position.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({ name: position.name })
+            });
+            
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || 'Failed to update position');
+            }
+        }
+        
+        // Close modal and reload
+        document.getElementById('positionModal').classList.add('hidden');
+        location.reload();
+        
+    } catch (error) {
+        console.error('Error saving positions:', error);
+        alert('Error saving positions: ' + error.message);
+    }
 }
 
 // Event listeners
@@ -181,7 +192,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const addPositionInputBtn = document.getElementById('addPositionInput');
     const closePositionModal = document.getElementById('closePositionModal');
     const cancelPositionEdit = document.getElementById('cancelPositionEdit');
-    const savePositions = document.getElementById('savePositions');
+    const savePositionsBtn = document.getElementById('savePositions');
     const positionModal = document.getElementById('positionModal');
 
     addPositionInputBtn.addEventListener('click', () => addPositionInput());
@@ -189,12 +200,7 @@ document.addEventListener('DOMContentLoaded', function() {
     closePositionModal.addEventListener('click', () => positionModal.classList.add('hidden'));
     cancelPositionEdit.addEventListener('click', () => positionModal.classList.add('hidden'));
     
-    savePositions.addEventListener('click', () => {
-        // Save positions logic here
-        positionModal.classList.add('hidden');
-        // Reload the page or update the UI
-        location.reload();
-    });
+    savePositionsBtn.addEventListener('click', savePositions);
 
     // Remove position input
     document.addEventListener('click', function(e) {

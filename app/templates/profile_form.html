@@ -41,8 +41,9 @@
           <label for="preferred_position">Preferred Position</label>
           <select id="preferred_position" name="preferred_position">
             <option value="">-- Select --</option>
-            <option value="Dancer" {% if edit_mode and profile.preferred_position == 'Dancer' %}selected{% endif %}>Dancer</option>
-            <option value="Hostess" {% if edit_mode and profile.preferred_position == 'Hostess' %}selected{% endif %}>Hostess</option>
+            {% for position in agency_positions %}
+            <option value="{{ position.name }}" {% if edit_mode and profile.preferred_position == position.name %}selected{% endif %}>{{ position.name }}</option>
+            {% endfor %}
           </select>
         </div>
       </div>

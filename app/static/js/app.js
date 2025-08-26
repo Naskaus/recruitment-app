@@ -637,27 +637,101 @@ if (lists.length && window.Sortable) {
                 else return currentContractRules.first_minute_penalty + (minutes - 1) * currentContractRules.additional_minute_penalty;
             }
 
+            // ✅ NOUVEAU : Fonction de prévisualisation avec debounce
+            let previewDebounceTimer = null;
+            
+            async function previewPerformanceCalculation() {
+                const assignmentId = assignmentIdInput.value;
+                if (!assignmentId) return;
+                
+                // ✅ NOUVEAU : Indicateur visuel de chargement
+                const summaryInputs = [latenessPenaltyInput, commissionPaidInput, proratedBaseInput, salaryPaidInput, barProfitInput];
+                summaryInputs.forEach(input => {
+                    if (input) {
+                        input.style.backgroundColor = '#f0f8ff'; // Bleu clair pour indiquer le calcul
+                        input.style.transition = 'background-color 0.3s ease';
+                    }
+                });
+                
+                const payload = {
+                    assignment_id: parseInt(assignmentId, 10),
+                    record_date: recordDateInput.value,
+                    arrival_time: arrivalInput.value || null,
+                    departure_time: departureInput.value || null,
+                    drinks_sold: parseInt(drinksInput.value || "0", 10),
+                    special_commissions: parseFloat(specialInput.value || "0"),
+                    bonus: parseFloat(bonusInput.value || "0"),
+                    malus: parseFloat(malusInput.value || "0"),
+                };
+                
+                try {
+                    const response = await fetch("/payroll/api/performance/preview", {
+                        method: "POST",
+                        body: JSON.stringify(payload),
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Mettre à jour le résumé avec les valeurs calculées
+                    latenessPenaltyInput.value = (data.lateness_penalty || 0).toFixed(0);
+                    commissionPaidInput.value = (data.commission_paid || 0).toFixed(0);
+                    proratedBaseInput.value = (data.prorated_base || 0).toFixed(0);
+                    salaryPaidInput.value = (data.daily_salary || 0).toFixed(0);
+                    barProfitInput.value = (data.daily_profit || 0).toFixed(0);
+                    
+                    // ✅ NOUVEAU : Retour à la couleur normale
+                    summaryInputs.forEach(input => {
+                        if (input) {
+                            input.style.backgroundColor = '';
+                        }
+                    });
+                    
+                    console.log('Preview calculation updated:', data);
+                    
+                } catch (error) {
+                    console.error('Erreur lors de la prévisualisation:', error);
+                    
+                    // ✅ NOUVEAU : Retour à la couleur normale même en cas d'erreur
+                    summaryInputs.forEach(input => {
+                        if (input) {
+                            input.style.backgroundColor = '';
+                        }
+                    });
+                }
+            }
+            
+            function debouncedPreview() {
+                // Annuler le timer précédent
+                if (previewDebounceTimer) {
+                    clearTimeout(previewDebounceTimer);
+                }
+                
+                // Créer un nouveau timer de 300ms
+                previewDebounceTimer = setTimeout(() => {
+                    previewPerformanceCalculation();
+                }, 300);
+            }
+            
+            // ✅ NOUVEAU : Attacher la prévisualisation à tous les champs pertinents
+            const previewFields = [arrivalInput, departureInput, drinksInput, specialInput, bonusInput, malusInput];
+            previewFields.forEach(field => {
+                if (field) {
+                    field.addEventListener("input", debouncedPreview);
+                }
+            });
+            
+            // ✅ CORRIGÉ : Fonction de calcul de pénalité en temps réel (pour l'arrival time uniquement)
             function recomputeDailySummary() {
-                const drinks = parseFloat(drinksInput.value) || 0;
-                const special = parseFloat(specialInput.value) || 0;
-                const bonus = parseFloat(bonusInput.value) || 0;
-                const malus = parseFloat(malusInput.value) || 0;
-                const contractDays = parseInt(contractDaysInput.value || "1", 10);
-                const baseSalary = parseFloat(contractBaseSalaryInput.value || "0");
-                const baseDaily = contractDays > 0 ? (baseSalary / contractDays) : 0;
                 const penalty = computePenalty(arrivalInput.value);
                 latenessPenaltyInput.value = penalty.toFixed(0);
-                const commissionStaff = drinks * DRINK_STAFF;
-                commissionPaidInput.value = commissionStaff.toFixed(0);
-                proratedBaseInput.value = baseDaily.toFixed(0);
-                const salaryPaid = baseDaily + bonus - malus - penalty;
-                salaryPaidInput.value = salaryPaid.toFixed(0);
-                const profit = (drinks * BAR_COMMISSION + special) - salaryPaid;
-                barProfitInput.value = profit.toFixed(0);
             }
-            [arrivalInput, departureInput, drinksInput, specialInput, bonusInput, malusInput].forEach(el => {
-                el?.addEventListener("input", recomputeDailySummary);
-            });
+            
+            // ✅ CORRIGÉ : Seul l'arrival time peut affecter la pénalité en temps réel
+            arrivalInput?.addEventListener("input", recomputeDailySummary);
 
             async function loadRecord(assignmentId, ymd) {
                 try {
@@ -665,20 +739,32 @@ if (lists.length && window.Sortable) {
                     const data = await res.json();
                     if (data && data.record) {
                         const r = data.record;
+                        // ✅ CORRIGÉ : Utiliser les données du PerformanceRecord
                         arrivalInput.value = r.arrival_time || "";
                         departureInput.value = r.departure_time || "";
                         drinksInput.value = r.drinks_sold ?? 0;
                         specialInput.value = r.special_commissions ?? 0;
                         bonusInput.value = r.bonus ?? 0;
                         malusInput.value = r.malus ?? 0;
+                        
+                        // ✅ NOUVEAU : Utiliser les valeurs calculées par le serveur
+                        latenessPenaltyInput.value = (r.lateness_penalty || 0).toFixed(0);
+                        commissionPaidInput.value = (r.drinks_sold * DRINK_STAFF || 0).toFixed(0);
+                        proratedBaseInput.value = (r.daily_salary - r.bonus + r.malus + r.lateness_penalty || 0).toFixed(0);
+                        salaryPaidInput.value = (r.daily_salary || 0).toFixed(0);
+                        barProfitInput.value = (r.daily_profit || 0).toFixed(0);
                     } else {
+                        // Nouveau record - vider tous les champs
                         [arrivalInput, departureInput].forEach(i => i.value = "");
                         [drinksInput, specialInput, bonusInput, malusInput].forEach(i => i.value = 0);
+                        [latenessPenaltyInput, commissionPaidInput, proratedBaseInput, salaryPaidInput, barProfitInput].forEach(i => i.value = "0");
+                        
+                        // ✅ NOUVEAU : Déclencher la prévisualisation pour un nouveau record
+                        setTimeout(() => previewPerformanceCalculation(), 100);
                     }
                 } catch (e) {
                     console.error("loadRecord error", e);
                 }
-                recomputeDailySummary();
             }
             
             async function loadPerformanceHistory(assignmentId) {
@@ -711,9 +797,10 @@ if (lists.length && window.Sortable) {
                         list.sort((a, b) => (a.record_date > b.record_date ? 1 : -1));
                         list.forEach(r => {
                             const tr = document.createElement("tr");
+                            // ✅ CORRIGÉ : Utiliser les valeurs calculées par le serveur depuis PerformanceRecord
                             const commission = (r.drinks_sold || 0) * DRINK_STAFF;
-                            const salary = baseDaily + (r.bonus || 0) - (r.malus || 0) - (r.lateness_penalty || 0);
-                            const profit = ((r.drinks_sold || 0) * BAR_COMMISSION + (r.special_commissions || 0)) - salary;
+                            const salary = r.daily_salary || 0;
+                            const profit = r.daily_profit || 0;
                             tr.innerHTML = `<td>${new Date(r.record_date + 'T00:00:00').toLocaleDateString('en-GB', {day:'2-digit', month:'2-digit'})}</td><td>${r.drinks_sold || 0}</td><td>${(r.special_commissions || 0).toFixed(0)}฿</td><td>${salary.toFixed(0)}฿</td><td>${commission.toFixed(0)}฿</td><td>${profit.toFixed(0)}฿</td>`;
                             tr.addEventListener("click", () => { recordDateInput.value = r.record_date; loadRecord(assignmentId, r.record_date); });
                             tbody.appendChild(tr);
@@ -733,33 +820,44 @@ if (lists.length && window.Sortable) {
                 }
             }
             
-            function calculateAndShowSummary(assignmentId, records, contract, baseDaily) {
-                let totalDrinks = 0, totalSpecial = 0, totalCommission = 0, totalSalary = 0, totalProfit = 0;
-                records.forEach(r => {
-                    const dailyDrinks = r.drinks_sold || 0;
-                    const dailySpecial = r.special_commissions || 0;
-                    const dailyCommission = dailyDrinks * DRINK_STAFF;
-                    const dailySalary = baseDaily + (r.bonus || 0) - (r.malus || 0) - (r.lateness_penalty || 0);
-                    const dailyProfit = (dailyDrinks * DRINK_BAR + dailySpecial) - dailySalary;
-                    totalDrinks += dailyDrinks;
-                    totalSpecial += dailySpecial;
-                    totalCommission += dailyCommission;
-                    totalSalary += dailySalary;
-                    totalProfit += dailyProfit;
-                });
-                summaryAssignmentIdInput.value = assignmentId;
-                summaryStaffName.textContent = modalStaffName.textContent;
-                summaryTotalDaysWorked.textContent = `${records.length} days`;
-                summaryTotalDrinks.textContent = totalDrinks;
-                summaryTotalSpecialComm.textContent = `${totalSpecial.toFixed(0)}฿`;
-                summaryTotalCommission.textContent = `${totalCommission.toFixed(0)}฿`;
-                summaryTotalSalary.textContent = `${totalSalary.toFixed(0)}฿`;
-                summaryTotalProfit.textContent = `${totalProfit.toFixed(0)}฿`;
-                const profitEl = summaryTotalProfit;
-                profitEl.classList.remove('profit-positive', 'profit-negative');
-                if (totalProfit > 0) profitEl.classList.add('profit-positive');
-                else if (totalProfit < 0) profitEl.classList.add('profit-negative');
-                openSummaryModal();
+            async function calculateAndShowSummary(assignmentId, records, contract, baseDaily) {
+                try {
+                    // Appeler l'endpoint API pour récupérer les données calculées
+                    const response = await fetch(`/payroll/api/assignment/${assignmentId}/summary`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Récupérer le nom du staff depuis le DOM
+                    const row = document.getElementById(`assignment-row-${assignmentId}`);
+                    if (!row) {
+                        console.error(`Row not found for assignment ${assignmentId}`);
+                        return;
+                    }
+                    
+                    // Utiliser les données JSON reçues pour remplir les totaux
+                    summaryAssignmentIdInput.value = assignmentId;
+                    summaryStaffName.textContent = modalStaffName.textContent;
+                    summaryTotalDaysWorked.textContent = `${data.days_worked || 0} days`;
+                    summaryTotalDrinks.textContent = data.total_drinks || 0;
+                    summaryTotalSpecialComm.textContent = `${(data.total_special_comm || 0).toFixed(0)}฿`;
+                    summaryTotalCommission.textContent = `${(data.total_commission || 0).toFixed(0)}฿`;
+                    summaryTotalSalary.textContent = `${(data.total_salary || 0).toFixed(0)}฿`;
+                    summaryTotalProfit.textContent = `${(data.total_profit || 0).toFixed(0)}฿`;
+                    
+                    const profitEl = summaryTotalProfit;
+                    profitEl.classList.remove('profit-positive', 'profit-negative');
+                    if (data.total_profit > 0) profitEl.classList.add('profit-positive');
+                    else if (data.total_profit < 0) profitEl.classList.add('profit-negative');
+                    
+                    openSummaryModal();
+                    
+                } catch (error) {
+                    console.error('Erreur lors de la récupération du résumé:', error);
+                    alert('Erreur lors du chargement du résumé du contrat. Veuillez réessayer.');
+                }
             }
 
             async function finalizeContract(assignmentId, status) {

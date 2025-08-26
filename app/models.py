@@ -184,6 +184,7 @@ class Assignment(db.Model):
     
     # --- CORRECTED: Replaced backref with back_populates ---
     performance_records = db.relationship('PerformanceRecord', back_populates='assignment', lazy=True, cascade="all, delete-orphan")
+    contract_calculations = db.relationship('ContractCalculations', back_populates='assignment', uselist=False, cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
@@ -211,6 +212,8 @@ class PerformanceRecord(db.Model):
     bonus = db.Column(db.Float, default=0.0)
     malus = db.Column(db.Float, default=0.0)
     lateness_penalty = db.Column(db.Float, default=0.0)
+    daily_salary = db.Column(db.Float, default=0.0)
+    daily_profit = db.Column(db.Float, default=0.0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     __table_args__ = (db.UniqueConstraint('assignment_id', 'record_date', name='uq_assignment_date'),)
 
@@ -221,4 +224,27 @@ class PerformanceRecord(db.Model):
             "departure_time": self.departure_time.strftime('%H:%M') if self.departure_time else None,
             "drinks_sold": self.drinks_sold, "special_commissions": self.special_commissions,
             "bonus": self.bonus, "malus": self.malus, "lateness_penalty": self.lateness_penalty,
+            "daily_salary": self.daily_salary, "daily_profit": self.daily_profit,
         }
+
+class ContractCalculations(db.Model):
+    __tablename__ = 'contract_calculations'
+    id = db.Column(db.Integer, primary_key=True)
+    assignment_id = db.Column(db.Integer, db.ForeignKey('assignment.id'), nullable=False, unique=True)
+    
+    # Calculated totals
+    total_salary = db.Column(db.Float, default=0.0)
+    total_commission = db.Column(db.Float, default=0.0)
+    total_profit = db.Column(db.Float, default=0.0)
+    days_worked = db.Column(db.Integer, default=0)
+    total_drinks = db.Column(db.Integer, default=0)
+    total_special_comm = db.Column(db.Float, default=0.0)
+    
+    # Timestamp
+    last_updated = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationship
+    assignment = db.relationship('Assignment', back_populates='contract_calculations', uselist=False)
+    
+    def __repr__(self):
+        return f'<ContractCalculations for Assignment {self.assignment_id}>'

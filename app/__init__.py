@@ -211,6 +211,40 @@ def create_app():
         for agency in agencies:
             print(f"  - {agency.id}: {agency.name}")
 
+    @app.cli.command("create-user")
+    @click.argument("username")
+    @click.argument("password")
+    @click.argument("role_name")
+    def create_user(username, password, role_name):
+        """Creates a new user with specified role."""
+        if User.query.filter_by(username=username).first():
+            print(f"Error: User '{username}' already exists.")
+            return
+        
+        # Get or create role
+        role = Role.query.filter_by(name=role_name).first()
+        if not role:
+            role = Role(name=role_name)
+            db.session.add(role)
+            db.session.commit()
+            print(f"Role '{role_name}' created.")
+        
+        # Get or create default agency for non-WebDev users
+        agency = None
+        if role_name != 'WebDev':
+            agency = Agency.query.filter_by(name='Bangkok Agency').first()
+            if not agency:
+                agency = Agency(name='Bangkok Agency')
+                db.session.add(agency)
+                db.session.commit()
+                print(f"Agency 'Bangkok Agency' created.")
+        
+        new_user = User(username=username, role_id=role.id, agency_id=agency.id if agency else None)
+        new_user.set_password(password)
+        db.session.add(new_user)
+        db.session.commit()
+        print(f"Success! User '{username}' with role '{role_name}' was created.")
+
     @app.cli.command("create-agency")
     @click.argument("agency_name")
     def create_agency(agency_name):

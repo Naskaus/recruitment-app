@@ -202,6 +202,12 @@
               data-contract-type="{{ a.contract_type }}"
               data-current-status="{{ a.status }}"
               data-role="{{ a.contract_role }}"
+              data-total-drinks="{{ stats.drinks }}"
+              data-total-special-comm="{{ stats.special_comm }}"
+              data-total-salary="{{ stats.salary }}"
+              data-total-commission="{{ stats.commission }}"
+              data-total-profit="{{ stats.profit }}"
+              data-days-worked="{{ row.days_worked }}"
             >
                              <td>
                  {% if a.staff %}
@@ -332,7 +338,9 @@
           <div class="form-group"><label for="malus">Malus (- THB)</label><input type="number" id="malus" name="malus" step="1" value="0"></div>
         </div>
         <hr>
+        <button type="button" id="validate-calculations-btn" class="button button-secondary" style="margin-bottom: 12px;">Calculate Totals</button>
         <h4>Calculated summary (per day)</h4>
+        <small class="muted" style="display: block; margin-bottom: 8px;">Values are calculated automatically by the server based on contract rules</small>
         <div class="form-grid-2 summary-grid">
           <div class="form-group"><label>Lateness penalty (THB)</label><input type="number" id="latenessPenalty" name="lateness_penalty" readonly></div>
           <div class="form-group"><label>Commission paid (THB)</label><input type="number" id="commissionPaid" readonly></div>
@@ -342,6 +350,7 @@
         </div>
         <hr>
         <h4>Recent history</h4>
+        <small class="muted" style="display: block; margin-bottom: 8px;">Click on any row to load that day's data. Values shown are calculated by the server.</small>
         <div id="recordHistory" class="record-history-list"></div>
         <div class="modal-footer">
           <button type="button" id="cancelModalBtn" class="button button-secondary">Cancel</button>

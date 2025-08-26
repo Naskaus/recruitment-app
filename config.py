@@ -15,7 +15,7 @@ class DevelopmentConfig(Config):
     DEBUG = True
     # Use a separate database file for development
     SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or \
-        f'sqlite:///{os.path.join(BASE_DIR, "recruitment-dev.db")}'
+        f'sqlite:///{os.path.join(BASE_DIR, "data", "recruitment-dev.db")}'
 
 class ProductionConfig(Config):
     """Configuration for production."""

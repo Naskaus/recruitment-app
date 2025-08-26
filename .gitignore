@@ -17,5 +17,17 @@ venv/
 recruitment.db
 instance/
 
+# Local dev databases and data folder
+data/
+*.db
+*.sqlite3
+
+# Runtime uploads
+uploads/
+
+# Archives and housekeeping
+archive/
+.housekeeping/
+
 # Flask-Migrate
 migrations/

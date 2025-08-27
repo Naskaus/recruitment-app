@@ -57,6 +57,9 @@
 </div>
 
 <script>
+// Make user role available to JavaScript
+window.currentUserRole = '{{ current_user.role }}';
+
 let positions = [];
 
 function editPositions() {
@@ -102,9 +105,13 @@ function addPositionInput(value = '', id = null) {
     const positionsList = document.getElementById('positionsList');
     const inputGroup = document.createElement('div');
     inputGroup.className = 'position-input-group';
+    
+    // Check if user can delete positions (super_admin or webdev)
+    const canDelete = window.currentUserRole && ['super_admin', 'webdev'].includes(window.currentUserRole);
+    
     inputGroup.innerHTML = `
         <input type="text" class="form-control position-input" placeholder="Enter position name" value="${value}" data-id="${id || ''}">
-        <button type="button" class="btn btn-sm btn-danger remove-position">×</button>
+        ${canDelete ? '<button type="button" class="btn btn-sm btn-danger remove-position">×</button>' : ''}
     `;
     positionsList.appendChild(inputGroup);
 }

@@ -24,13 +24,13 @@
                 <h2>OS Agency</h2>
                 <div class="agency-indicator">
                     <span class="current-agency">
-                        {% if current_user.role_name == 'WebDev' and session.get('current_agency_name') %}
+                        {% if current_user.role == 'webdev' and session.get('current_agency_name') %}
                             {{ session.get('current_agency_name') }}
                         {% else %}
                             {{ current_user.agency.name if current_user.agency else 'No Agency' }}
                         {% endif %}
                     </span>
-                    {% if current_user.role_name == 'WebDev' %}
+                    {% if current_user.role == 'webdev' %}
                     <button class="switch-agency-btn" id="switchAgencyBtn" title="Switch Agency">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
                     </button>
@@ -59,18 +59,22 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                     <span>Payroll</span>
                 </a>
-                {% if current_user.role_name in ['Super-Admin', 'WebDev'] %}
+                {% if current_user.role in ['super_admin', 'webdev'] %}
                  <div class="sidebar-dropdown">
                         <a href="#" class="dropdown-toggle {{ 'active' if request.blueprint == 'auth' else '' }}">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                             <span>Settings</span>
                         </a>
                         <div class="dropdown-content">
+                            {% if current_user.role in ['webdev', 'super_admin'] %}
                             <a href="{{ url_for('auth.users') }}">Manage Users</a>
+                            {% endif %}
+                            {% if current_user.role in ['super_admin', 'webdev'] %}
                             <a href="{{ url_for('auth.contracts') }}">Manage Contracts</a>
                             <a href="{{ url_for('auth.venues') }}">Manage Venues</a>
                             <a href="{{ url_for('auth.profile_form_config') }}">Manage Profile Form</a>
-                            {% if current_user.role_name == 'WebDev' %}
+                            {% endif %}
+                            {% if current_user.role == 'webdev' %}
                             <a href="{{ url_for('auth.add_agency') }}">Add Agency</a>
                             {% endif %}
                         </div>
@@ -80,7 +84,7 @@
 
             <div class="sidebar-footer">
                 <div class="user-info">
-                    <span class="user-role">{{ current_user.role_name }}</span>
+                    <span class="user-role">{{ current_user.role }}</span>
                     <span class="user-name">{{ current_user.username }}</span>
                 </div>
                 <a href="{{ url_for('auth.logout') }}" class="logout-button">

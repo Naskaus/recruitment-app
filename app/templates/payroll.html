@@ -218,7 +218,7 @@
                         <a href="{{ url_for('staff.profile_detail', profile_id=a.staff.id) }}">
                           <strong>{{ a.staff.nickname }}</strong>
                         </a>
-                        <small class="muted">ID: {{ a.staff.id }}</small>
+                        <small class="muted">ID: {{ a.staff.staff_id or 'N/A' }}</small>
                         <span class="role-badge">{{ a.contract_role or 'N/A' }}</span>
                       </div>
                    </div>
@@ -284,20 +284,24 @@
               <td>
                 <div class="actions">
                   {% if a.status == 'active' %}
+                    {% if current_user.role != 'admin' %}
                     <button class="button button-primary manage-performance-btn" title="Manage performance records">Manage</button>
                     <button class="button button-secondary end-contract-btn" title="End contract today">End</button>
+                    {% endif %}
                   {% elif a.status == 'ended' %}
                     <a href="{{ url_for('payroll.report_view', assignment_id=a.id) }}" class="button button-secondary" title="View performance details">View</a>
                     <a href="{{ url_for('payroll.assignment_pdf', assignment_id=a.id) }}" target="_blank" class="button button-secondary" title="Download PDF">PDF</a>
+                    {% if current_user.role != 'admin' %}
                     <button class="button button-secondary manage-performance-btn" title="View performance details">Details</button>
                     <button class="button button-primary archive-contract-btn" title="Archive contract">Archive</button>
-                    {% if current_user.role_name == 'WebDev' %}
+                    {% endif %}
+                    {% if current_user.role in ['webdev', 'super_admin'] %}
                     <button class="button button-danger delete-contract-btn" style="padding: 4px 8px; font-size: 0.8rem;" title="Delete contract permanently">Delete</button>
                     {% endif %}
                   {% elif a.status == 'archived' %}
                     <a href="{{ url_for('payroll.report_view', assignment_id=a.id) }}" class="button button-secondary" title="View archived contract details">View</a>
                     <a href="{{ url_for('payroll.assignment_pdf', assignment_id=a.id) }}" target="_blank" class="button button-secondary" title="Download PDF">PDF</a>
-                    {% if current_user.role_name == 'WebDev' %}
+                    {% if current_user.role in ['webdev', 'super_admin'] %}
                     <button class="button button-danger delete-contract-btn" style="padding: 4px 8px; font-size: 0.8rem;" title="Delete contract permanently">Delete</button>
                     {% endif %}
                   {% endif %}

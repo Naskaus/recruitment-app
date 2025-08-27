@@ -147,7 +147,9 @@
                         <h4>{{ contract.name }}</h4>
                         <div class="contract-actions">
                             <button class="button button-secondary edit-contract-btn" data-id="{{ contract.id }}">Edit</button>
+                            {% if current_user.role in ['super_admin', 'webdev'] %}
                             <button class="button button-danger delete-contract-btn" data-id="{{ contract.id }}">Delete</button>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="contract-details">

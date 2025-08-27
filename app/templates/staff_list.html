@@ -67,7 +67,7 @@
     <div id="staff-grid-view" class="staff-grid view-hidden">
         {% for profile in profiles %}
             <div class="staff-card" data-id="{{ profile.id }}" data-status="{{ profile.status | lower | replace(' ', '-') }}">
-                        {% if current_user.role_name == 'WebDev' %}
+        {% if current_user.role in ['webdev', 'super_admin', 'manager'] %}
         <div class="card-delete-button" data-id="{{ profile.id }}" data-name="{{ profile.nickname }}">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z"/></svg>
         </div>
@@ -148,8 +148,8 @@
                                 <div class="list-actions">
                                     <button class="button button-primary dispatch-from-list-btn" data-id="{{ profile.id }}" data-name="{{ profile.nickname }}">Dispatch</button>
                                     <a href="{{ url_for('staff.profile_detail', profile_id=profile.id) }}" class="button button-secondary">Details</a>
-                                    {% if current_user.role_name == 'WebDev' %}
-                                    <button class="button-table-delete card-delete-button" data-id="{{ profile.id }}" data-name="{{ profile.nickname }}" title="Delete">
+                                    {% if current_user.role in ['webdev', 'super_admin', 'manager'] %}
+                                    <button class="button-table-delete card-delete-button" data-id="{{ profile.id }}" data-name="{{ profile.nickname }}" title="Supprimer">
                                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z"/></svg>
                                     </button>
                                     {% endif %}
@@ -244,3 +244,151 @@
     </div>
 </div>
 {% endblock %}
+
+<script>
+// Existing JavaScript for view switching, status changes, etc.
+// ... (keep existing JavaScript) ...
+
+// Add delete functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle delete buttons in both grid and list views
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.card-delete-button')) {
+            e.preventDefault();
+            const deleteBtn = e.target.closest('.card-delete-button');
+            const profileId = deleteBtn.dataset.id;
+            const profileName = deleteBtn.dataset.name;
+            
+            if (confirmDeleteStaffProfile(profileName)) {
+                deleteStaffProfile(profileId);
+            }
+        }
+    });
+});
+
+function confirmDeleteStaffProfile(profileName) {
+    return confirm(`Êtes-vous sûr de vouloir supprimer le profil "${profileName}" ?\n\nCette action est irréversible et supprimera définitivement le profil staff ainsi que toutes ses données associées.`);
+}
+
+function deleteStaffProfile(profileId) {
+    fetch(`/staff/profile/${profileId}/delete`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Show success message
+            showNotification(data.message, 'success');
+            
+            // Remove the profile from the DOM
+            const profileElement = document.querySelector(`[data-id="${profileId}"]`);
+            if (profileElement) {
+                profileElement.remove();
+            }
+            
+            // Check if there are no more profiles and show empty state
+            const remainingProfiles = document.querySelectorAll('.staff-card, .staff-list-table tbody tr');
+            if (remainingProfiles.length === 0) {
+                location.reload(); // Reload to show empty state
+            }
+        } else {
+            showNotification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting staff profile:', error);
+        showNotification('Une erreur est survenue lors de la suppression du profil.', 'error');
+    });
+}
+
+function showNotification(message, type) {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'}`;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        padding: 15px 20px;
+        border-radius: 5px;
+        color: white;
+        font-weight: bold;
+        max-width: 400px;
+        word-wrap: break-word;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    `;
+    
+    if (type === 'success') {
+        notification.style.backgroundColor = '#28a745';
+    } else {
+        notification.style.backgroundColor = '#dc3545';
+    }
+    
+    notification.textContent = message;
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 5000);
+}
+
+// ... existing JavaScript ...
+</script>
+
+<style>
+/* Existing styles */
+/* ... (keep existing styles) ... */
+
+/* Add styles for delete buttons */
+.card-delete-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+    z-index: 10;
+}
+
+.card-delete-button:hover {
+    opacity: 1;
+    background: #c82333;
+}
+
+.button-table-delete {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.button-table-delete:hover {
+    background: #c82333;
+}
+
+/* ... existing styles ... */
+</style>

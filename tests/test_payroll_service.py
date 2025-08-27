@@ -3,7 +3,7 @@
 import unittest
 from datetime import date, datetime, time
 from app import create_app, db
-from app.models import Agency, User, Role, StaffProfile, Venue, AgencyContract, Assignment, PerformanceRecord, ContractCalculations
+from app.models import Agency, User, StaffProfile, Venue, AgencyContract, Assignment, PerformanceRecord, ContractCalculations
 from app.services.payroll_service import update_or_create_contract_calculations
 
 

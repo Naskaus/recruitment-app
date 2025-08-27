@@ -4,6 +4,7 @@ from flask import Blueprint, render_template, request, flash, Response, jsonify,
 from flask_login import login_required, current_user
 from app.models import db, Assignment, StaffProfile, User, PerformanceRecord, Venue, AgencyContract, ContractCalculations
 from app.services.payroll_service import update_or_create_contract_calculations
+from app.decorators import admin_required, manager_required, super_admin_required, webdev_required, payroll_view_required
 from datetime import datetime, date, time as dt_time, timedelta
 from weasyprint import HTML
 
@@ -60,11 +61,12 @@ def _get_or_create_daily_record(assignment_id: int, ymd: date) -> 'PerformanceRe
 # --- VIEWS (HTML PAGES) ---
 @payroll_bp.route('/')
 @login_required
+@payroll_view_required
 def payroll_page():
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -187,11 +189,12 @@ def payroll_page():
 
 @payroll_bp.route('/api/performance/<int:assignment_id>/<string:ymd>', methods=['GET'])
 @login_required
+@manager_required
 def get_performance(assignment_id, ymd):
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -210,11 +213,12 @@ def get_performance(assignment_id, ymd):
 
 @payroll_bp.route('/api/performance/<int:assignment_id>', methods=['GET'])
 @login_required
+@manager_required
 def list_performance_for_assignment(assignment_id):
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -260,6 +264,7 @@ def list_performance_for_assignment(assignment_id):
 
 @payroll_bp.route('/api/performance', methods=['POST'])
 @login_required
+@manager_required
 def upsert_performance():
     data = request.get_json() or {}
     try:
@@ -271,7 +276,7 @@ def upsert_performance():
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -351,6 +356,7 @@ def upsert_performance():
 
 @payroll_bp.route('/api/performance/preview', methods=['POST'])
 @login_required
+@manager_required
 def preview_performance():
     """
     Endpoint pour prévisualiser les calculs de performance sans sauvegarder.
@@ -370,7 +376,7 @@ def preview_performance():
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -446,6 +452,7 @@ def preview_performance():
 # --- Contract Summary API ---
 @payroll_bp.route('/api/summary/<int:assignment_id>')
 @login_required
+@manager_required
 def get_contract_summary(assignment_id):
     """
     Endpoint pour récupérer le résumé final d'un contrat terminé.
@@ -455,7 +462,7 @@ def get_contract_summary(assignment_id):
         from flask import session
         
         # Get current agency ID
-        if current_user.role_name == 'WebDev':
+        if current_user.role == 'webdev':
             agency_id = session.get('current_agency_id', current_user.agency_id)
         else:
             agency_id = current_user.agency_id
@@ -511,7 +518,7 @@ def payroll_pdf():
     current_app.logger.info("PDF generation started")
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -637,7 +644,7 @@ def assignment_pdf(assignment_id):
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -697,6 +704,7 @@ def assignment_pdf(assignment_id):
 
 @payroll_bp.route('/report/view/<int:assignment_id>')
 @login_required
+@manager_required
 def report_view(assignment_id):
     """
     Affiche une vue HTML du rapport de contrat avec les mêmes données que le PDF.
@@ -704,7 +712,7 @@ def report_view(assignment_id):
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -751,6 +759,7 @@ def report_view(assignment_id):
 # --- API ENDPOINTS ---
 @payroll_bp.route('/api/assignment/<int:assignment_id>/summary')
 @login_required
+@manager_required
 def assignment_summary_api(assignment_id):
     """
     API endpoint pour récupérer le résumé des calculs d'un contrat.
@@ -759,7 +768,7 @@ def assignment_summary_api(assignment_id):
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id

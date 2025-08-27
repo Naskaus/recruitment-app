@@ -1,9 +1,20 @@
 # app/models.py
 
+import enum
 from app import db
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import date, datetime, time as dt_time, timedelta
+
+# ==============================================================================
+# USER ROLES ENUM
+# ==============================================================================
+
+class UserRole(enum.Enum):
+    ADMIN = 'admin'
+    MANAGER = 'manager'
+    SUPER_ADMIN = 'super_admin'
+    WEBDEV = 'webdev'
 
 # ==============================================================================
 # NEW MODELS FOR MULTI-AGENCY V1.0
@@ -78,16 +89,7 @@ class AgencyContract(db.Model):
     def __repr__(self):
         return f'<AgencyContract {self.name} ({self.days} days) for {self.agency.name}>'
 
-class Role(db.Model):
-    __tablename__ = 'role'
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80), unique=True, nullable=False)
-    
-    # Relationship
-    users = db.relationship('User', back_populates='role', lazy='dynamic')
 
-    def __repr__(self):
-        return f'<Role {self.name}>'
 
 # ==============================================================================
 # UPDATED MODELS
@@ -99,8 +101,7 @@ class User(db.Model, UserMixin):
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     
-    role_id = db.Column(db.Integer, db.ForeignKey('role.id'), nullable=False)
-    role = db.relationship('Role', back_populates='users')
+    role = db.Column(db.String(20), nullable=False, default=UserRole.ADMIN.value)
     
     agency_id = db.Column(db.Integer, db.ForeignKey('agency.id'), nullable=True) # Nullable for WebDev
     agency = db.relationship('Agency', back_populates='users')
@@ -112,10 +113,33 @@ class User(db.Model, UserMixin):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+    
+    def set_role(self, role_value):
+        """Set user role with validation"""
+        if role_value in [role.value for role in UserRole]:
+            self.role = role_value
+        else:
+            raise ValueError(f"Invalid role: {role_value}. Valid roles: {[role.value for role in UserRole]}")
         
     @property
     def role_name(self):
-        return self.role.name if self.role else None
+        return self.role if self.role else None
+    
+    @property
+    def is_admin(self):
+        return self.role in [UserRole.ADMIN.value, UserRole.SUPER_ADMIN.value, UserRole.WEBDEV.value]
+    
+    @property
+    def is_manager(self):
+        return self.role in [UserRole.MANAGER.value, UserRole.SUPER_ADMIN.value, UserRole.WEBDEV.value]
+    
+    @property
+    def is_super_admin(self):
+        return self.role in [UserRole.SUPER_ADMIN.value, UserRole.WEBDEV.value]
+    
+    @property
+    def is_webdev(self):
+        return self.role == UserRole.WEBDEV.value
 
     def __repr__(self):
         return f'<User {self.username}>'

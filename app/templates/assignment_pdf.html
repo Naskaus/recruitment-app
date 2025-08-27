@@ -146,7 +146,7 @@
     <div class="grid-container">
         <div class="info-box">
             <h4>Contract Details</h4>
-                            <p><strong>Staff ID:</strong> {{ assignment.staff.id if assignment.staff else 'N/A' }}</p>
+                            <p><strong>Staff ID:</strong> {{ assignment.staff.staff_id if assignment.staff else 'N/A' }}</p>
             <p><strong>Position:</strong> {{ assignment.contract_role }}</p>
             <p><strong>Venue:</strong> {{ assignment.venue.name }}</p>
             <p><strong>Period:</strong> {{ assignment.start_date.strftime('%d %b %Y') }} - {{ assignment.end_date.strftime('%d %b %Y') }}</p>

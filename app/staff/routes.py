@@ -4,6 +4,7 @@ from flask import (Blueprint, render_template, request, jsonify, redirect,
                    url_for, current_app, Response, send_from_directory, abort)
 from flask_login import login_required, current_user
 from app.models import db, StaffProfile, Assignment, User, PerformanceRecord, Venue
+from app.decorators import admin_required, manager_required, super_admin_required, webdev_required, staff_management_required
 from werkzeug.utils import secure_filename
 from datetime import datetime, date
 import os
@@ -16,7 +17,7 @@ def get_current_agency_id():
     """Get the current agency ID for the user, handling WebDev users properly."""
     from flask import session
     
-    if current_user.role_name == 'WebDev':
+    if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
         # For WebDev, if no agency is selected, use the first available agency
         if not agency_id:
@@ -52,6 +53,7 @@ def allowed_file(filename):
 
 @staff_bp.route('/')
 @login_required
+@admin_required
 def staff_list():
     """Displays the list of staff with sorting and searching, scoped by agency."""
     agency_id = get_current_agency_id()
@@ -95,6 +97,7 @@ def staff_list():
 @staff_bp.route('/profile/new', methods=['GET'])
 @staff_bp.route('/profile/<int:profile_id>/edit', methods=['GET'])
 @login_required
+@admin_required
 def profile_form(profile_id=None):
     """Renders the form for both creating a new profile and editing an existing one."""
     from app.models import AgencyPosition
@@ -118,6 +121,7 @@ def profile_form(profile_id=None):
 
 @staff_bp.route('/profile/<int:profile_id>')
 @login_required
+@admin_required
 def profile_detail(profile_id):
     """Displays the detailed view of a single staff profile."""
     from app.services.payroll_service import get_staff_performance_summary
@@ -177,12 +181,13 @@ def profile_detail(profile_id):
 
 @staff_bp.route('/api/profile', methods=['POST'])
 @login_required
+@admin_required
 def create_profile():
     """API endpoint to create a new profile."""
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -225,7 +230,7 @@ def update_profile(profile_id):
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -255,27 +260,52 @@ def update_profile(profile_id):
 
 @staff_bp.route('/api/profile/<int:profile_id>/delete', methods=['POST'])
 @login_required
-def delete_profile(profile_id):
-    """API endpoint to delete a profile."""
-    from flask import session
+@staff_management_required
+def delete_staff_profile(profile_id):
+    """Delete a staff profile with proper security checks and relationship cleanup."""
+    from app.models import Assignment, PerformanceRecord, ContractCalculations
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
-        agency_id = session.get('current_agency_id', current_user.agency_id)
-    else:
-        agency_id = current_user.agency_id
+    agency_id = get_current_agency_id()
     
-    profile = StaffProfile.query.filter_by(id=profile_id, agency_id=agency_id).first_or_404()
-    if profile.photo_url and 'default' not in profile.photo_url:
-        try:
-            photo_path = os.path.join(current_app.config['UPLOAD_FOLDER'], profile.photo_url)
-            if os.path.exists(photo_path):
-                os.remove(photo_path)
-        except Exception as e:
-            current_app.logger.error(f"Error deleting photo file: {e}")
-    db.session.delete(profile)
-    db.session.commit()
-    return jsonify({'status': 'success', 'message': 'Profile deleted successfully.'})
+    # Get the profile to delete
+    profile_to_delete = StaffProfile.query.filter_by(id=profile_id, agency_id=agency_id).first_or_404()
+    
+    # Store profile info for response
+    profile_nickname = profile_to_delete.nickname
+    
+    try:
+        # Clean up related data before deletion
+        # 1. Update assignments where this staff is assigned (set staff_id to None)
+        assignments_to_update = Assignment.query.filter_by(staff_id=profile_id).all()
+        for assignment in assignments_to_update:
+            assignment.staff_id = None
+            # Also archive staff info in the assignment
+            assignment.archived_staff_name = profile_nickname
+            assignment.archived_staff_photo = profile_to_delete.photo_url
+        
+        # 2. Delete performance records (they will be deleted automatically due to cascade)
+        # This is handled by the cascade="all, delete-orphan" in the Assignment model
+        
+        # 3. Delete contract calculations (they will be deleted automatically due to cascade)
+        # This is handled by the cascade="all, delete-orphan" in the Assignment model
+        
+        # Delete the profile
+        db.session.delete(profile_to_delete)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success', 
+            'message': f'Profil "{profile_nickname}" a été supprimé avec succès.'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error deleting staff profile {profile_id}: {e}")
+        return jsonify({
+            'status': 'error', 
+            'message': 'Une erreur est survenue lors de la suppression du profil. Veuillez réessayer.'
+        }), 500
 
 @staff_bp.route('/api/profile/<int:profile_id>/status', methods=['POST'])
 @login_required
@@ -284,7 +314,7 @@ def update_staff_status(profile_id):
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -313,7 +343,7 @@ def profile_pdf(profile_id):
     from app.services.payroll_service import get_staff_performance_summary
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id

@@ -2,8 +2,8 @@
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
-from app.models import db, User
-from functools import wraps
+from app.models import db, User, UserRole
+from app.decorators import admin_required, manager_required, super_admin_required, webdev_required, user_management_required
 
 # Imports for WTF-Forms
 from flask_wtf import FlaskForm
@@ -19,15 +19,6 @@ class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
     submit = SubmitField('Login')
-
-# Decorator for Super-Admins and WebDev
-def super_admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or current_user.role_name not in ['Super-Admin', 'WebDev']:
-            abort(403)
-        return f(*args, **kwargs)
-    return decorated_function
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -56,7 +47,7 @@ def logout():
 # CORRECTED: Function renamed from 'manage_users' to 'users'
 @auth_bp.route('/users', methods=['GET', 'POST'])
 @login_required
-@super_admin_required
+@user_management_required
 def users():
     if request.method == 'POST':
         username = request.form.get('username')
@@ -71,36 +62,35 @@ def users():
             flash(f'Username "{username}" already exists.', 'danger')
             # CORRECTED: url_for target updated to 'auth.users'
             return redirect(url_for('auth.users'))
-        # Get the role object
-        from app.models import Role
-        role_obj = Role.query.filter_by(name=role).first()
-        if not role_obj:
+        # Validate role
+        valid_roles = [role.value for role in UserRole]
+        if role not in valid_roles:
             flash(f'Role "{role}" not found.', 'danger')
             return redirect(url_for('auth.users'))
         
-        # Super-Admin cannot create WebDev users
-        if current_user.role_name == 'Super-Admin' and role_obj.name == 'WebDev':
-            flash('Super-Admin cannot create WebDev users.', 'danger')
+        # Admin cannot create WebDev users
+        if current_user.role == UserRole.ADMIN.value and role == UserRole.WEBDEV.value:
+            flash('Admin cannot create WebDev users.', 'danger')
             return redirect(url_for('auth.users'))
         
         # Get current agency ID for association
         from flask import session
-        if current_user.role_name == 'WebDev':
+        if current_user.role == UserRole.WEBDEV.value:
             agency_id = session.get('current_agency_id', current_user.agency_id)
             # For WebDev, ensure we have a valid agency_id for non-WebDev users
-            if not agency_id and role_obj.name != 'WebDev':
+            if not agency_id and role != UserRole.WEBDEV.value:
                 flash('Please select an agency before creating non-WebDev users.', 'danger')
                 return redirect(url_for('auth.users'))
         else:
             agency_id = current_user.agency_id
         
         # Associate user with agency based on role
-        if role_obj.name == 'WebDev':
+        if role == UserRole.WEBDEV.value:
             # WebDev users are not associated with any specific agency (can access all)
-            new_user = User(username=username, role_id=role_obj.id, agency_id=None)
+            new_user = User(username=username, role=role, agency_id=None)
         else:
             # All other roles must be associated with the current agency
-            new_user = User(username=username, role_id=role_obj.id, agency_id=agency_id)
+            new_user = User(username=username, role=role, agency_id=agency_id)
         
         new_user.set_password(password)
         db.session.add(new_user)
@@ -110,38 +100,42 @@ def users():
         return redirect(url_for('auth.users'))
 
     # Get all roles for the form
-    from app.models import Role
-    # Super-Admin cannot create WebDev users
-    if current_user.role_name == 'Super-Admin':
-        all_roles = Role.query.filter(Role.name != 'WebDev').order_by(Role.name).all()
+    # Define the complete list of available roles
+    all_roles = ['admin', 'manager', 'super_admin', 'webdev']
+    
+    # Admin and Super Admin cannot create WebDev users, but can create managers
+    if current_user.role in [UserRole.ADMIN.value, UserRole.SUPER_ADMIN.value]:
+        all_roles = [role for role in all_roles if role != 'webdev']
+    # WebDev can create all roles including manager
+    elif current_user.role == UserRole.WEBDEV.value:
+        # all_roles already contains all roles including 'manager'
+        pass
+    # Other roles (admin, manager) cannot create users
     else:
-        # WebDev can create any role
-        all_roles = Role.query.order_by(Role.name).all()
+        all_roles = []
     
     # Get all users with their roles and agencies
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == UserRole.WEBDEV.value:
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
     
-    # Super-Admin cannot see WebDev users
-    if current_user.role_name == 'Super-Admin':
+    # Admin and Super Admin cannot see WebDev users
+    if current_user.role in [UserRole.ADMIN.value, UserRole.SUPER_ADMIN.value]:
         all_users = User.query.options(
-            db.joinedload(User.role),
             db.joinedload(User.agency)
-        ).join(Role).filter(Role.name != 'WebDev').filter(User.agency_id == agency_id).order_by(User.id).all()
+        ).filter(User.role != 'webdev').filter(User.agency_id == agency_id).order_by(User.id).all()
     else:
         # WebDev can see users from current agency + WebDev users
         all_users = User.query.options(
-            db.joinedload(User.role),
             db.joinedload(User.agency)
         ).filter(
             db.or_(
                 User.agency_id == agency_id,  # Users from current agency
-                User.role_id == Role.query.filter_by(name='WebDev').first().id  # WebDev users
+                User.role == UserRole.WEBDEV.value  # WebDev users
             )
         ).order_by(User.id).all()
     
@@ -149,7 +143,7 @@ def users():
 
 @auth_bp.route('/users/edit', methods=['POST'])
 @login_required
-@super_admin_required
+@webdev_required
 def edit_user():
     user_id = request.form.get('user_id')
     username = request.form.get('username')
@@ -168,31 +162,30 @@ def edit_user():
         flash(f'Username "{username}" already exists.', 'danger')
         return redirect(url_for('auth.users'))
     
-    # Get the role object
-    from app.models import Role
-    role_obj = Role.query.filter_by(name=role).first()
-    if not role_obj:
+    # Validate role
+    valid_roles = ['admin', 'manager', 'super_admin', 'webdev']
+    if role not in valid_roles:
         flash(f'Role "{role}" not found.', 'danger')
         return redirect(url_for('auth.users'))
     
-    # Super-Admin cannot edit WebDev users
-    if current_user.role_name == 'Super-Admin' and role_obj.name == 'WebDev':
-        flash('Super-Admin cannot edit WebDev users.', 'danger')
+    # Admin cannot edit WebDev users
+    if current_user.role == UserRole.ADMIN.value and role == UserRole.WEBDEV.value:
+        flash('Admin cannot edit WebDev users.', 'danger')
         return redirect(url_for('auth.users'))
     
     # Get current agency ID for association
     from flask import session
-    if current_user.role_name == 'WebDev':
+    if current_user.role == UserRole.WEBDEV.value:
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
     
     # Update user
     user_to_edit.username = username
-    user_to_edit.role_id = role_obj.id
+    user_to_edit.role = role
     
     # Update agency association based on role
-    if role_obj.name == 'WebDev':
+    if role == UserRole.WEBDEV.value:
         # WebDev users are not associated with any specific agency
         user_to_edit.agency_id = None
     else:
@@ -215,7 +208,7 @@ def get_agencies():
     from flask import session
     
     # For WebDev, show all agencies
-    if current_user.role_name == 'WebDev':
+    if current_user.role == UserRole.WEBDEV.value:
         agencies = Agency.query.all()
         # Use session agency for WebDev if set, otherwise use first agency
         current_agency_id = session.get('current_agency_id', agencies[0].id if agencies else None)
@@ -233,7 +226,7 @@ def get_agencies():
 @login_required
 def switch_agency():
     # Only WebDev can switch agencies
-    if current_user.role_name != 'WebDev':
+    if current_user.role != 'webdev':
         return jsonify({'message': 'Access denied. Only WebDev can switch agencies.'}), 403
     """Switch the current user's agency."""
     from app.models import Agency
@@ -246,7 +239,7 @@ def switch_agency():
         return jsonify({'message': 'Agency ID is required'}), 400
     
     # Check if user can access this agency
-    if current_user.role_name == 'WebDev':
+    if current_user.role == UserRole.WEBDEV.value:
         # WebDev can access any agency
         agency = Agency.query.get(agency_id)
     else:
@@ -259,7 +252,7 @@ def switch_agency():
         return jsonify({'message': 'Agency not found'}), 404
     
     # Store the selected agency in session for WebDev users
-    if current_user.role_name == 'WebDev':
+    if current_user.role == UserRole.WEBDEV.value:
         session['current_agency_id'] = agency_id
         session['current_agency_name'] = agency.name
     
@@ -277,7 +270,7 @@ def manage_contracts():
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == UserRole.WEBDEV.value:
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -408,7 +401,7 @@ def contracts():
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == UserRole.WEBDEV.value:
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -445,7 +438,7 @@ def profile_form_config():
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == UserRole.WEBDEV.value:
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -465,19 +458,55 @@ def profile_form_config():
                          current_agency=current_agency,
                          positions=positions)
 
-@auth_bp.route('/users/delete/<int:user_id>', methods=['POST'])
+@auth_bp.route('/users/<int:user_id>/delete', methods=['POST'])
 @login_required
-@super_admin_required
+@user_management_required
 def delete_user(user_id):
+    """Delete a user with proper security checks and relationship cleanup."""
+    from app.models import Assignment
+    
+    # Prevent self-deletion
     if user_id == current_user.id:
-        flash("You cannot delete your own account.", 'danger')
-        # CORRECTED: url_for target updated to 'auth.users'
+        flash("Vous ne pouvez pas supprimer votre propre compte.", 'danger')
         return redirect(url_for('auth.users'))
+    
+    # Get the user to delete
     user_to_delete = User.query.get_or_404(user_id)
+    
+    # Security checks based on user role
+    if current_user.role == UserRole.ADMIN.value:
+        # Admin cannot delete WebDev users
+        if user_to_delete.role == UserRole.WEBDEV.value:
+            flash("Les administrateurs ne peuvent pas supprimer les utilisateurs WebDev.", 'danger')
+            return redirect(url_for('auth.users'))
+        
+        # Admin can only delete users from their own agency
+        if user_to_delete.agency_id != current_user.agency_id:
+            flash("Vous ne pouvez supprimer que les utilisateurs de votre agence.", 'danger')
+            return redirect(url_for('auth.users'))
+    
+    elif current_user.role in [UserRole.WEBDEV.value, UserRole.SUPER_ADMIN.value]:
+        # WebDev and Super Admin can delete any user except themselves
+        pass
+    else:
+        # Other roles cannot delete users
+        flash("Vous n'avez pas les permissions pour supprimer des utilisateurs.", 'danger')
+        return redirect(url_for('auth.users'))
+    
+    # Clean up managed_by_user_id relationships before deletion
+    # Update assignments where this user is the manager
+    assignments_to_update = Assignment.query.filter_by(managed_by_user_id=user_id).all()
+    for assignment in assignments_to_update:
+        assignment.managed_by_user_id = None
+    
+    # Store user info for flash message
+    username = user_to_delete.username
+    
+    # Delete the user
     db.session.delete(user_to_delete)
     db.session.commit()
-    flash(f'User "{user_to_delete.username}" has been deleted.', 'success')
-    # CORRECTED: url_for target updated to 'auth.users'
+    
+    flash(f'Utilisateur "{username}" a été supprimé avec succès.', 'success')
     return redirect(url_for('auth.users'))
 
 # Venues API routes
@@ -490,7 +519,7 @@ def get_venues():
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == UserRole.WEBDEV.value:
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -519,7 +548,7 @@ def create_venue():
     from werkzeug.utils import secure_filename
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == UserRole.WEBDEV.value:
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -577,7 +606,7 @@ def update_venue(venue_id):
     from werkzeug.utils import secure_filename
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == UserRole.WEBDEV.value:
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -631,7 +660,7 @@ def delete_venue(venue_id):
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == UserRole.WEBDEV.value:
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -663,9 +692,10 @@ def delete_venue(venue_id):
 
 @auth_bp.route('/add-agency', methods=['GET', 'POST'])
 @login_required
+@webdev_required
 def add_agency():
     """Add a new agency - WebDev only."""
-    if current_user.role_name != 'WebDev':
+    if current_user.role != 'webdev':
         abort(403, "Only WebDev users can add agencies.")
     
     if request.method == 'POST':
@@ -701,7 +731,7 @@ def get_positions():
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == UserRole.WEBDEV.value:
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -726,7 +756,7 @@ def create_position():
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == UserRole.WEBDEV.value:
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -768,7 +798,7 @@ def update_position(position_id):
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == UserRole.WEBDEV.value:
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -812,7 +842,7 @@ def delete_position(position_id):
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == UserRole.WEBDEV.value:
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id

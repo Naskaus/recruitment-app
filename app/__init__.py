@@ -48,7 +48,7 @@ def create_app():
         app.register_blueprint(payroll_bp)
 
     # --- Custom CLI Commands ---
-    from .models import User, Role, Agency # Import User, Role and Agency models here
+    from .models import User, Agency, UserRole # Import User, Agency and UserRole enum here
 
     @app.cli.command("create-super-admin")
     @click.argument("username")
@@ -59,13 +59,7 @@ def create_app():
             print(f"Error: User '{username}' already exists.")
             return
         
-        # Get Super-Admin role
-        super_admin_role = Role.query.filter_by(name='Super-Admin').first()
-        if not super_admin_role:
-            print("Error: Super-Admin role not found. Please create it first.")
-            return
-        
-        new_user = User(username=username, role_id=super_admin_role.id)
+        new_user = User(username=username, role=UserRole.SUPER_ADMIN.value)
         new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
@@ -75,14 +69,11 @@ def create_app():
     @click.argument("role_name")
     def create_role(role_name):
         """Creates a new role."""
-        if Role.query.filter_by(name=role_name).first():
-            print(f"Error: Role '{role_name}' already exists.")
+        if role_name not in [role.value for role in UserRole]:
+            print(f"Error: Role '{role_name}' is not valid. Valid roles: {[role.value for role in UserRole]}")
             return
         
-        new_role = Role(name=role_name)
-        db.session.add(new_role)
-        db.session.commit()
-        print(f"Success! Role '{role_name}' was created.")
+        print(f"Success! Role '{role_name}' is already available in the system.")
 
     @app.cli.command("promote-user")
     @click.argument("username")
@@ -94,12 +85,11 @@ def create_app():
             print(f"Error: User '{username}' not found.")
             return
         
-        role = Role.query.filter_by(name=role_name).first()
-        if not role:
-            print(f"Error: Role '{role_name}' not found.")
+        if role_name not in [role.value for role in UserRole]:
+            print(f"Error: Role '{role_name}' is not valid. Valid roles: {[role.value for role in UserRole]}")
             return
         
-        user.role_id = role.id
+        user.role = role_name
         db.session.commit()
         print(f"Success! User '{username}' was promoted to '{role_name}'.")
 
@@ -109,27 +99,20 @@ def create_app():
         print("=== USERS ===")
         users = User.query.all()
         for user in users:
-            print(f"ID: {user.id}, Username: {user.username}, Role: {user.role.name if user.role else 'None'}, Agency: {user.agency.name if user.agency else 'None'}")
+            print(f"ID: {user.id}, Username: {user.username}, Role: {user.role}, Agency: {user.agency.name if user.agency else 'None'}")
         
         print("\n=== AGENCIES ===")
         agencies = Agency.query.all()
         for agency in agencies:
             print(f"ID: {agency.id}, Name: {agency.name}")
         
-        print("\n=== ROLES ===")
-        roles = Role.query.all()
-        for role in roles:
-            print(f"ID: {role.id}, Name: {role.name}")
+        print("\n=== AVAILABLE ROLES ===")
+        for role in UserRole:
+            print(f"Role: {role.value}")
 
     @app.cli.command("fix-webdev")
     def fix_webdev():
         """Fix WebDev user to have correct role and no agency association."""
-        # Find WebDev role
-        webdev_role = Role.query.filter_by(name='WebDev').first()
-        if not webdev_role:
-            print("WebDev role not found!")
-            return
-        
         # Find WebDev user
         webdev_user = User.query.filter_by(username='WebDev').first()
         if not webdev_user:
@@ -137,11 +120,11 @@ def create_app():
             return
         
         # Fix WebDev user
-        webdev_user.role_id = webdev_role.id
+        webdev_user.role = UserRole.WEBDEV.value
         webdev_user.agency_id = None  # WebDev should not be associated with any specific agency
         db.session.commit()
         
-        print(f"Fixed WebDev user: role_id={webdev_user.role_id}, agency_id={webdev_user.agency_id}")
+        print(f"Fixed WebDev user: role={webdev_user.role}, agency_id={webdev_user.agency_id}")
 
     @app.cli.command("fix-user-agency")
     @click.argument("username")
@@ -159,7 +142,7 @@ def create_app():
             return
         
         # Don't change WebDev users
-        if user.role and user.role.name == 'WebDev':
+        if user.role == UserRole.WEBDEV.value:
             print(f"Warning: User '{username}' is WebDev and should not be associated with any agency.")
             return
         
@@ -179,10 +162,9 @@ def create_app():
     @app.cli.command("list-roles")
     def list_roles():
         """Lists all roles."""
-        roles = Role.query.all()
-        print("📊 Roles:")
-        for role in roles:
-            print(f"  - {role.id}: {role.name}")
+        print("📊 Available Roles:")
+        for role in UserRole:
+            print(f"  - {role.value}")
 
     @app.cli.command("link-user-agency")
     @click.argument("username")
@@ -221,17 +203,14 @@ def create_app():
             print(f"Error: User '{username}' already exists.")
             return
         
-        # Get or create role
-        role = Role.query.filter_by(name=role_name).first()
-        if not role:
-            role = Role(name=role_name)
-            db.session.add(role)
-            db.session.commit()
-            print(f"Role '{role_name}' created.")
+        # Validate role
+        if role_name not in [role.value for role in UserRole]:
+            print(f"Error: Role '{role_name}' is not valid. Valid roles: {[role.value for role in UserRole]}")
+            return
         
         # Get or create default agency for non-WebDev users
         agency = None
-        if role_name != 'WebDev':
+        if role_name != UserRole.WEBDEV.value:
             agency = Agency.query.filter_by(name='Bangkok Agency').first()
             if not agency:
                 agency = Agency(name='Bangkok Agency')
@@ -239,7 +218,7 @@ def create_app():
                 db.session.commit()
                 print(f"Agency 'Bangkok Agency' created.")
         
-        new_user = User(username=username, role_id=role.id, agency_id=agency.id if agency else None)
+        new_user = User(username=username, role=role_name, agency_id=agency.id if agency else None)
         new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()

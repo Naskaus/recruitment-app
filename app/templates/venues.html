@@ -59,6 +59,9 @@
 
 
 <script>
+// Make user role available to JavaScript
+window.currentUserRole = '{{ current_user.role }}';
+
 document.addEventListener('DOMContentLoaded', function() {
     const addVenueBtn = document.getElementById('addVenueBtn');
     const venueModal = document.getElementById('venueModal');
@@ -135,7 +138,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <div class="venue-actions">
                         <button class="button button-secondary edit-venue-btn" data-id="${venue.id}">Edit</button>
-                        <button class="button button-danger delete-venue-btn" data-id="${venue.id}" onclick="deleteVenue(${venue.id})">Delete</button>
+                        ${window.currentUserRole && ['super_admin', 'webdev'].includes(window.currentUserRole) ? 
+                            `<button class="button button-danger delete-venue-btn" data-id="${venue.id}" onclick="deleteVenue(${venue.id})">Delete</button>` : 
+                            ''}
                     </div>
                 </div>
             </div>

@@ -2,7 +2,8 @@
 
 from flask import Blueprint, render_template, request, jsonify, abort, current_app
 from flask_login import login_required, current_user
-from app.models import db, StaffProfile, User, Assignment, Venue, Role
+from app.models import db, StaffProfile, User, Assignment, Venue
+from app.decorators import admin_required, manager_required, super_admin_required, webdev_required, assignment_management_required, dispatch_view_required, dispatch_edit_required
 from datetime import datetime, date, timedelta
 
 dispatch_bp = Blueprint('dispatch', __name__, template_folder='../templates', url_prefix='/dispatch')
@@ -21,11 +22,12 @@ def compute_end_date(start_date: date, contract_name: str, agency_id: int) -> da
 # --- VIEWS (HTML PAGE) ---
 @dispatch_bp.route('/')
 @login_required
+@dispatch_view_required
 def dispatch_board():
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -59,12 +61,13 @@ def dispatch_board():
 # --- API (JSON ROUTES) ---
 @dispatch_bp.route('/api/assignment/form-data')
 @login_required
+@dispatch_view_required
 def get_assignment_form_data():
     """Provides necessary data to populate the assignment form dynamically."""
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -74,7 +77,7 @@ def get_assignment_form_data():
 
     try:
         # For WebDev, show all users. For others, show only agency users
-        if current_user.role_name == 'WebDev':
+        if current_user.role == 'webdev':
             agency_users = User.query.order_by(User.username).all()
         else:
             agency_users = User.query.filter_by(agency_id=agency_id).order_by(User.username).all()
@@ -103,11 +106,12 @@ def get_assignment_form_data():
 
 @dispatch_bp.route('/api/assignment', methods=['POST'])
 @login_required
+@dispatch_edit_required
 def create_assignment():
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -116,6 +120,7 @@ def create_assignment():
         return jsonify({"status": "error", "message": "User not associated with an agency."}), 403
 
     data = request.get_json() or {}
+    
     try:
         staff_id = int(data.get('staff_id'))
         venue_name = data.get('venue')
@@ -124,7 +129,8 @@ def create_assignment():
         start_date = datetime.fromisoformat(data.get('start_date')).date()
         base_salary = float(data.get('base_salary', 0))
         managed_by_user_id = int(data.get('managed_by_user_id'))
-    except (ValueError, TypeError):
+        
+    except (ValueError, TypeError) as e:
         return jsonify({"status": "error", "message": "Invalid payload. Check data types."}), 400
     staff = StaffProfile.query.filter_by(id=staff_id, agency_id=agency_id).first()
     if not staff: return jsonify({"status": "error", "message": "Staff not found in your agency."}), 404
@@ -152,16 +158,18 @@ def create_assignment():
     staff.status = 'Working'
     db.session.add(new_a)
     db.session.commit()
+    
     return jsonify({"status": "success", "assignment": new_a.to_dict()}), 201
 
 
 @dispatch_bp.route('/api/assignment/<int:assignment_id>/end', methods=['POST'])
 @login_required
+@manager_required
 def end_assignment_now(assignment_id):
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -193,11 +201,12 @@ def end_assignment_now(assignment_id):
 
 @dispatch_bp.route('/api/assignment/<int:assignment_id>', methods=['DELETE'])
 @login_required
+@assignment_management_required
 def delete_assignment(assignment_id):
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -209,11 +218,12 @@ def delete_assignment(assignment_id):
 
 @dispatch_bp.route('/api/assignment/<int:assignment_id>/finalize', methods=['POST'])
 @login_required
+@manager_required
 def finalize_assignment(assignment_id):
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id
@@ -245,11 +255,12 @@ def finalize_assignment(assignment_id):
 
 @dispatch_bp.route('/api/assignment/<int:assignment_id>/archive', methods=['POST'])
 @login_required
+@manager_required
 def archive_assignment(assignment_id):
     from flask import session
     
     # Get current agency ID
-    if current_user.role_name == 'WebDev':
+    if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
     else:
         agency_id = current_user.agency_id

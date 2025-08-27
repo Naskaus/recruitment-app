@@ -35,11 +35,9 @@
                     <label for="role">Role</label>
                     <select id="role" name="role" required>
                         <option value="" disabled selected>Select a role...</option>
-                        <option value="Admin">Admin</option>
-                        <option value="Super-Admin">Super-Admin</option>
-                        {% if current_user.role_name == 'WebDev' %}
-                        <option value="WebDev">WebDev</option>
-                        {% endif %}
+                        {% for role in roles %}
+                        <option value="{{ role }}">{{ role | title | replace('_', ' ') }}</option>
+                        {% endfor %}
                     </select>
                 </div>
                 <button type="submit" class="button button-primary" style="width: 100%;">Create User</button>
@@ -67,17 +65,17 @@
                         <td>{{ user.id }}</td>
                         <td>{{ user.username }}</td>
                         <td>
-                             <span class="role-badge-table role-{{ user.role_name | lower | replace('-', '') }}">{{ user.role_name }}</span>
+                             <span class="role-badge-table role-{{ user.role | lower | replace('_', '') }}">{{ user.role | title | replace('_', ' ') }}</span>
                         </td>
                         <td>
                             <div class="action-buttons">
-                                <button class="button-table-edit" onclick="editUser({{ user.id }}, '{{ user.username }}', '{{ user.role_name }}')" title="Edit User">
+                                <button class="button-table-edit" onclick="editUser({{ user.id }}, '{{ user.username }}', '{{ user.role }}')" title="Edit User">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                                 </button>
-                                {% if user.id != current_user.id %}
-                                <form action="{{ url_for('auth.delete_user', user_id=user.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this user?');" style="display: inline;">
+                                {% if user.id != current_user.id and current_user.role in ['webdev', 'super_admin'] %}
+                                <form action="{{ url_for('auth.delete_user', user_id=user.id) }}" method="POST" onsubmit="return confirmDeleteUser('{{ user.username }}');" style="display: inline;">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                    <button type="submit" class="button-table-delete" title="Delete User">
+                                    <button type="submit" class="button-table-delete" title="Supprimer l'utilisateur">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                                     </button>
                                 </form>
@@ -110,11 +108,9 @@
                 <div class="form-group">
                     <label for="editRole">Role</label>
                     <select id="editRole" name="role" required>
-                        <option value="Admin">Admin</option>
-                        <option value="Super-Admin">Super-Admin</option>
-                        {% if current_user.role_name == 'WebDev' %}
-                        <option value="WebDev">WebDev</option>
-                        {% endif %}
+                        {% for role in roles %}
+                        <option value="{{ role }}">{{ role | title | replace('_', ' ') }}</option>
+                        {% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
@@ -137,6 +133,10 @@ function editUser(userId, username, role) {
     document.getElementById('editRole').value = role;
     document.getElementById('editPassword').value = '';
     document.getElementById('editUserModal').classList.remove('hidden');
+}
+
+function confirmDeleteUser(username) {
+    return confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur "${username}" ?\n\nCette action est irréversible et supprimera définitivement l'utilisateur.`);
 }
 
 document.getElementById('closeEditUserModalBtn').addEventListener('click', function() {

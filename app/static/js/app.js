@@ -637,6 +637,71 @@ if (lists.length && window.Sortable) {
                 else return currentContractRules.first_minute_penalty + (minutes - 1) * currentContractRules.additional_minute_penalty;
             }
 
+            // ✅ NOUVEAU : Fonction pour récupérer et afficher le résumé final d'un contrat
+            async function fetchAndShowFinalSummary(assignmentId) {
+                try {
+                    console.log(`Fetching final summary for assignment ${assignmentId}...`);
+                    
+                    const response = await fetch(`/payroll/api/summary/${assignmentId}`);
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data.status !== 'success') {
+                        throw new Error(data.message || 'Failed to fetch summary data');
+                    }
+                    
+                    console.log('Final summary data received:', data);
+                    
+                    // ✅ TÂCHE 4 : Remplir la modale avec les données reçues
+                    populateSummaryModal(data);
+                    
+                    // Afficher la modale
+                    openSummaryModal();
+                    
+                } catch (error) {
+                    console.error('Erreur lors de la récupération du résumé final:', error);
+                    alert(`Erreur lors du chargement du résumé: ${error.message}`);
+                }
+            }
+            
+            // ✅ NOUVEAU : Fonction pour remplir la modale avec les données
+            function populateSummaryModal(data) {
+                // Récupérer les éléments de la modale
+                const summaryStaffName = document.getElementById('summaryStaffName');
+                const summaryAssignmentIdInput = document.getElementById('summaryAssignmentId');
+                const summaryTotalDaysWorked = document.getElementById('summaryTotalDaysWorked');
+                const summaryTotalDrinks = document.getElementById('summaryTotalDrinks');
+                const summaryTotalSpecialComm = document.getElementById('summaryTotalSpecialComm');
+                const summaryTotalCommission = document.getElementById('summaryTotalCommission');
+                const summaryTotalSalary = document.getElementById('summaryTotalSalary');
+                const summaryTotalProfit = document.getElementById('summaryTotalProfit');
+                
+                // Remplir les champs avec les données reçues
+                if (summaryStaffName) summaryStaffName.textContent = data.staff_name || 'Unknown';
+                if (summaryAssignmentIdInput) summaryAssignmentIdInput.value = data.assignment_id;
+                if (summaryTotalDaysWorked) summaryTotalDaysWorked.textContent = `${data.total_days_worked || 0} days`;
+                if (summaryTotalDrinks) summaryTotalDrinks.textContent = data.total_drinks_sold || 0;
+                if (summaryTotalSpecialComm) summaryTotalSpecialComm.textContent = `${(data.total_special_commissions || 0).toFixed(0)}฿`;
+                if (summaryTotalCommission) summaryTotalCommission.textContent = `${(data.total_commission_paid || 0).toFixed(0)}฿`;
+                if (summaryTotalSalary) summaryTotalSalary.textContent = `${(data.total_salary_paid || 0).toFixed(0)}฿`;
+                if (summaryTotalProfit) summaryTotalProfit.textContent = `${(data.total_profit || 0).toFixed(0)}฿`;
+                
+                // Appliquer les styles de couleur pour le profit
+                if (summaryTotalProfit) {
+                    summaryTotalProfit.classList.remove('profit-positive', 'profit-negative');
+                    if (data.total_profit > 0) {
+                        summaryTotalProfit.classList.add('profit-positive');
+                    } else if (data.total_profit < 0) {
+                        summaryTotalProfit.classList.add('profit-negative');
+                    }
+                }
+            }
+
             // ✅ NOUVEAU : Fonction de prévisualisation avec debounce
             let previewDebounceTimer = null;
             
@@ -653,16 +718,43 @@ if (lists.length && window.Sortable) {
                     }
                 });
                 
+                // ✅ CORRIGÉ : Validation et formatage des données pour correspondre exactement à l'API
+                const assignmentIdInt = parseInt(assignmentId, 10);
+                if (isNaN(assignmentIdInt)) {
+                    console.error('Invalid assignment ID:', assignmentId);
+                    return;
+                }
+                
+                const recordDate = recordDateInput.value;
+                if (!recordDate) {
+                    console.error('Record date is required');
+                    return;
+                }
+                
+                // Validation du format des heures (HH:MM)
+                const validateTimeFormat = (timeStr) => {
+                    if (!timeStr) return null;
+                    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+                    if (!timeRegex.test(timeStr)) {
+                        console.warn('Invalid time format:', timeStr, 'Expected HH:MM');
+                        return null;
+                    }
+                    return timeStr;
+                };
+                
                 const payload = {
-                    assignment_id: parseInt(assignmentId, 10),
-                    record_date: recordDateInput.value,
-                    arrival_time: arrivalInput.value || null,
-                    departure_time: departureInput.value || null,
-                    drinks_sold: parseInt(drinksInput.value || "0", 10),
-                    special_commissions: parseFloat(specialInput.value || "0"),
+                    assignment_id: assignmentIdInt,
+                    record_date: recordDate,
+                    arrival_time: validateTimeFormat(arrivalInput.value),
+                    departure_time: validateTimeFormat(departureInput.value),
+                    drinks_sold: Math.max(0, parseInt(drinksInput.value || "0", 10)),
+                    special_commissions: Math.max(0, parseFloat(specialInput.value || "0")),
                     bonus: parseFloat(bonusInput.value || "0"),
                     malus: parseFloat(malusInput.value || "0"),
                 };
+                
+                // ✅ DEBUG : Afficher les données envoyées
+                console.log('Sending preview data:', payload);
                 
                 try {
                     const response = await fetch("/payroll/api/performance/preview", {
@@ -694,6 +786,13 @@ if (lists.length && window.Sortable) {
                     
                 } catch (error) {
                     console.error('Erreur lors de la prévisualisation:', error);
+                    
+                    // ✅ AMÉLIORÉ : Messages d'erreur plus informatifs
+                    if (error.message.includes('HTTP error! status: 400')) {
+                        console.error('Données invalides envoyées à l\'API. Vérifiez les valeurs saisies.');
+                    } else if (error.message.includes('HTTP error! status: 500')) {
+                        console.error('Erreur serveur lors du calcul. Contactez l\'administrateur.');
+                    }
                     
                     // ✅ NOUVEAU : Retour à la couleur normale même en cas d'erreur
                     summaryInputs.forEach(input => {
@@ -874,7 +973,7 @@ if (lists.length && window.Sortable) {
                     closeSummaryModal();
                     closePerformanceModal();
                     if (row) {
-                        row.classList.remove('status-ongoing');
+                        row.classList.remove('status-active');
                         row.classList.add(`status-${status}`);
                         row.dataset.currentStatus = status;
                         const actionsCell = row.querySelector('.actions');
@@ -899,10 +998,28 @@ if (lists.length && window.Sortable) {
             });
 
             table.addEventListener("click", async (e) => {
-                const tr = e.target.closest("tr[data-assignment-id]");
-                if (!tr) return;
+                // Sélecteur robuste avec plusieurs fallbacks
+                let tr = e.target.closest("tr[id^='assignment-row-']");
+                if (!tr) {
+                    // Fallback 1: essayer avec data-assignment-id
+                    tr = e.target.closest("tr[data-assignment-id]");
+                }
+                if (!tr) {
+                    // Fallback 2: essayer de trouver la ligne parente par classe
+                    tr = e.target.closest("tr.status-active, tr.status-ended, tr.status-archived");
+                }
+                if (!tr) {
+                    console.warn("Impossible de trouver la ligne de contrat pour l'élément cliqué:", e.target);
+                    return;
+                }
                 const assignmentId = tr.dataset.assignmentId;
                 const staffName = tr.dataset.staffName;
+                
+                // Vérification des données requises
+                if (!assignmentId) {
+                    console.error("ID d'assignation manquant dans la ligne:", tr);
+                    return;
+                }
 
                 if (e.target.closest(".manage-performance-btn")) {
                     const startIso = tr.dataset.startDate, endIso = tr.dataset.endDate;
@@ -933,16 +1050,39 @@ if (lists.length && window.Sortable) {
                     return;
                 }
 
+                // ✅ NOUVEAU : Gestion du bouton "Details" pour les contrats terminés
+                if (e.target.matches('.btn-details')) {
+                    const contractStatus = tr.dataset.currentStatus || tr.className.match(/status-(\w+)/)?.[1];
+                    
+                    // Vérifier si le contrat est terminé (ended ou archived)
+                    if (contractStatus === 'ended' || contractStatus === 'archived') {
+                        console.log(`Opening final summary for ${contractStatus} contract ${assignmentId}`);
+                        await fetchAndShowFinalSummary(assignmentId);
+                        return;
+                    }
+                }
+
                 if (e.target.closest(".end-contract-btn")) {
                     if (!confirm(`This will end the contract for "${staffName}" today and open the final summary. Continue?`)) return;
                     try {
                         const res = await fetch(`/dispatch/api/assignment/${assignmentId}/end`, { method: "POST" });
                         const data = await res.json().catch(() => ({}));
                         if (!res.ok) throw new Error(data.message || "Server error");
-                        tr.dataset.endDate = data.assignment.end_date;
-                        tr.dataset.contractDays = data.contract_days;
-                        // Programmatically click the manage button to open the summary
-                        tr.querySelector('.manage-performance-btn')?.click();
+                        location.reload();
+                    } catch (err) {
+                        alert(err.message || "Network error");
+                    }
+                    return;
+                }
+
+                if (e.target.closest(".archive-contract-btn")) {
+                    if (!confirm(`Archive this contract for "${staffName}"? This will mark it as permanently archived.`)) return;
+                    try {
+                        const res = await fetch(`/dispatch/api/assignment/${assignmentId}/archive`, { method: "POST" });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) throw new Error(data.message || "Server error");
+                        alert("Contract archived successfully");
+                        window.location.reload(); // Refresh to show updated status
                     } catch (err) {
                         alert(err.message || "Network error");
                     }

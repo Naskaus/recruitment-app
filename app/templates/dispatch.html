@@ -52,7 +52,7 @@
                 <div class="dispatch-card-info">
                     <strong>{{ s.nickname }}</strong>
                     {# FIX: Use selectattr to filter the list of assignments #}
-                    {% set assignment = s.assignments|selectattr('status', 'equalto', 'ongoing')|first %}
+                    {% set assignment = s.assignments|selectattr('status', 'equalto', 'active')|first %}
                     {% if assignment %}
                     <span class="position-badge">{{ assignment.contract_role }}</span>
                     {% endif %}

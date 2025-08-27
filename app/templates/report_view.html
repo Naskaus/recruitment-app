@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+  .report-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 3px solid #1A2035;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+  }
+  
+  .agency-title {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #1A2035;
+    margin: 0;
+  }
+  
+  .report-info {
+    text-align: right;
+  }
+  
+  .report-info h2 {
+    font-size: 1.5rem;
+    margin: 0;
+    color: #1A2035;
+  }
+  
+  .report-info p {
+    font-size: 0.9rem;
+    margin: 5px 0 0 0;
+    color: #666;
+  }
+  
+  .staff-info {
+    margin-bottom: 30px;
+    text-align: center;
+  }
+  
+  .staff-info h1 {
+    font-size: 2.2rem;
+    margin: 0 0 10px 0;
+    color: #4A90E2;
+  }
+  
+  .staff-info h3 {
+    font-size: 1.3rem;
+    font-weight: normal;
+    margin: 0;
+    color: #555;
+  }
+  
+  .grid-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-bottom: 30px;
+  }
+  
+  .info-box, .summary-box {
+    border: 1px solid #E1E5EB;
+    border-radius: 12px;
+    padding: 25px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  .info-box h4, .summary-box h4 {
+    margin: 0 0 20px 0;
+    font-size: 1.2rem;
+    color: #1A2035;
+    border-bottom: 2px solid #E1E5EB;
+    padding-bottom: 10px;
+  }
+  
+  .info-box p {
+    margin: 8px 0;
+    font-size: 1rem;
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .info-box strong {
+    color: #555;
+    min-width: 120px;
+  }
+  
+  .summary-box table {
+    width: 100%;
+  }
+  
+  .summary-box td {
+    padding: 8px 0;
+    font-size: 1rem;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  
+  .summary-box td:last-child {
+    text-align: right;
+    font-weight: bold;
+  }
+  
+  .profit-negative { 
+    color: #D9534F; 
+  }
+  
+  .profit-positive { 
+    color: #5CB85C; 
+  }
+  
+  .details-section {
+    margin-top: 40px;
+  }
+  
+  .details-section h4 {
+    font-size: 1.3rem;
+    color: #1A2035;
+    margin-bottom: 20px;
+  }
+  
+  .details-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  .details-table th, .details-table td {
+    border: 1px solid #E1E5EB;
+    padding: 12px;
+    text-align: center;
+  }
+  
+  .details-table th {
+    background-color: #F8F9FB;
+    font-weight: bold;
+    color: #1A2035;
+  }
+  
+  .details-table tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+  
+  .details-table tbody tr:hover {
+    background-color: #f0f8ff;
+  }
+  
+  .action-buttons {
+    margin-top: 30px;
+    text-align: center;
+  }
+  
+  .action-buttons .button {
+    margin: 0 10px;
+  }
+  
+  .back-link {
+    display: inline-block;
+    margin-bottom: 20px;
+    color: #4A90E2;
+    text-decoration: none;
+  }
+  
+  .back-link:hover {
+    text-decoration: underline;
+  }
+  
+  @media (max-width: 768px) {
+    .grid-container {
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+    
+    .report-header {
+      flex-direction: column;
+      text-align: center;
+    }
+    
+    .agency-title {
+      font-size: 2rem;
+      margin-bottom: 15px;
+    }
+    
+    .details-table {
+      font-size: 0.9rem;
+    }
+    
+    .details-table th, .details-table td {
+      padding: 8px 4px;
+    }
+  }
+</style>
+
+<div class="report-container">
+  <a href="{{ url_for('payroll.payroll_page') }}" class="back-link">← Back to contracts list</a>
+  
+  <div class="report-header">
+    <h1 class="agency-title">OS Agency</h1>
+    <div class="report-info">
+      <h2>Final Contract Report</h2>
+      <p>Generated on: {{ report_date.strftime('%d %B %Y') }}</p>
+    </div>
+  </div>
+
+  <div class="staff-info">
+    <h1>{{ assignment.staff.nickname if assignment.staff else assignment.archived_staff_name }}</h1>
+    <h3>{{ assignment.contract_role }}</h3>
+  </div>
+
+  <div class="grid-container">
+    <div class="info-box">
+      <h4>Contract Details</h4>
+      <p><strong>Staff ID:</strong> <span>{{ assignment.staff.id if assignment.staff else 'N/A' }}</span></p>
+      <p><strong>Position:</strong> <span>{{ assignment.contract_role }}</span></p>
+      <p><strong>Venue:</strong> <span>{{ assignment.venue.name }}</span></p>
+      <p><strong>Period:</strong> <span>{{ assignment.start_date.strftime('%d %b %Y') }} - {{ assignment.end_date.strftime('%d %b %Y') }}</span></p>
+      <p><strong>Type:</strong> <span>{{ assignment.contract_type }}</span></p>
+      <p><strong>Base Salary:</strong> <span>{{ '{:,}'.format(assignment.base_salary) }} ฿</span></p>
+      <p><strong>Manager:</strong> <span>{{ assignment.manager.username if assignment.manager else 'N/A' }}</span></p>
+    </div>
+    
+    <div class="summary-box">
+      <h4>Performance Summary</h4>
+      <table>
+        <tr><td>Days Worked:</td><td>{{ days_worked }}</td></tr>
+        <tr><td>Drinks Sold:</td><td>{{ '{:,}'.format(contract_stats.drinks) }}</td></tr>
+        <tr><td>Special Commissions:</td><td>{{ '{:,}'.format(contract_stats.special_comm) }} ฿</td></tr>
+        <tr><td>Commission Paid:</td><td>{{ '{:,}'.format(contract_stats.commission) }} ฿</td></tr>
+        <tr><td>Salary Paid:</td><td>{{ '{:,}'.format(contract_stats.salary) }} ฿</td></tr>
+        <tr><td><strong>Total Bar Profit:</strong></td><td class="{% if contract_stats.profit > 0 %}profit-positive{% elif contract_stats.profit < 0 %}profit-negative{% endif %}">{{ '{:,}'.format(contract_stats.profit) }} ฿</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="details-section">
+    <h4>Daily Performance Log</h4>
+    <table class="details-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Arrival</th>
+          <th>Drinks</th>
+          <th>Bonus/Malus</th>
+          <th>Daily Salary</th>
+          <th>Daily Profit</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for record in assignment.performance_records|sort(attribute='record_date') %}
+          {% set base_daily = (assignment.base_salary / original_duration) if original_duration > 0 else 0 %}
+          {% set penalty = record.lateness_penalty or 0 %}
+          {% set daily_salary = base_daily + (record.bonus or 0) - (record.malus or 0) - penalty %}
+          {% set daily_profit = ((record.drinks_sold or 0) * 120 + (record.special_commissions or 0)) - daily_salary %}
+          <tr>
+            <td>{{ record.record_date.strftime('%d %b %Y') }}</td>
+            <td>{{ record.arrival_time.strftime('%H:%M') if record.arrival_time else 'N/A' }}</td>
+            <td>{{ '{:,}'.format(record.drinks_sold or 0) }}</td>
+            <td>{{ '{:,}'.format((record.bonus or 0) - (record.malus or 0)) }} ฿</td>
+            <td>{{ '{:,}'.format(daily_salary) }} ฿</td>
+            <td class="{% if daily_profit > 0 %}profit-positive{% elif daily_profit < 0 %}profit-negative{% endif %}">{{ '{:,}'.format(daily_profit) }} ฿</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6">No performance records found for this contract.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="action-buttons">
+    <a href="{{ url_for('payroll.assignment_pdf', assignment_id=assignment.id) }}" target="_blank" class="button button-secondary">Download PDF</a>
+    <a href="{{ url_for('payroll.payroll_page') }}" class="button button-primary">Back to List</a>
+  </div>
+</div>
+{% endblock %}

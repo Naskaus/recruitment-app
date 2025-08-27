@@ -596,7 +596,7 @@
     border: 1px solid transparent;
 }
 
-.status-active { background-color: #d1fae5; color: #065f46 !important; border-color: #a7f3d0; }
+.status-active { background-color: #a5d8ff; color: #000000 !important; border-color: #87ceeb; }
 .status-working { background-color: #dbeafe; color: #1e40af !important; border-color: #bfdbfe; }
 .status-quiet { background-color: #ffedd5; color: #9a3412 !important; border-color: #fed7aa; }
 .status-screening { background-color: #fef9c3; color: #713f12 !important; border-color: #fde68a; }
@@ -1130,6 +1130,8 @@
                     .payroll-table tr.status-archived:hover {
                         opacity: 1;
                     }
+                    
+
                 
                 
                     /* ---------------------------------- */
@@ -1243,6 +1245,27 @@
                     }
                     .status-badge-archived {
                         background-color: #6c757d; /* Neutral Gray */
+                    }
+                    
+                    /* Contract Status Badges */
+                    .status-badge-active {
+                        background-color: #28a745; /* Green for active */
+                        color: #fff;
+                    }
+                    
+                    .status-badge-ended {
+                        background-color: #ffc107; /* Yellow for ended */
+                        color: #212529;
+                    }
+                    
+                    .status-badge-archived {
+                        background-color: #6c757d; /* Gray for archived */
+                        color: #fff;
+                    }
+                    
+                    .status-badge-unknown {
+                        background-color: #dc3545; /* Red for unknown status */
+                        color: #fff;
                     }
                 
                     /* Style for the "Mark as Paid" button - we keep this for the future */
@@ -2204,8 +2227,8 @@
                 
                 /* Applying status colors */
 .status-changer-select.status-active {
-    background-color: #d1fae5;
-    color: #065f46;
+    background-color: #a5d8ff;
+    color: #000000;
 }
 .status-changer-select.status-working {
     background-color: #dbeafe;
@@ -2237,10 +2260,9 @@
                     }
                 
                     .payroll-table tr {
-                        display: block; /* 2. Each row becomes a card-like block */
-                        border-bottom: 2px solid var(--color-border);
-                        margin-bottom: 1.5rem;
-                        padding-bottom: 1rem;
+                        /* Restored to table-row display for standard table layout */
+                        display: table-row;
+                        border-bottom: 1px solid var(--color-border);
                     }
                 
                     .payroll-table td {
@@ -2278,6 +2300,8 @@
                         flex-direction: row;
                         gap: 8px;
                     }
+                    
+
                 }
                 /* ===================================
                    37. Profile Detail Responsive (NEW)

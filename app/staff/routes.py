@@ -120,6 +120,8 @@ def profile_form(profile_id=None):
 @login_required
 def profile_detail(profile_id):
     """Displays the detailed view of a single staff profile."""
+    from app.services.payroll_service import get_staff_performance_summary
+    
     agency_id = get_current_agency_id()
 
     profile = StaffProfile.query.filter_by(id=profile_id, agency_id=agency_id).options(
@@ -135,6 +137,27 @@ def profile_detail(profile_id):
     if end_date_str:
         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
 
+    # Utiliser le service de paie pour obtenir les statistiques de performance
+    try:
+        performance_summary = get_staff_performance_summary(profile_id, start_date, end_date)
+        history_stats = performance_summary['summary_totals']
+        detailed_history = performance_summary['detailed_history']
+        contract_calculations = performance_summary['contract_calculations']
+    except Exception as e:
+        # Fallback en cas d'erreur
+        history_stats = {
+            "total_days_worked": 0,
+            "total_drinks_sold": 0,
+            "total_special_comm": 0,
+            "total_salary_paid": 0,
+            "total_commission_paid": 0,
+            "total_bar_profit": 0
+        }
+        detailed_history = []
+        contract_calculations = []
+        print(f"Erreur lors du calcul des statistiques de performance: {str(e)}")
+
+    # Filtrer les assignments pour l'affichage
     all_assignments = sorted(profile.assignments, key=lambda a: a.start_date, reverse=True)
     
     assignments_to_process = all_assignments
@@ -144,52 +167,10 @@ def profile_detail(profile_id):
             if (not end_date or a.start_date <= end_date) and \
                (not start_date or a.end_date >= start_date)
         ]
-
-    # --- KPI CALCULATION LOGIC ---
-    total_days_worked = 0
-    total_drinks_sold = 0
-    total_special_comm = 0
-    total_salary_paid = 0
-    total_commission_paid = 0
-    total_bar_profit = 0
-
-    for assignment in assignments_to_process:
-        original_duration = CONTRACT_TYPES.get(assignment.contract_type, 1)
-        base_daily_salary = (assignment.base_salary / original_duration) if original_duration > 0 else 0
-
-        records_to_process = assignment.performance_records
-        if start_date or end_date:
-            records_to_process = [
-                r for r in assignment.performance_records 
-                if (not start_date or r.record_date >= start_date) and \
-                   (not end_date or r.record_date <= end_date)
-            ]
-
-        for record in records_to_process:
-            daily_salary = (base_daily_salary + (record.bonus or 0) - (record.malus or 0) - (record.lateness_penalty or 0))
-            daily_commission = (record.drinks_sold or 0) * DRINK_STAFF_COMMISSION
-            bar_revenue = ((record.drinks_sold or 0) * DRINK_BAR_PRICE) + (record.special_commissions or 0)
-            daily_profit = bar_revenue - daily_salary
-            
-            total_salary_paid += daily_salary
-            total_commission_paid += daily_commission
-            total_bar_profit += daily_profit
-            total_drinks_sold += record.drinks_sold or 0
-            total_special_comm += record.special_commissions or 0
-        
-        total_days_worked += len(records_to_process)
-
-    history_stats = {
-        "total_days_worked": total_days_worked,
-        "total_drinks_sold": total_drinks_sold,
-        "total_special_comm": total_special_comm,
-        "total_salary_paid": total_salary_paid,
-        "total_commission_paid": total_commission_paid,
-        "total_bar_profit": total_bar_profit
-    }
     
     return render_template('profile_detail.html', profile=profile, assignments=assignments_to_process, 
-                           history_stats=history_stats, filter_start_date=start_date, filter_end_date=end_date)
+                           history_stats=history_stats, filter_start_date=start_date, filter_end_date=end_date,
+                           detailed_history=detailed_history, contract_calculations=contract_calculations)
 
 
 # --- API (JSON ROUTES) ---
@@ -329,6 +310,7 @@ def uploaded_file(filename):
 def profile_pdf(profile_id):
     """Generates a PDF report for a staff profile."""
     from flask import session
+    from app.services.payroll_service import get_staff_performance_summary
     
     # Get current agency ID
     if current_user.role_name == 'WebDev':
@@ -344,48 +326,47 @@ def profile_pdf(profile_id):
             if os.path.exists(photo_path):
                 photo_url_for_pdf = pathlib.Path(photo_path).as_uri()
             
-        # Re-run calculation logic for the PDF context
-        total_days_worked, total_drinks_sold, total_special_comm, total_salary_paid, total_commission_paid, total_bar_profit = 0, 0, 0, 0, 0, 0
-        
-        # Calculate stats for each assignment and create a list with stats
+        # Utiliser le service de paie pour obtenir les statistiques de performance
+        try:
+            performance_summary = get_staff_performance_summary(profile_id)
+            history_stats = performance_summary['summary_totals']
+            contract_calculations = performance_summary['contract_calculations']
+        except Exception as e:
+            # Fallback en cas d'erreur
+            history_stats = {
+                "total_days_worked": 0,
+                "total_drinks_sold": 0,
+                "total_special_comm": 0,
+                "total_salary_paid": 0,
+                "total_commission_paid": 0,
+                "total_bar_profit": 0
+            }
+            contract_calculations = []
+            current_app.logger.error(f"Erreur lors du calcul des statistiques de performance pour le PDF: {str(e)}")
+
+        # Préparer les assignments avec leurs statistiques pour le PDF
         assignments_with_stats = []
         for assignment in profile.assignments:
-            original_duration = CONTRACT_TYPES.get(assignment.contract_type, 1)
-            base_daily_salary = (assignment.base_salary / original_duration) if original_duration > 0 else 0
+            # Chercher les calculs de contrat pour cet assignment
+            assignment_calc = next((calc for calc in contract_calculations if calc['assignment_id'] == assignment.id), None)
             
-            assignment_stats = {"drinks": 0, "special_comm": 0, "salary": 0, "commission": 0, "profit": 0}
+            if assignment_calc:
+                assignment_stats = {
+                    "days_worked": assignment_calc['days_worked'],
+                    "drinks": assignment_calc['total_drinks'],
+                    "special_comm": assignment_calc['total_special_comm'],
+                    "salary": assignment_calc['total_salary'],
+                    "commission": assignment_calc['total_commission'],
+                    "profit": assignment_calc['total_profit']
+                }
+            else:
+                # Fallback si pas de calculs disponibles
+                assignment_stats = {"drinks": 0, "special_comm": 0, "salary": 0, "commission": 0, "profit": 0}
             
-            for record in assignment.performance_records:
-                daily_salary = (base_daily_salary + (record.bonus or 0) - (record.malus or 0) - (record.lateness_penalty or 0))
-                daily_commission = (record.drinks_sold or 0) * DRINK_STAFF_COMMISSION
-                bar_revenue = ((record.drinks_sold or 0) * DRINK_BAR_PRICE) + (record.special_commissions or 0)
-                daily_profit = bar_revenue - daily_salary
-                
-                assignment_stats["drinks"] += record.drinks_sold or 0
-                assignment_stats["special_comm"] += record.special_commissions or 0
-                assignment_stats["salary"] += daily_salary
-                assignment_stats["commission"] += daily_commission
-                assignment_stats["profit"] += daily_profit
-                
-                total_salary_paid += daily_salary
-                total_commission_paid += daily_commission
-                total_bar_profit += daily_profit
-                total_drinks_sold += record.drinks_sold or 0
-                total_special_comm += record.special_commissions or 0
-            
-            total_days_worked += len(assignment.performance_records)
-            
-            # Create a dict with assignment and its stats
             assignments_with_stats.append({
                 'assignment': assignment,
                 'contract_stats': assignment_stats
             })
-
-        history_stats = {
-            "total_days_worked": total_days_worked, "total_drinks_sold": total_drinks_sold,
-            "total_special_comm": total_special_comm, "total_salary_paid": total_salary_paid,
-            "total_commission_paid": total_commission_paid, "total_bar_profit": total_bar_profit
-        }
 
         rendered_html = render_template('profile_pdf.html', profile=profile, photo_url=photo_url_for_pdf,
                                         history_stats=history_stats, assignments=assignments_with_stats, 

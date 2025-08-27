@@ -80,6 +80,10 @@
                     <th>Venue</th>
                     <th>Type</th>
                     <th>Status</th>
+                    <th style="text-align: right;">Days</th>
+                    <th style="text-align: right;">Drinks</th>
+                    <th style="text-align: right;">Salary</th>
+                    <th style="text-align: right;">Commission</th>
                     <th style="text-align: right;">Profit</th>
                 </tr>
             </thead>
@@ -89,15 +93,19 @@
                 {% set stats = item.contract_stats %}
                 <tr>
                     <td>{{ a.start_date.strftime('%d/%m/%y') }} - {{ a.end_date.strftime('%d/%m/%y') }}</td>
-                    <td>{{ a.venue.name }}</td>
+                    <td>{{ a.venue.name if a.venue else 'N/A' }}</td>
                     <td>{{ a.contract_type }}</td>
                     <td>{{ a.status }}</td>
-                    <td style="text-align: right;" class="{% if stats.profit > 0 %}profit-positive{% elif stats.profit < 0 %}profit-negative{% endif %}">
-                        {{ '%.0f'|format(stats.profit) }} ฿
+                    <td style="text-align: right;">{{ stats.days_worked or 0 }}</td>
+                    <td style="text-align: right;">{{ stats.drinks or 0 }}</td>
+                    <td style="text-align: right;">{{ '%.0f'|format(stats.salary or 0) }} ฿</td>
+                    <td style="text-align: right;">{{ '%.0f'|format(stats.commission or 0) }} ฿</td>
+                    <td style="text-align: right;" class="{% if (stats.profit or 0) > 0 %}profit-positive{% elif (stats.profit or 0) < 0 %}profit-negative{% endif %}">
+                        {{ '%.0f'|format(stats.profit or 0) }} ฿
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="5" style="text-align: center;">No assignment history found.</td></tr>
+                <tr><td colspan="9" style="text-align: center;">No assignment history found.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

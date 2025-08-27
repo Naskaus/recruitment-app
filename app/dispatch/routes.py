@@ -36,7 +36,7 @@ def dispatch_board():
     all_staff = StaffProfile.query.filter_by(agency_id=agency_id).order_by(StaffProfile.nickname).all()
     venues = Venue.query.filter_by(agency_id=agency_id).order_by(Venue.name).all()
     
-    ongoing_assignments = {a.staff_id: a for a in Assignment.query.filter_by(agency_id=agency_id, status='ongoing')}
+    ongoing_assignments = {a.staff_id: a for a in Assignment.query.filter_by(agency_id=agency_id, status='active')}
 
     available_staff = []
     dispatched_staff_map = {venue.name: [] for venue in venues}
@@ -145,7 +145,7 @@ def create_assignment():
         start_date=start_date,
         end_date=end_date,
         base_salary=base_salary,
-        status='ongoing',
+        status='active',
         managed_by_user_id=managed_by_user_id
     )
 
@@ -167,21 +167,21 @@ def end_assignment_now(assignment_id):
         agency_id = current_user.agency_id
     
     a = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).first_or_404()
-    if a.status != 'ongoing':
-        return jsonify({"status": "error", "message": "Assignment is not ongoing."}), 400
+    if a.status != 'active':
+        return jsonify({"status": "error", "message": "Assignment is not active."}), 400
     
     today = date.today()
     a.end_date = today if today >= a.start_date else a.start_date
-    a.status = 'completed'
+    a.status = 'ended'
     
     if a.staff:
-        other_ongoing = Assignment.query.filter(
+        other_active = Assignment.query.filter(
             Assignment.staff_id == a.staff_id,
-            Assignment.status == 'ongoing',
+            Assignment.status == 'active',
             Assignment.id != a.id,
             Assignment.agency_id == agency_id
         ).first()
-        if not other_ongoing:
+        if not other_active:
             a.staff.status = 'Active'
 
     db.session.commit()
@@ -222,7 +222,7 @@ def finalize_assignment(assignment_id):
     data = request.get_json() or {}
     final_status = data.get('status')
 
-    if a.status not in ['ongoing', 'completed']:
+    if a.status not in ['active', 'ended']:
         return jsonify({"status": "error", "message": f"Assignment cannot be finalized from its current state ({a.status})."}), 400
     if final_status != 'archived':
         return jsonify({"status": "error", "message": "Invalid final status. Must be 'archived'."}), 400
@@ -230,14 +230,36 @@ def finalize_assignment(assignment_id):
     a.status = 'archived'
     
     if a.staff:
-        other_ongoing = Assignment.query.filter(
+        other_active = Assignment.query.filter(
             Assignment.staff_id == a.staff_id,
-            Assignment.status == 'ongoing',
+            Assignment.status == 'active',
             Assignment.id != a.id,
             Assignment.agency_id == agency_id
         ).first()
-        if not other_ongoing:
+        if not other_active:
             a.staff.status = 'Active'
             
     db.session.commit()
     return jsonify({"status": "success", "message": f"Assignment finalized as {final_status}.", "assignment": a.to_dict()}), 200
+
+
+@dispatch_bp.route('/api/assignment/<int:assignment_id>/archive', methods=['POST'])
+@login_required
+def archive_assignment(assignment_id):
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    a = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).first_or_404()
+    
+    if a.status != 'ended':
+        return jsonify({"status": "error", "message": f"Assignment cannot be archived from its current state ({a.status}). Must be 'ended'."}), 400
+    
+    a.status = 'archived'
+    db.session.commit()
+    
+    return jsonify({"status": "success", "message": "Assignment archived successfully.", "assignment": a.to_dict()}), 200

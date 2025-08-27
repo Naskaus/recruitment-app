@@ -1,7 +1,7 @@
 # app/services/payroll_service.py
 
 from app import db
-from app.models import Assignment, PerformanceRecord, ContractCalculations, AgencyContract
+from app.models import Assignment, PerformanceRecord, ContractCalculations, AgencyContract, StaffProfile
 from datetime import datetime, time
 from sqlalchemy import func
 
@@ -183,6 +183,169 @@ def get_contract_summary(assignment_id):
         'total_drinks': contract_calc.total_drinks,
         'total_special_comm': contract_calc.total_special_comm,
         'last_updated': contract_calc.last_updated.isoformat() if contract_calc.last_updated else None
+    }
+
+
+def get_staff_performance_summary(staff_id, start_date=None, end_date=None):
+    """
+    Agrège les données de ContractCalculations et PerformanceRecord pour un staff donné
+    et retourne un dictionnaire contenant les totaux et l'historique détaillé.
+    
+    Args:
+        staff_id (int): ID du staff profile
+        start_date (date, optional): Date de début pour filtrer les données
+        end_date (date, optional): Date de fin pour filtrer les données
+        
+    Returns:
+        dict: Dictionnaire contenant les totaux et l'historique détaillé
+    """
+    # Vérifier que le staff existe
+    staff = StaffProfile.query.get(staff_id)
+    if not staff:
+        raise ValueError(f"Staff avec l'ID {staff_id} n'existe pas")
+    
+    # Récupérer tous les assignments du staff
+    assignments_query = Assignment.query.filter_by(staff_id=staff_id)
+    
+    # Appliquer les filtres de date si fournis
+    if start_date:
+        assignments_query = assignments_query.filter(Assignment.end_date >= start_date)
+    if end_date:
+        assignments_query = assignments_query.filter(Assignment.start_date <= end_date)
+    
+    assignments = assignments_query.all()
+    
+    # Initialiser les totaux globaux
+    total_days_worked = 0
+    total_drinks_sold = 0
+    total_special_comm = 0.0
+    total_salary_paid = 0.0
+    total_commission_paid = 0.0
+    total_bar_profit = 0.0
+    
+    # Liste pour stocker l'historique détaillé
+    detailed_history = []
+    
+    # Traiter chaque assignment
+    for assignment in assignments:
+        # Récupérer le contrat d'agence pour les règles de calcul
+        agency_contract = AgencyContract.query.filter_by(
+            name=assignment.contract_type,
+            agency_id=assignment.agency_id
+        ).first()
+        
+        # Calculer le salaire de base par jour
+        if agency_contract and agency_contract.days > 0:
+            base_daily_salary = assignment.base_salary / agency_contract.days
+        else:
+            # Fallback avec les types de contrat standards
+            contract_days = {"1jour": 1, "10jours": 10, "1mois": 30}.get(assignment.contract_type, 1)
+            base_daily_salary = assignment.base_salary / contract_days if contract_days > 0 else assignment.base_salary
+        
+        # Récupérer les enregistrements de performance pour cet assignment
+        performance_query = PerformanceRecord.query.filter_by(assignment_id=assignment.id)
+        
+        # Appliquer les filtres de date aux enregistrements
+        if start_date:
+            performance_query = performance_query.filter(PerformanceRecord.record_date >= start_date)
+        if end_date:
+            performance_query = performance_query.filter(PerformanceRecord.record_date <= end_date)
+        
+        performance_records = performance_query.order_by(PerformanceRecord.record_date).all()
+        
+        # Traiter chaque enregistrement de performance
+        for record in performance_records:
+            # Calculer la pénalité de retard
+            lateness_penalty = calculate_lateness_penalty(record, agency_contract) if agency_contract else 0.0
+            
+            # Calculer le salaire quotidien
+            daily_salary = base_daily_salary + (record.bonus or 0) - (record.malus or 0) - lateness_penalty
+            
+            # Calculer la commission quotidienne
+            if agency_contract:
+                daily_commission = (record.drinks_sold or 0) * agency_contract.staff_commission
+                bar_revenue = ((record.drinks_sold or 0) * agency_contract.drink_price) + (record.special_commissions or 0)
+            else:
+                # Fallback avec les valeurs par défaut
+                daily_commission = (record.drinks_sold or 0) * 100  # 100 THB par boisson
+                bar_revenue = ((record.drinks_sold or 0) * 120) + (record.special_commissions or 0)  # 120 THB par boisson
+            
+            # Calculer le profit quotidien
+            daily_profit = bar_revenue - daily_salary
+            
+            # Ajouter aux totaux
+            total_salary_paid += daily_salary
+            total_commission_paid += daily_commission
+            total_drinks_sold += record.drinks_sold or 0
+            total_special_comm += record.special_commissions or 0
+            total_days_worked += 1
+            
+            # Ajouter le profit quotidien depuis le champ daily_profit du record
+            total_bar_profit += record.daily_profit or 0
+            
+            # Ajouter à l'historique détaillé
+            detailed_history.append({
+                'assignment_id': assignment.id,
+                'venue_name': assignment.venue.name if assignment.venue else 'N/A',
+                'contract_role': assignment.contract_role,
+                'contract_type': assignment.contract_type,
+                'record_date': record.record_date.isoformat(),
+                'drinks_sold': record.drinks_sold or 0,
+                'special_commissions': record.special_commissions or 0,
+                'bonus': record.bonus or 0,
+                'malus': record.malus or 0,
+                'lateness_penalty': lateness_penalty,
+                'daily_salary': daily_salary,
+                'daily_commission': daily_commission,
+                'daily_profit': record.daily_profit or 0,
+                'arrival_time': record.arrival_time.strftime('%H:%M') if record.arrival_time else None,
+                'departure_time': record.departure_time.strftime('%H:%M') if record.departure_time else None
+            })
+    
+    # Récupérer les calculs de contrat agrégés (si disponibles)
+    contract_calculations = []
+    for assignment in assignments:
+        calc = ContractCalculations.query.filter_by(assignment_id=assignment.id).first()
+        if calc:
+            contract_calculations.append({
+                'assignment_id': assignment.id,
+                'venue_name': assignment.venue.name if assignment.venue else 'N/A',
+                'contract_role': assignment.contract_role,
+                'contract_type': assignment.contract_type,
+                'start_date': assignment.start_date.isoformat(),
+                'end_date': assignment.end_date.isoformat(),
+                'total_salary': calc.total_salary,
+                'total_commission': calc.total_commission,
+                'total_profit': calc.total_profit,
+                'days_worked': calc.days_worked,
+                'total_drinks': calc.total_drinks,
+                'total_special_comm': calc.total_special_comm,
+                'last_updated': calc.last_updated.isoformat() if calc.last_updated else None
+            })
+    
+    # Retourner le résumé complet
+    return {
+        'staff_info': {
+            'id': staff.id,
+            'nickname': staff.nickname,
+            'first_name': staff.first_name,
+            'last_name': staff.last_name,
+            'status': staff.status
+        },
+        'summary_totals': {
+            'total_days_worked': total_days_worked,
+            'total_drinks_sold': total_drinks_sold,
+            'total_special_comm': total_special_comm,
+            'total_salary_paid': total_salary_paid,
+            'total_commission_paid': total_commission_paid,
+            'total_bar_profit': total_bar_profit
+        },
+        'detailed_history': detailed_history,
+        'contract_calculations': contract_calculations,
+        'filter_period': {
+            'start_date': start_date.isoformat() if start_date else None,
+            'end_date': end_date.isoformat() if end_date else None
+        }
     }
 
 

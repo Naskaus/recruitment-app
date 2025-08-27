@@ -175,6 +175,7 @@
           <th class="mobile-hidden">Venue</th>
           <th class="mobile-hidden">Managed by</th>
           <th class="mobile-hidden">Contract</th>
+          <th class="mobile-hidden">Status</th>
           <th class="mobile-hidden">Progress</th>
           <th class="days-worked-cell mobile-hidden">Days Worked</th>
           <th class="mobile-hidden">Profit (Total)</th>
@@ -192,7 +193,7 @@
             
             <tr
               id="assignment-row-{{ a.id }}"
-              class="row-contract-{{ a.contract_type | lower | replace(' ', '-') }} status-{{ a.status }}"
+              class="row-contract-{{ a.contract_type | lower | replace(' ', '-') }}"
               data-assignment-id="{{ a.id }}"
               data-staff-name="{{ a.staff.nickname if a.staff else a.archived_staff_name }}"
               data-start-date="{{ a.start_date.isoformat() }}"
@@ -241,8 +242,19 @@
                 <span class="contract-badge badge-{{ a.contract_type }}">{{ label }}</span>
                 <small class="muted">({{ '%.0f'|format(a.base_salary or 0) }}฿)</small>
               </td>
+              <td data-label="Status">
+                {% if a.status == 'active' %}
+                  <span class="status-badge status-badge-active">Ongoing</span>
+                {% elif a.status == 'ended' %}
+                  <span class="status-badge status-badge-ended">Ended</span>
+                {% elif a.status == 'archived' %}
+                  <span class="status-badge status-badge-archived">Archived</span>
+                {% else %}
+                  <span class="status-badge status-badge-unknown">{{ a.status|title }}</span>
+                {% endif %}
+              </td>
               <td data-label="Progress">
-                {% if a.status == 'ongoing' %}
+                {% if a.status == 'active' %}
                   {% set worked = row.days_worked|int %}
                   {% set total = row.original_duration|int %}
                   {% set percentage = (worked * 100 / total) if total > 0 else 0 %}
@@ -271,17 +283,22 @@
               <td data-label="Period">{{ a.start_date.strftime("%d/%m") }} → {{ a.end_date.strftime("%d/%m") }}</td>
               <td>
                 <div class="actions">
-                  {% if a.status == 'ongoing' %}
-                    <button class="button button-primary manage-performance-btn">Manage</button>
-                    <button class="button button-secondary end-contract-btn">End</button>
+                  {% if a.status == 'active' %}
+                    <button class="button button-primary manage-performance-btn" title="Manage performance records">Manage</button>
+                    <button class="button button-secondary end-contract-btn" title="End contract today">End</button>
+                  {% elif a.status == 'ended' %}
+                    <a href="{{ url_for('payroll.report_view', assignment_id=a.id) }}" class="button button-secondary" title="View performance details">View</a>
+                    <a href="{{ url_for('payroll.assignment_pdf', assignment_id=a.id) }}" target="_blank" class="button button-secondary" title="Download PDF">PDF</a>
+                    <button class="button button-secondary manage-performance-btn" title="View performance details">Details</button>
+                    <button class="button button-primary archive-contract-btn" title="Archive contract">Archive</button>
                     {% if current_user.role_name == 'WebDev' %}
-                    <button class="button button-danger delete-contract-btn">Del</button>
+                    <button class="button button-danger delete-contract-btn" style="padding: 4px 8px; font-size: 0.8rem;" title="Delete contract permanently">Delete</button>
                     {% endif %}
                   {% elif a.status == 'archived' %}
-                    <span class="status-badge status-badge-archived">Archived</span>
-                    <button class="button button-secondary manage-performance-btn">Details</button>
+                    <a href="{{ url_for('payroll.report_view', assignment_id=a.id) }}" class="button button-secondary" title="View archived contract details">View</a>
+                    <a href="{{ url_for('payroll.assignment_pdf', assignment_id=a.id) }}" target="_blank" class="button button-secondary" title="Download PDF">PDF</a>
                     {% if current_user.role_name == 'WebDev' %}
-                    <button class="button button-danger delete-contract-btn" data-assignment-id="{{ a.id }}" data-staff-name="{{ a.staff.nickname if a.staff else a.archived_staff_name }}" style="padding: 4px 8px; font-size: 0.8rem;" title="Permanently delete this contract">Del</button>
+                    <button class="button button-danger delete-contract-btn" style="padding: 4px 8px; font-size: 0.8rem;" title="Delete contract permanently">Delete</button>
                     {% endif %}
                   {% endif %}
                 </div>
@@ -290,7 +307,7 @@
           {% endfor %}
         {% else %}
           <tr>
-            <td colspan="10" class="text-center">
+            <td colspan="11" class="text-center">
               {# CORRECTED: dispatch.board -> dispatch.dispatch_board #}
               No contracts found. Use the <a href="{{ url_for('dispatch.dispatch_board') }}">Dispatch Board</a> to create one.
             </td>

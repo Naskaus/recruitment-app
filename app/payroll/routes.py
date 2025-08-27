@@ -97,7 +97,7 @@ def payroll_page():
     if selected_status:
         q = q.filter(Assignment.status == selected_status)
     else:
-        q = q.filter(Assignment.status.in_(['ongoing', 'archived']))
+        q = q.filter(Assignment.status.in_(['active', 'ended', 'archived']))
     if search_nickname:
         q = q.join(StaffProfile).filter(StaffProfile.nickname.ilike(f'%{search_nickname}%'))
     if selected_manager_id:
@@ -116,7 +116,7 @@ def payroll_page():
         except ValueError:
             flash(f'Invalid end date format: {end_date_str}. Please use YYYY-MM-DD.', 'danger')
     
-    status_order = db.case((Assignment.status == 'ongoing', 1), (Assignment.status == 'archived', 2), else_=3).label("status_order")
+    status_order = db.case((Assignment.status == 'active', 1), (Assignment.status == 'ended', 2), (Assignment.status == 'archived', 3), else_=4).label("status_order")
     all_assignments = q.order_by(status_order, Assignment.start_date.asc()).all()
     
     # Process rows for display and calculation using payroll service
@@ -170,7 +170,7 @@ def payroll_page():
     filter_data = {
         "venues": agency_venues,
         "contract_types": CONTRACT_TYPES.keys(),
-        "statuses": ['ongoing', 'archived'],
+        "statuses": ['active', 'ended', 'archived'],
         "managers": agency_managers,
         "selected_venue_id": selected_venue_id,
         "selected_contract_type": selected_contract_type,
@@ -277,8 +277,8 @@ def upsert_performance():
         agency_id = current_user.agency_id
     
     a = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).first()
-    if not a or a.status != 'ongoing':
-        return jsonify({"status": "error", "message": "Performance can only be added to ongoing assignments."}), 400
+    if not a or a.status != 'active':
+        return jsonify({"status": "error", "message": "Performance can only be added to active assignments."}), 400
     if not (a.start_date <= ymd <= a.end_date):
         return jsonify({"status": "error", "message": "Date outside contract period."}), 400
     
@@ -356,13 +356,16 @@ def preview_performance():
     Endpoint pour prévisualiser les calculs de performance sans sauvegarder.
     Utilise le service de paie pour calculer les valeurs en temps réel.
     """
-    data = request.get_json() or {}
-    
     try:
+        data = request.get_json() or {}
+        
+        # Validation des données reçues
         assignment_id = int(data.get('assignment_id'))
         ymd = datetime.fromisoformat(data.get('record_date')).date()
-    except Exception:
-        return jsonify({"status": "error", "message": "Invalid assignment_id or record_date"}), 400
+        
+    except Exception as e:
+        current_app.logger.error(f'API Validation Error: {e} - Data: {request.get_json(silent=True)}')
+        return jsonify({'error': 'Invalid data provided', 'reason': str(e)}), 400
 
     from flask import session
     
@@ -373,8 +376,8 @@ def preview_performance():
         agency_id = current_user.agency_id
     
     a = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).first()
-    if not a or a.status != 'ongoing':
-        return jsonify({"status": "error", "message": "Performance can only be previewed for ongoing assignments."}), 400
+    if not a or a.status != 'active':
+        return jsonify({"status": "error", "message": "Performance can only be previewed for active assignments."}), 400
     
     if not (a.start_date <= ymd <= a.end_date):
         return jsonify({"status": "error", "message": "Record date must be within contract period."}), 400
@@ -440,6 +443,61 @@ def preview_performance():
         current_app.logger.error(f"Erreur lors de la prévisualisation pour assignment {assignment_id}: {str(e)}")
         return jsonify({"status": "error", "message": "Failed to calculate preview"}), 500
 
+# --- Contract Summary API ---
+@payroll_bp.route('/api/summary/<int:assignment_id>')
+@login_required
+def get_contract_summary(assignment_id):
+    """
+    Endpoint pour récupérer le résumé final d'un contrat terminé.
+    Utilise le payroll_service pour récupérer les données calculées.
+    """
+    try:
+        from flask import session
+        
+        # Get current agency ID
+        if current_user.role_name == 'WebDev':
+            agency_id = session.get('current_agency_id', current_user.agency_id)
+        else:
+            agency_id = current_user.agency_id
+        
+        # Vérifier que l'assignment existe et appartient à l'agence
+        assignment = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).first()
+        if not assignment:
+            return jsonify({"status": "error", "message": "Assignment not found"}), 404
+        
+        # Vérifier que le contrat est terminé
+        if assignment.status not in ['ended', 'archived']:
+            return jsonify({"status": "error", "message": "Summary only available for ended or archived contracts"}), 400
+        
+        # Récupérer les calculs finaux depuis ContractCalculations
+        from app.models import ContractCalculations
+        calculations = ContractCalculations.query.filter_by(assignment_id=assignment_id).first()
+        
+        if not calculations:
+            return jsonify({"status": "error", "message": "No final calculations found for this contract"}), 404
+        
+        # Retourner les données du résumé
+        return jsonify({
+            "status": "success",
+            "assignment_id": assignment_id,
+            "staff_name": assignment.staff.nickname if assignment.staff else assignment.archived_staff_name,
+            "contract_type": assignment.contract_type,
+            "start_date": assignment.start_date.isoformat(),
+            "end_date": assignment.end_date.isoformat() if assignment.end_date else None,
+            "total_days_worked": calculations.total_days_worked,
+            "total_drinks_sold": calculations.total_drinks_sold,
+            "total_special_commissions": calculations.total_special_commissions,
+            "total_commission_paid": calculations.total_commission_paid,
+            "total_salary_paid": calculations.total_salary_paid,
+            "total_profit": calculations.total_profit,
+            "average_daily_profit": calculations.average_daily_profit if calculations.total_days_worked > 0 else 0,
+            "contract_status": assignment.status
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Erreur lors de la récupération du résumé pour assignment {assignment_id}: {str(e)}")
+        return jsonify({"status": "error", "message": "Internal server error"}), 500
+
 # --- PDF Generation ---
 
 # Note: The 'payroll_pdf' route for the entire list is complex and less common.
@@ -488,7 +546,7 @@ def payroll_pdf():
     if selected_status:
         q = q.filter(Assignment.status == selected_status)
     else:
-        q = q.filter(Assignment.status.in_(['ongoing', 'archived']))
+        q = q.filter(Assignment.status.in_(['active', 'ended', 'archived']))
     if search_nickname:
         q = q.join(StaffProfile).filter(StaffProfile.nickname.ilike(f'%{search_nickname}%'))
     if selected_manager_id:
@@ -507,7 +565,7 @@ def payroll_pdf():
         except ValueError:
             pass
     
-    status_order = db.case((Assignment.status == 'ongoing', 1), (Assignment.status == 'archived', 2), else_=3).label("status_order")
+    status_order = db.case((Assignment.status == 'active', 1), (Assignment.status == 'ended', 2), (Assignment.status == 'archived', 3), else_=4).label("status_order")
     all_assignments = q.order_by(status_order, Assignment.start_date.asc()).all()
     
     # Process rows for display and calculation using ContractCalculations as single source of truth
@@ -635,6 +693,59 @@ def assignment_pdf(assignment_id):
     except Exception as e:
         current_app.logger.error(f"Error generating assignment PDF for assignment {assignment_id}: {e}")
         return jsonify({'status': 'error', 'message': 'Failed to generate PDF. Please try again.'}), 500
+
+
+@payroll_bp.route('/report/view/<int:assignment_id>')
+@login_required
+def report_view(assignment_id):
+    """
+    Affiche une vue HTML du rapport de contrat avec les mêmes données que le PDF.
+    """
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role_name == 'WebDev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    # Security: Ensure the assignment belongs to the user's agency
+    assignment = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).options(
+        db.joinedload(Assignment.staff),
+        db.joinedload(Assignment.manager),
+        db.joinedload(Assignment.venue),
+        db.subqueryload(Assignment.performance_records)
+    ).first_or_404()
+
+    # Get contract duration from AgencyContract table
+    contract = AgencyContract.query.filter_by(name=assignment.contract_type, agency_id=agency_id).first()
+    original_duration = contract.days if contract else 1
+    
+    # Use ContractCalculations as single source of truth
+    try:
+        from app.services.payroll_service import update_or_create_contract_calculations
+        contract_calc = update_or_create_contract_calculations(assignment_id)
+        
+        contract_stats = {
+            "drinks": contract_calc.total_drinks,
+            "special_comm": contract_calc.total_special_comm,
+            "salary": contract_calc.total_salary,
+            "commission": contract_calc.total_commission,
+            "profit": contract_calc.total_profit
+        }
+        days_worked = contract_calc.days_worked
+    except Exception as e:
+        current_app.logger.error(f"Error getting contract calculations for report view: {str(e)}")
+        # Fallback to empty stats if service fails
+        contract_stats = {"drinks": 0, "special_comm": 0, "salary": 0, "commission": 0, "profit": 0}
+        days_worked = len(assignment.performance_records)
+    
+    return render_template('report_view.html',
+                          assignment=assignment,
+                          contract_stats=contract_stats,
+                          days_worked=days_worked,
+                          original_duration=original_duration,
+                          report_date=date.today())
 
 
 # --- API ENDPOINTS ---

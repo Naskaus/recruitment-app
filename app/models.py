@@ -177,7 +177,7 @@ class Assignment(db.Model):
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
     base_salary = db.Column(db.Float, nullable=False, default=0.0)
-    status = db.Column(db.String(20), nullable=False, default='ongoing')
+    status = db.Column(db.String(20), nullable=False, default='active')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     manager = db.relationship('User', back_populates='managed_assignments')

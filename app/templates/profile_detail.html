@@ -152,37 +152,18 @@
           </tr>
         </thead>
         <tbody>
-          {% set ns = namespace(count=0) %}
-
-          {% for a in assignments %}
-            {% set original_days = 1 if a.contract_type == '1jour' else 10 if a.contract_type == '10jours' else 30 %}
-            {% set base_daily = (a.base_salary / original_days) if original_days > 0 else 0 %}
-
-            {% for r in (a.performance_records | sort(attribute='record_date')) %}
-              {% if (not filter_start_date or r.record_date >= filter_start_date) and (not filter_end_date or r.record_date <= filter_end_date) %}
-                {% set penalty = r.lateness_penalty or 0 %}
-                {% set bonus = r.bonus or 0 %}
-                {% set malus = r.malus or 0 %}
-                {% set drinks = r.drinks_sold or 0 %}
-                {% set special = r.special_commissions or 0 %}
-                {% set salary = base_daily + bonus - malus - penalty %}
-                {% set commission = drinks * 100 %}
-                {% set profit = (drinks * 120 + special) - salary %}
-
-                <tr>
-                  <td>{{ r.record_date.strftime('%d/%m') }}</td>
-                  <td>{{ drinks }}</td>
-                  <td>{{ '%.0f'|format(special) }}฿</td>
-                  <td>{{ '%.0f'|format(salary) }}฿</td>
-                  <td>{{ '%.0f'|format(commission) }}฿</td>
-                  <td>{{ '%.0f'|format(profit) }}฿</td>
-                </tr>
-                {% set ns.count = ns.count + 1 %}
-              {% endif %}
+          {% if detailed_history %}
+            {% for record in detailed_history %}
+              <tr>
+                <td>{{ record.record_date.split('-')[2] + '/' + record.record_date.split('-')[1] }}</td>
+                <td>{{ record.drinks_sold }}</td>
+                <td>{{ '%.0f'|format(record.special_commissions) }}฿</td>
+                <td>{{ '%.0f'|format(record.daily_salary) }}฿</td>
+                <td>{{ '%.0f'|format(record.daily_commission) }}฿</td>
+                <td>{{ '%.0f'|format(record.daily_profit) }}฿</td>
+              </tr>
             {% endfor %}
-          {% endfor %}
-
-          {% if ns.count == 0 %}
+          {% else %}
             <tr><td colspan="6" class="text-center">No history yet.</td></tr>
           {% endif %}
         </tbody>

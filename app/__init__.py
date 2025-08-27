@@ -40,12 +40,14 @@ def create_app():
         from .auth.routes import auth_bp
         from .dispatch.routes import dispatch_bp
         from .payroll.routes import payroll_bp
+        from .admin.routes import admin_bp
 
         app.register_blueprint(main_bp)
         app.register_blueprint(staff_bp)
         app.register_blueprint(auth_bp)
         app.register_blueprint(dispatch_bp)
         app.register_blueprint(payroll_bp)
+        app.register_blueprint(admin_bp)
 
     # --- Custom CLI Commands ---
     from .models import User, Agency, UserRole # Import User, Agency and UserRole enum here

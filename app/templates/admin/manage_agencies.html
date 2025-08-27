@@ -1,0 +1,547 @@
+{% extends "base.html" %}
+
+{% block body_class %}full-width-page{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+<div class="page-header">
+    <div class="page-title">
+        <h1>Gestion des Agences</h1>
+        <p>Gérez les agences du système</p>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('auth.add_agency') }}" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Ajouter une Agence
+        </a>
+    </div>
+</div>
+
+<div class="content-section">
+    <!-- Messages Flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                    {% if category == 'success_download' and message is mapping %}
+                        {{ message.message }}
+                        <a href="{{ url_for('admin.download_backup', filename=message.filename) }}" class="btn btn-sm btn-success ms-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7,10 12,15 17,10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Télécharger l'archive
+                        </a>
+                    {% else %}
+                        {{ message }}
+                    {% endif %}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <div class="card">
+        <div class="card-header">
+            <h3>Liste des Agences</h3>
+            <div class="card-actions">
+                <div class="search-box">
+                    <input type="text" id="searchAgencies" placeholder="Rechercher une agence..." class="form-control">
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table" id="agenciesTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nom</th>
+                            <th>Utilisateurs</th>
+                            <th>Staff</th>
+                            <th>Venues</th>
+                            <th>Créée le</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="agenciesTableBody">
+                        {% for agency in agencies %}
+                        <tr data-agency-id="{{ agency.id }}">
+                            <td>{{ agency.id }}</td>
+                            <td>
+                                <div class="agency-name">
+                                    <strong>{{ agency.name }}</strong>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge badge-info">{{ agency.users_count }}</span>
+                            </td>
+                            <td>
+                                <span class="badge badge-success">{{ agency.staff_count }}</span>
+                            </td>
+                            <td>
+                                <span class="badge badge-warning">{{ agency.venues_count }}</span>
+                            </td>
+                            <td>
+                                {% if agency.created_at %}
+                                    {{ agency.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="btn btn-sm btn-outline-success export-agency-btn mx-1" data-agency-id="{{ agency.id }}" title="Exporter les données">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="7,10 12,15 17,10"></polyline>
+                                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                                        </svg>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-primary edit-agency-btn mx-1" data-agency-id="{{ agency.id }}" title="Modifier">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                            <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        </svg>
+                                    </button>
+                                    <a href="#" class="btn btn-danger btn-sm mx-1 delete-agency-btn" 
+                                       data-agency-id="{{ agency.id }}" 
+                                       data-agency-name="{{ agency.name }}">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+
+                                    <form id="delete-form-{{ agency.id }}" 
+                                          action="{{ url_for('admin.delete_agency_post', agency_id=agency.id) }}" 
+                                          method="POST" 
+                                          style="display: none;">
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if not agencies %}
+            <div class="text-center py-4">
+                <p>Aucune agence trouvée.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour ajouter/modifier une agence -->
+<div class="modal-overlay hidden" id="agencyModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">Ajouter une Agence</h3>
+            <button class="modal-close-btn" id="closeAgencyModal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="agencyForm">
+                <div class="form-group">
+                    <label for="agencyName">Nom de l'agence *</label>
+                    <input type="text" id="agencyName" name="name" class="form-control" required>
+                    <div class="form-error" id="nameError"></div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="cancelAgencyBtn">Annuler</button>
+            <button type="button" class="btn btn-primary" id="saveAgencyBtn">Enregistrer</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmation pour suppression -->
+<div class="modal-overlay hidden" id="deleteConfirmModal">
+    <div class="modal-content modal-sm">
+        <div class="modal-header">
+            <h3>Confirmer la suppression</h3>
+            <button class="modal-close-btn" id="closeDeleteModal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Êtes-vous sûr de vouloir supprimer l'agence "<span id="deleteAgencyName"></span>" ?</p>
+            <p class="text-warning">Cette action est irréversible.</p>
+            <p class="text-info">
+                <strong>Note :</strong> Les données de l'agence seront automatiquement exportées avant la suppression.
+            </p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="cancelDeleteBtn">Annuler</button>
+            <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Supprimer avec Export</button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentEditId = null;
+    
+    // Éléments DOM
+    const agenciesTableBody = document.getElementById('agenciesTableBody');
+    const searchInput = document.getElementById('searchAgencies');
+    const agencyModal = document.getElementById('agencyModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const agencyForm = document.getElementById('agencyForm');
+    const agencyName = document.getElementById('agencyName');
+    const nameError = document.getElementById('nameError');
+    const saveAgencyBtn = document.getElementById('saveAgencyBtn');
+    const closeAgencyModal = document.getElementById('closeAgencyModal');
+    const cancelAgencyBtn = document.getElementById('cancelAgencyBtn');
+    const deleteConfirmModal = document.getElementById('deleteConfirmModal');
+    const deleteAgencyName = document.getElementById('deleteAgencyName');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    const closeDeleteModal = document.getElementById('closeDeleteModal');
+    const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+    
+    // Recherche en temps réel
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const rows = agenciesTableBody.querySelectorAll('tr');
+        
+        rows.forEach(row => {
+            const agencyName = row.querySelector('.agency-name strong').textContent.toLowerCase();
+            const agencyId = row.querySelector('td:first-child').textContent;
+            
+            if (agencyName.includes(searchTerm) || agencyId.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+    
+
+    
+    // Ouvrir modal pour modifier
+    agenciesTableBody.addEventListener('click', function(e) {
+        if (e.target.closest('.edit-agency-btn')) {
+            const agencyId = parseInt(e.target.closest('.edit-agency-btn').dataset.agencyId);
+            const row = e.target.closest('tr');
+            const agencyNameText = row.querySelector('.agency-name strong').textContent;
+            
+            currentEditId = agencyId;
+            modalTitle.textContent = 'Modifier l\'Agence';
+            agencyName.value = agencyNameText;
+            nameError.textContent = '';
+            agencyModal.classList.remove('hidden');
+            agencyName.focus();
+        }
+    });
+    
+    // Sauvegarder l'agence
+    saveAgencyBtn.addEventListener('click', function() {
+        const name = agencyName.value.trim();
+        
+        // Validation
+        if (!name) {
+            nameError.textContent = 'Le nom de l\'agence est requis';
+            return;
+        }
+        
+        nameError.textContent = '';
+        
+        const url = currentEditId ? `/admin/api/agencies/${currentEditId}` : '/admin/api/agencies';
+        const method = currentEditId ? 'PUT' : 'POST';
+        
+        fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({ name: name })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                nameError.textContent = data.error;
+            } else {
+                showNotification(data.message, 'success');
+                agencyModal.classList.add('hidden');
+                // Recharger la page pour afficher les changements
+                window.location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showNotification('Erreur lors de la sauvegarde', 'error');
+        });
+    });
+    
+    // Exporter les données d'une agence
+    agenciesTableBody.addEventListener('click', function(e) {
+        if (e.target.closest('.export-agency-btn')) {
+            const agencyId = parseInt(e.target.closest('.export-agency-btn').dataset.agencyId);
+            const row = e.target.closest('tr');
+            const agencyNameText = row.querySelector('.agency-name strong').textContent;
+            
+            // Désactiver le bouton pendant l'export
+            const exportBtn = e.target.closest('.export-agency-btn');
+            const originalText = exportBtn.innerHTML;
+            exportBtn.disabled = true;
+            exportBtn.innerHTML = '<div class="spinner-sm"></div>';
+            
+            // Appeler l'API d'export
+            fetch(`/admin/api/agencies/${agencyId}/export`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showNotification(data.error, 'error');
+                } else {
+                    showNotification(data.message, 'success');
+                    
+                    // Créer un lien de téléchargement
+                    const downloadUrl = `/admin/api/agencies/${agencyId}/export/download/${data.filename}`;
+                    const link = document.createElement('a');
+                    link.href = downloadUrl;
+                    link.download = data.filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                showNotification('Erreur lors de l\'export', 'error');
+            })
+            .finally(() => {
+                // Réactiver le bouton
+                exportBtn.disabled = false;
+                exportBtn.innerHTML = originalText;
+            });
+        }
+    });
+    
+    // Supprimer une agence
+    agenciesTableBody.addEventListener('click', function(e) {
+        if (e.target.closest('.delete-agency-btn')) {
+            e.preventDefault();
+            const deleteBtn = e.target.closest('.delete-agency-btn');
+            const agencyId = parseInt(deleteBtn.dataset.agencyId);
+            const agencyName = deleteBtn.dataset.agencyName;
+            
+            deleteAgencyName.textContent = agencyName;
+            deleteConfirmModal.classList.remove('hidden');
+            
+            // Stocker l'ID pour la confirmation
+            confirmDeleteBtn.dataset.agencyId = agencyId;
+        }
+    });
+    
+    // Confirmer la suppression
+    confirmDeleteBtn.addEventListener('click', function() {
+        const agencyId = parseInt(this.dataset.agencyId);
+        
+        // Désactiver le bouton pendant la suppression
+        const deleteBtn = this;
+        const originalText = deleteBtn.textContent;
+        deleteBtn.disabled = true;
+        deleteBtn.textContent = 'Suppression en cours...';
+        
+        // Trouver le formulaire caché correspondant
+        const form = document.getElementById(`delete-form-${agencyId}`);
+        
+        if (form) {
+            // Ajouter le token CSRF au formulaire
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrf_token';
+            csrfInput.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            form.appendChild(csrfInput);
+            
+            // Soumettre le formulaire
+            form.submit();
+        } else {
+            console.error('Formulaire de suppression non trouvé pour l\'agence ID:', agencyId);
+            deleteBtn.disabled = false;
+            deleteBtn.textContent = originalText;
+        }
+    });
+    
+    // Fermer les modals
+    function closeModals() {
+        agencyModal.classList.add('hidden');
+        deleteConfirmModal.classList.add('hidden');
+    }
+    
+    closeAgencyModal.addEventListener('click', closeModals);
+    cancelAgencyBtn.addEventListener('click', closeModals);
+    closeDeleteModal.addEventListener('click', closeModals);
+    cancelDeleteBtn.addEventListener('click', closeModals);
+    
+    // Fermer modal en cliquant à l'extérieur
+    agencyModal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeModals();
+        }
+    });
+    
+    deleteConfirmModal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeModals();
+        }
+    });
+    
+    function showNotification(message, type) {
+        // Utiliser le système de notification existant ou créer un simple alert
+        if (typeof showAlert === 'function') {
+            showAlert(message, type);
+        } else {
+            alert(message);
+        }
+    }
+});
+</script>
+
+<style>
+.agency-name {
+    font-weight: 500;
+}
+
+.badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.badge-info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.badge-success {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.badge-warning {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.action-buttons .btn {
+    padding: 0.25rem 0.5rem;
+}
+
+.search-box {
+    max-width: 300px;
+}
+
+.form-error {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.spinner-sm {
+    border: 1px solid #f3f3f3;
+    border-top: 1px solid #28a745;
+    border-radius: 50%;
+    width: 12px;
+    height: 12px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.alert {
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+    border-radius: 0.25rem;
+}
+
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.alert-danger {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+
+.alert-info {
+    color: #0c5460;
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+}
+
+.alert-warning {
+    color: #856404;
+    background-color: #fff3cd;
+    border-color: #ffeaa7;
+}
+
+.btn-close {
+    float: right;
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #000;
+    opacity: .5;
+    background: none;
+    border: 0;
+    padding: 0;
+    margin-left: 0.5rem;
+}
+
+.btn-close:hover {
+    opacity: .75;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.delete-agency-btn').forEach(button => {
+        button.addEventListener('click', function(event) {
+            event.preventDefault(); // Empêche le comportement par défaut du lien
+
+            const agencyId = this.dataset.agencyId;
+            const agencyName = this.dataset.agencyName;
+            const downloadUrl = "{{ url_for('admin.download_backup', filename='_PLACEHOLDER_') }}".replace('_PLACEHOLDER_', agencyName); // Un peu de triche pour construire l'URL
+
+            if (confirm(`Êtes-vous sûr de vouloir supprimer l'agence "${agencyName}" ? Un backup sera téléchargé avant la suppression définitive.`)) {
+
+                // Étape 1 : Déclencher le téléchargement. 
+                // Nous devons tricher un peu car nous ne connaissons pas le nom exact du fichier.
+                // Nous allons donc créer une nouvelle route qui génère le JSON à la volée.
+                // Pour l'instant, faisons-le pointer vers une future route.
+                window.location.href = `/admin/export_and_download/${agencyId}`;
+
+                // Étape 2 : Soumettre le formulaire de suppression après un court délai
+                // pour s'assurer que le navigateur a bien initié le téléchargement.
+                setTimeout(() => {
+                    const form = document.getElementById(`delete-form-${agencyId}`);
+                    form.submit();
+                }, 1000); // Délai de 1 seconde
+            }
+        });
+    });
+});
+</script>
+</div>
+{% endblock %}

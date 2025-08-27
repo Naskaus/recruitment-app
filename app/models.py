@@ -24,7 +24,7 @@ class Agency(db.Model):
     __tablename__ = "agency"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), unique=True, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     # Relationships
     users = db.relationship('User', back_populates='agency', lazy='dynamic')

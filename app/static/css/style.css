@@ -2487,4 +2487,206 @@
     color: var(--error-text);
     border: 1px solid var(--error-text);
 }
-                
+
+/* ============================================= */
+/* ==     40 MISE EN PAGE PLEINE LARGEUR      == */
+/* ============================================= */
+.full-width-page .container {
+    max-width: 100%;
+}
+
+.full-width-page .main-content {
+    max-width: 100%;
+    padding: 32px 16px;
+}
+
+/* ============================================= */
+/* ==     41 STYLES PAGE MANAGE AGENCIES      == */
+/* ============================================= */
+.full-width-page .content-section {
+    max-width: 100%;
+    margin: 0;
+}
+
+.full-width-page .card {
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    border: none;
+}
+
+.full-width-page .card-header {
+    background-color: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    padding: 24px 32px;
+}
+
+.full-width-page .card-body {
+    padding: 0;
+}
+
+.full-width-page .table-responsive {
+    margin: 0;
+}
+
+.full-width-page .table {
+    margin: 0;
+    width: 100%;
+}
+
+.full-width-page .table th,
+.full-width-page .table td {
+    padding: 16px 20px;
+    vertical-align: middle;
+}
+
+/* Optimisation des colonnes pour plus d'espace */
+.full-width-page .table th:nth-child(1),
+.full-width-page .table td:nth-child(1) { width: 5%; } /* ID */
+
+.full-width-page .table th:nth-child(2),
+.full-width-page .table td:nth-child(2) { width: 25%; } /* Nom */
+
+.full-width-page .table th:nth-child(3),
+.full-width-page .table td:nth-child(3) { width: 12%; text-align: center; } /* Utilisateurs */
+
+.full-width-page .table th:nth-child(4),
+.full-width-page .table td:nth-child(4) { width: 12%; text-align: center; } /* Staff */
+
+.full-width-page .table th:nth-child(5),
+.full-width-page .table td:nth-child(5) { width: 12%; text-align: center; } /* Venues */
+
+.full-width-page .table th:nth-child(6),
+.full-width-page .table td:nth-child(6) { width: 18%; } /* Créée le */
+
+.full-width-page .table th:nth-child(7),
+.full-width-page .table td:nth-child(7) { width: 16%; } /* Actions */
+
+/* Amélioration de l'affichage des badges */
+.full-width-page .badge {
+    font-size: 0.9rem;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.full-width-page .badge-info {
+    background-color: var(--color-accent-primary);
+    color: white;
+}
+
+.full-width-page .badge-success {
+    background-color: var(--color-success);
+    color: white;
+}
+
+.full-width-page .badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+/* Amélioration des boutons d'action */
+.full-width-page .action-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-start;
+}
+
+.full-width-page .action-buttons .btn {
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.full-width-page .action-buttons .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* Amélioration de l'en-tête de page */
+.full-width-page .page-header {
+    background-color: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    padding: 24px 32px;
+    margin: 0 0 24px 0;
+}
+
+.full-width-page .page-title h1 {
+    font-size: 2rem;
+    margin-bottom: 8px;
+    color: var(--color-text-primary);
+}
+
+.full-width-page .page-title p {
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+/* Amélioration de la barre de recherche */
+.full-width-page .card-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.full-width-page .search-box {
+    min-width: 300px;
+}
+
+.full-width-page .search-box input {
+    border-radius: 8px;
+    border: 1px solid var(--color-border);
+    padding: 12px 16px;
+    font-size: 0.95rem;
+}
+
+.full-width-page .search-box input:focus {
+    border-color: var(--color-accent-primary);
+    box-shadow: 0 0 0 3px var(--color-accent-focus);
+}
+
+/* Responsive pour la page Manage Agencies */
+@media (max-width: 1200px) {
+    .full-width-page .table th:nth-child(1),
+    .full-width-page .table td:nth-child(1) { width: 8%; }
+    
+    .full-width-page .table th:nth-child(2),
+    .full-width-page .table td:nth-child(2) { width: 30%; }
+    
+    .full-width-page .table th:nth-child(6),
+    .full-width-page .table td:nth-child(6) { width: 20%; }
+}
+
+@media (max-width: 768px) {
+    .full-width-page .page-header {
+        padding: 16px 20px;
+        flex-direction: column;
+        gap: 16px;
+        align-items: stretch;
+    }
+    
+    .full-width-page .card-header {
+        padding: 16px 20px;
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .full-width-page .search-box {
+        min-width: 100%;
+    }
+    
+    .full-width-page .table th,
+    .full-width-page .table td {
+        padding: 12px 16px;
+    }
+    
+    .full-width-page .action-buttons {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    
+    .full-width-page .action-buttons .btn {
+        padding: 6px 8px;
+    }
+}
+

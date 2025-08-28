@@ -1,8 +1,8 @@
-"""Recreate initial schema from models
+"""Recreate initial schema
 
-Revision ID: 16c8f3ee8a5a
+Revision ID: d701cd03ad90
 Revises: 
-Create Date: 2025-08-28 09:39:47.327183
+Create Date: 2025-08-28 09:52:36.496974
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '16c8f3ee8a5a'
+revision = 'd701cd03ad90'
 down_revision = None
 branch_labels = None
 depends_on = None

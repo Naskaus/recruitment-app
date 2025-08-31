@@ -115,6 +115,33 @@ def profile_form(profile_id=None):
     current_year = date.today().year
     years = range(current_year - 18, current_year - 60, -1)
     
+    # DIAGNOSTIC CODE - TEMPORARY - ENHANCED
+    try:
+        from flask import current_app
+        import os
+        template_folder = current_app.template_folder
+        absolute_template_path = os.path.abspath(template_folder)
+        profile_form_path = os.path.join(absolute_template_path, 'profile_form.html')
+        
+        print("=" * 80)
+        print("🔍 FLASK TEMPLATE DIAGNOSTIC - ENHANCED")
+        print("=" * 80)
+        print(f"Template folder: {absolute_template_path}")
+        print(f"Profile form path: {profile_form_path}")
+        print(f"File exists: {os.path.exists(profile_form_path)}")
+        print(f"Current working directory: {os.getcwd()}")
+        print(f"App instance folder: {current_app.instance_path}")
+        print("=" * 80)
+        
+        # Force flush to ensure output appears
+        import sys
+        sys.stdout.flush()
+        
+    except Exception as e:
+        print(f"🚨 DIAGNOSTIC ERROR: {e}")
+        import sys
+        sys.stdout.flush()
+    
     return render_template('profile_form.html', profile=profile, years=years, 
                            months=range(1, 13), days=range(1, 32), edit_mode=edit_mode,
                            agency_positions=agency_positions)

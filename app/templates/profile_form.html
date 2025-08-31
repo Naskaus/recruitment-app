@@ -32,16 +32,6 @@
                  value="{{ profile.nickname if edit_mode else '' }}">
         </div>
         <div class="form-group">
-<<<<<<< HEAD:templates/profile_form.html
-          <div class="form-group">
-        <label for="preferred_position">Preferred Position</label>
-        <select id="preferred_position" name="preferred_position">
-          <option value="">-- Select --</option>
-          <option value="Dancer" {% if edit_mode and profile.preferred_position == 'Dancer' %}selected{% endif %}>Dancer</option>
-          <option value="PR" {% if edit_mode and profile.preferred_position == 'PR' %}selected{% endif %}>PR</option>
-        </select>
-      </div>
-=======
           <label for="staff_id">Staff ID</label>
           <input type="text" id="staff_id" name="staff_id"
                  placeholder="e.g., 007"
@@ -56,7 +46,6 @@
             {% endfor %}
           </select>
         </div>
->>>>>>> fix/payroll-latency:app/templates/profile_form.html
       </div>
 
       <div class="form-grid-2">
@@ -142,13 +131,8 @@
       </div>
 
       <div class="form-group">
-<<<<<<< HEAD:templates/profile_form.html
-          <label for="notes">Notes</label>
-          <textarea id="notes" name="notes" rows="3" placeholder="Add any relevant notes here...">{{ profile.notes if edit_mode else '' }}</textarea>
-=======
         <label for="notes">Notes</label>
         <textarea id="notes" name="notes" rows="4" placeholder="Add any relevant notes here...">{{ profile.notes if edit_mode and profile.notes else '' }}</textarea>
->>>>>>> fix/payroll-latency:app/templates/profile_form.html
       </div>
 
       <div class="form-grid-2">

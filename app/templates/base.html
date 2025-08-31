@@ -66,14 +66,10 @@
                             <span>Settings</span>
                         </a>
                         <div class="dropdown-content">
-                            {% if current_user.role in ['webdev', 'super_admin'] %}
                             <a href="{{ url_for('auth.users') }}">Manage Users</a>
-                            {% endif %}
-                            {% if current_user.role in ['super_admin', 'webdev'] %}
                             <a href="{{ url_for('auth.contracts') }}">Manage Contracts</a>
                             <a href="{{ url_for('auth.venues') }}">Manage Venues</a>
                             <a href="{{ url_for('auth.profile_form_config') }}">Manage Profile Form</a>
-                            {% endif %}
                             {% if current_user.role == 'webdev' %}
                             <a href="{{ url_for('admin.manage_agencies') }}">Manage Agencies</a>
                             {% endif %}

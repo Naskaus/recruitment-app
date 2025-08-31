@@ -28,7 +28,7 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
-login_manager.login_view = 'login' # Redirect to this route if user is not logged in
+login_manager.login_view = 'auth.login' # Redirect to this route if user is not logged in
 login_manager.login_message = "Please log in to access this page."
 login_manager.login_message_category = "info"
 
@@ -413,6 +413,34 @@ def new_profile_form():
     years = range(current_year - 18, current_year - 60, -1)
     months = range(1, 13)
     days = range(1, 32)
+    
+    # DIAGNOSTIC CODE - TEMPORARY
+    try:
+        from flask import current_app
+        import os
+        template_folder = current_app.template_folder
+        absolute_template_path = os.path.abspath(template_folder)
+        profile_form_path = os.path.join(absolute_template_path, 'profile_form.html')
+        
+        print("=" * 80)
+        print("🔍 FLASK TEMPLATE DIAGNOSTIC - NEW PROFILE FORM")
+        print("=" * 80)
+        print(f"Template folder: {absolute_template_path}")
+        print(f"Profile form path: {profile_form_path}")
+        print(f"File exists: {os.path.exists(profile_form_path)}")
+        print(f"Current working directory: {os.getcwd()}")
+        print(f"App instance folder: {current_app.instance_path}")
+        print("=" * 80)
+        
+        # Force flush to ensure output appears
+        import sys
+        sys.stdout.flush()
+        
+    except Exception as e:
+        print(f"🚨 DIAGNOSTIC ERROR: {e}")
+        import sys
+        sys.stdout.flush()
+    
     return render_template('profile_form.html', years=years, months=months, days=days, admins=ADMIN_LIST, edit_mode=False)
 
 @app.route('/profile/<int:profile_id>')
@@ -510,6 +538,34 @@ def edit_profile_form(profile_id):
     years = range(current_year - 18, current_year - 60, -1)
     months = range(1, 13)
     days = range(1, 32)
+    
+    # DIAGNOSTIC CODE - TEMPORARY
+    try:
+        from flask import current_app
+        import os
+        template_folder = current_app.template_folder
+        absolute_template_path = os.path.abspath(template_folder)
+        profile_form_path = os.path.join(absolute_template_path, 'profile_form.html')
+        
+        print("=" * 80)
+        print("🔍 FLASK TEMPLATE DIAGNOSTIC - EDIT PROFILE FORM")
+        print("=" * 80)
+        print(f"Template folder: {absolute_template_path}")
+        print(f"Profile form path: {profile_form_path}")
+        print(f"File exists: {os.path.exists(profile_form_path)}")
+        print(f"Current working directory: {os.getcwd()}")
+        print(f"App instance folder: {current_app.instance_path}")
+        print("=" * 80)
+        
+        # Force flush to ensure output appears
+        import sys
+        sys.stdout.flush()
+        
+    except Exception as e:
+        print(f"🚨 DIAGNOSTIC ERROR: {e}")
+        import sys
+        sys.stdout.flush()
+    
     return render_template('profile_form.html', profile=profile, years=years, months=months, days=days, admins=ADMIN_LIST, edit_mode=True)
 
 # =========================

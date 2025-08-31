@@ -1,9 +1,10 @@
 # app/payroll/routes.py
 
+import time
 from flask import Blueprint, render_template, request, flash, Response, jsonify, abort, redirect, url_for, current_app
 from flask_login import login_required, current_user
 from app.models import db, Assignment, StaffProfile, User, PerformanceRecord, Venue, AgencyContract, ContractCalculations
-from app.services.payroll_service import update_or_create_contract_calculations
+from app.services.payroll_service import update_or_create_contract_calculations, process_assignments_batch
 from app.decorators import admin_required, manager_required, super_admin_required, webdev_required, payroll_view_required
 from datetime import datetime, date, time as dt_time, timedelta
 from weasyprint import HTML
@@ -65,6 +66,10 @@ def _get_or_create_daily_record(assignment_id: int, ymd: date) -> 'PerformanceRe
 def payroll_page():
     from flask import session
     
+    # Début du chronométrage
+    start_time = time.time()
+    current_app.logger.info(f"[PERF] Début du chargement de la page payroll - {datetime.now()}")
+    
     # Get current agency ID
     if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
@@ -121,22 +126,44 @@ def payroll_page():
     status_order = db.case((Assignment.status == 'active', 1), (Assignment.status == 'ended', 2), (Assignment.status == 'archived', 3), else_=4).label("status_order")
     all_assignments = q.order_by(status_order, Assignment.start_date.asc()).all()
     
-    # Process rows for display and calculation using payroll service
+    # Log après récupération des assignments
+    current_app.logger.info(f"[PERF] Assignments récupérés: {len(all_assignments)} en {(time.time() - start_time):.3f}s")
+    
+    # Process rows for display and calculation using optimized batch service
     rows = []
     total_profit = 0
     total_days_worked = 0
     
+    # Début du traitement des calculs en lot
+    calc_start_time = time.time()
+    current_app.logger.info(f"[PERF] Début du traitement batch pour {len(all_assignments)} assignments")
+    
+    # OPTIMISATION: Traitement par lots au lieu de boucle individuelle
+    try:
+        batch_results = process_assignments_batch(all_assignments)
+        current_app.logger.info(f"[PERF] Batch terminé en {(time.time() - calc_start_time):.3f}s")
+    except Exception as e:
+        current_app.logger.error(f"Error in batch processing: {str(e)}")
+        # Fallback to individual processing if batch fails
+        batch_results = {}
+        for a in all_assignments:
+            try:
+                contract_calc = update_or_create_contract_calculations(a.id)
+                batch_results[a.id] = contract_calc
+            except Exception as calc_e:
+                current_app.logger.error(f"Error calculating contract {a.id}: {str(calc_e)}")
+                batch_results[a.id] = None
+    
+    # PRÉ-REQUÊTE pour les contrats (éviter N requêtes dans la boucle)
+    agency_contracts = AgencyContract.query.filter_by(agency_id=agency_id).all()
+    contracts_dict = {contract.name: contract for contract in agency_contracts}
+    
+    # Construire les rows à partir des résultats batch
     for a in all_assignments:
-        # Update or create contract calculations using the payroll service
-        try:
-            contract_calc = update_or_create_contract_calculations(a.id)
-        except Exception as e:
-            current_app.logger.error(f"Error calculating contract {a.id}: {str(e)}")
-            # Fallback to empty calculations if service fails
-            contract_calc = None
+        contract_calc = batch_results.get(a.id)
         
-        # Get contract duration from AgencyContract table
-        contract = AgencyContract.query.filter_by(name=a.contract_type, agency_id=agency_id).first()
+        # Get contract duration depuis le dictionnaire (pas de requête DB)
+        contract = contracts_dict.get(a.contract_type)
         original_duration = contract.days if contract else 1
         
         # Use calculated values from ContractCalculations table
@@ -163,6 +190,9 @@ def payroll_page():
         total_profit += contract_stats["profit"]
         total_days_worked += days_worked
 
+    # Log après traitement des calculs
+    current_app.logger.info(f"[PERF] Calculs terminés en {(time.time() - calc_start_time):.3f}s")
+    
     summary_stats = {"total_profit": total_profit, "total_days_worked": total_days_worked}
 
     # Fetch dynamic filter data, scoped to the agency
@@ -183,6 +213,10 @@ def payroll_page():
         "selected_end_date": end_date_str
     }
 
+    # Log final avant le rendu
+    total_time = time.time() - start_time
+    current_app.logger.info(f"[PERF] Page payroll prête pour rendu en {total_time:.3f}s total")
+    
     return render_template('payroll.html', assignments=rows, filters=filter_data, summary=summary_stats)
 
 # --- API Performance ---
@@ -586,7 +620,7 @@ def payroll_pdf():
         
         # Use ContractCalculations as single source of truth
         try:
-            from app.services.payroll_service import update_or_create_contract_calculations
+            from app.services.payroll_service import update_or_create_contract_calculations, process_assignments_batch
             contract_calc = update_or_create_contract_calculations(a.id)
             
             contract_stats = {
@@ -663,7 +697,7 @@ def assignment_pdf(assignment_id):
     
     # Use ContractCalculations as single source of truth
     try:
-        from app.services.payroll_service import update_or_create_contract_calculations
+        from app.services.payroll_service import update_or_create_contract_calculations, process_assignments_batch
         contract_calc = update_or_create_contract_calculations(assignment_id)
         
         contract_stats = {
@@ -731,7 +765,7 @@ def report_view(assignment_id):
     
     # Use ContractCalculations as single source of truth
     try:
-        from app.services.payroll_service import update_or_create_contract_calculations
+        from app.services.payroll_service import update_or_create_contract_calculations, process_assignments_batch
         contract_calc = update_or_create_contract_calculations(assignment_id)
         
         contract_stats = {
@@ -780,7 +814,7 @@ def assignment_summary_api(assignment_id):
     
     try:
         # Utiliser le service de paie pour calculer les totaux
-        from app.services.payroll_service import update_or_create_contract_calculations
+        from app.services.payroll_service import update_or_create_contract_calculations, process_assignments_batch
         
         # Calculer et sauvegarder les totaux
         contract_calc = update_or_create_contract_calculations(assignment_id)

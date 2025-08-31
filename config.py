@@ -13,9 +13,11 @@ class Config:
 class DevelopmentConfig(Config):
     """Configuration for development."""
     DEBUG = True
-    # Use a separate database file for development
+    # Use local PostgreSQL database 'ok' cloned from production
     SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or \
-        f'sqlite:///{os.path.join(BASE_DIR, "data", "recruitment-dev.db")}'
+        'postgresql://postgres:sEb%401217@localhost:5432/ok'
+    # Activer le logging SQL pour diagnostiquer les problèmes de performance
+    SQLALCHEMY_ECHO = True
 
 class ProductionConfig(Config):
     """Configuration for production."""

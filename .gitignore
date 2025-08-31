@@ -29,5 +29,3 @@ uploads/
 archive/
 .housekeeping/
 
-# Flask-Migrate
-migrations/

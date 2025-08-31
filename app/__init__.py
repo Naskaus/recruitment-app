@@ -7,7 +7,11 @@ from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
 import os
 import click # Import click for commands
+from dotenv import load_dotenv
 from config import config_by_name
+
+# Load environment variables from .env file
+load_dotenv()
 
 db = SQLAlchemy()
 migrate = Migrate()

@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Staff Profile - {{ profile.nickname }}</title>
+    <style>
+<<<<<<< HEAD:templates/profile_pdf.html
+        @page {
+            size: A4;
+            margin: 1cm;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            font-size: 9pt;
+            line-height: 1.6;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #1A2035;
+            padding-bottom: 20px;
+        }
+        .header img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 20px;
+            border: 3px solid #E1E5EB;
+        }
+        .header .titles h1 {
+            font-size: 24pt;
+            margin: 0;
+            color: #1A2035;
+        }
+        .header .titles h2 {
+            font-size: 14pt;
+            font-weight: normal;
+            margin: 0;
+            color: #4A90E2;
+        }
+        .header .agency-info {
+            margin-left: auto;
+            text-align: right;
+            font-size: 8pt;
+            color: #666;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section h3 {
+            font-size: 13pt;
+            color: #1A2035;
+            border-bottom: 1px solid #4A90E2;
+            padding-bottom: 5px;
+            margin: 0 0 10px 0;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+        }
+        .info-item {
+            background-color: #f8f9fa;
+            border: 1px solid #E1E5EB;
+            border-radius: 4px;
+            padding: 8px;
+        }
+        .info-item .label {
+            font-size: 7pt;
+            color: #7F8C99;
+            text-transform: uppercase;
+        }
+        .info-item .value {
+            font-size: 10pt;
+            font-weight: 500;
+        }
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+        }
+        .kpi-card {
+            background-color: #f8f9fa;
+            border: 1px solid #E1E5EB;
+            border-radius: 4px;
+            padding: 8px;
+            text-align: center;
+        }
+        .kpi-card .label {
+            font-size: 7pt;
+            color: #7F8C99;
+            text-transform: uppercase;
+        }
+        .kpi-card .value {
+            font-size: 12pt;
+            font-weight: bold;
+        }
+        .profit-negative { color: #D9534F; }
+        .profit-positive { color: #5CB85C; }
+        .assignments-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .assignments-table th, .assignments-table td {
+            border-bottom: 1px solid #ddd;
+            padding: 6px;
+            text-align: left;
+        }
+        .assignments-table th {
+            font-size: 8pt;
+            background-color: #f8f9fa;
+        }
+        .assignments-table td.profit-cell {
+            text-align: right;
+            font-weight: bold;
+        }
+=======
+        @page { size: A4; margin: 1cm; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; color: #333; font-size: 9pt; line-height: 1.4; }
+        .header { display: flex; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #1A2035; padding-bottom: 20px; }
+        .header img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-right: 20px; border: 3px solid #E1E5EB; }
+        .header .titles h1 { font-size: 24pt; margin: 0; color: #1A2035; }
+        .header .titles h2 { font-size: 14pt; font-weight: normal; margin: 0; color: #4A90E2; }
+        .header .agency-info { margin-left: auto; text-align: right; font-size: 8pt; color: #666; }
+        .section { margin-bottom: 20px; break-inside: avoid; }
+        .section h3 { font-size: 13pt; color: #1A2035; border-bottom: 1px solid #4A90E2; padding-bottom: 5px; margin: 0 0 10px 0; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+        .info-item { background-color: #f8f9fa; border: 1px solid #E1E5EB; border-radius: 4px; padding: 8px; }
+        .info-item .label { font-size: 7pt; color: #7F8C99; text-transform: uppercase; }
+        .info-item .value { font-size: 10pt; font-weight: 500; }
+        .kpi-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+        .kpi-card { background-color: #f8f9fa; border: 1px solid #E1E5EB; border-radius: 4px; padding: 8px; text-align: center; }
+        .kpi-card .label { font-size: 7pt; color: #7F8C99; text-transform: uppercase; }
+        .kpi-card .value { font-size: 12pt; font-weight: bold; }
+        .profit-negative { color: #D9534F; }
+        .profit-positive { color: #5CB85C; }
+        .assignments-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .assignments-table th, .assignments-table td { border-bottom: 1px solid #ddd; padding: 6px; text-align: left; }
+        .assignments-table th { font-size: 8pt; background-color: #f8f9fa; }
+>>>>>>> fix/payroll-latency:app/templates/profile_pdf.html
+    </style>
+</head>
+<body>
+    <div class="header">
+        {% if photo_url %}
+            <img src="{{ photo_url }}" alt="Photo">
+        {% endif %}
+        <div class="titles">
+            <h1>{{ profile.nickname }}</h1>
+            <h2>{{ profile.status }}</h2>
+        </div>
+        <div class="agency-info">
+            <strong>OS Agency</strong><br>
+            Staff Performance Record<br>
+            Generated: {{ report_date.strftime('%d %b %Y') }}
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>Personal & Contact Information</h3>
+        <div class="info-grid">
+            <div class="info-item"><div class="label">Full Name</div><div class="value">{{ profile.first_name or 'N/A' }} {{ profile.last_name or 'N/A' }}</div></div>
+            <div class="info-item"><div class="label">Age</div><div class="value">{{ profile.age or 'N/A' }}</div></div>
+            <div class="info-item"><div class="label">Date of Birth</div><div class="value">{{ profile.dob.strftime('%d %b %Y') if profile.dob else 'N/A' }}</div></div>
+            <div class="info-item"><div class="label">Phone</div><div class="value">{{ profile.phone or 'N/A' }}</div></div>
+            <div class="info-item"><div class="label">Line ID</div><div class="value">{{ profile.line_id or 'N/A' }}</div></div>
+            <div class="info-item"><div class="label">Instagram</div><div class="value">{{ profile.instagram or 'N/A' }}</div></div>
+            <div class="info-item"><div class="label">Height</div><div class="value">{{ profile.height or 'N/A' }} cm</div></div>
+<<<<<<< HEAD:templates/profile_pdf.html
+        <div class="info-item"><div class="label">Weight</div><div class="value">{{ profile.weight or 'N/A' }} kg</div></div>
+        <div class="info-item"><div class="label">Preferred Position</div><div class="value">{{ profile.preferred_position or 'N/A' }}</div></div>
+    </div>
+</div>
+    
+=======
+            <div class="info-item"><div class="label">Weight</div><div class="value">{{ profile.weight or 'N/A' }} kg</div></div>
+            <div class="info-item"><div class="label">Managed By</div><div class="value">{{ profile.admin_mama_name or 'N/A' }}</div></div>
+        </div>
+    </div>
+
+>>>>>>> fix/payroll-latency:app/templates/profile_pdf.html
+    <div class="section">
+        <h3>Performance Summary</h3>
+        <div class="kpi-grid">
+            <div class="kpi-card"><div class="label">Days Worked</div><div class="value">{{ history_stats.total_days_worked }}</div></div>
+            <div class="kpi-card"><div class="label">Drinks Sold</div><div class="value">{{ history_stats.total_drinks_sold }}</div></div>
+            <div class="kpi-card"><div class="label">Salary Paid</div><div class="value">{{ '%.0f'|format(history_stats.total_salary_paid) }} ฿</div></div>
+            <div class="kpi-card"><div class="label">Special Comm</div><div class="value">{{ '%.0f'|format(history_stats.total_special_comm) }} ฿</div></div>
+            <div class="kpi-card"><div class="label">Commission Paid</div><div class="value">{{ '%.0f'|format(history_stats.total_commission_paid) }} ฿</div></div>
+            <div class="kpi-card"><div class="label">Total Profit</div><div class="value {% if history_stats.total_bar_profit > 0 %}profit-positive{% elif history_stats.total_bar_profit < 0 %}profit-negative{% endif %}">{{ '%.0f'|format(history_stats.total_bar_profit) }} ฿</div></div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>Assignments History</h3>
+        <table class="assignments-table">
+            <thead>
+                <tr>
+                    <th>Period</th>
+                    <th>Venue</th>
+                    <th>Type</th>
+                    <th>Status</th>
+<<<<<<< HEAD:templates/profile_pdf.html
+=======
+                    <th style="text-align: right;">Days</th>
+                    <th style="text-align: right;">Drinks</th>
+                    <th style="text-align: right;">Salary</th>
+                    <th style="text-align: right;">Commission</th>
+>>>>>>> fix/payroll-latency:app/templates/profile_pdf.html
+                    <th style="text-align: right;">Profit</th>
+                </tr>
+            </thead>
+            <tbody>
+<<<<<<< HEAD:templates/profile_pdf.html
+                {% for a in assignments %}
+                <tr>
+                    <td>{{ a.start_date.strftime('%d/%m/%y') }} - {{ a.end_date.strftime('%d/%m/%y') }}</td>
+                    <td>{{ a.venue }}</td>
+                    <td>{{ a.contract_type }}</td>
+                    <td>{{ a.status }}</td>
+                    <td class="profit-cell {% if a.contract_stats.profit > 0 %}profit-positive{% elif a.contract_stats.profit < 0 %}profit-negative{% endif %}">{{ '%.0f'|format(a.contract_stats.profit) }} ฿</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" style="text-align: center;">No assignment history found for the selected period.</td></tr>
+=======
+                {% for item in assignments %}
+                {% set a = item.assignment %}
+                {% set stats = item.contract_stats %}
+                <tr>
+                    <td>{{ a.start_date.strftime('%d/%m/%y') }} - {{ a.end_date.strftime('%d/%m/%y') }}</td>
+                    <td>{{ a.venue.name if a.venue else 'N/A' }}</td>
+                    <td>{{ a.contract_type }}</td>
+                    <td>{{ a.status }}</td>
+                    <td style="text-align: right;">{{ stats.days_worked or 0 }}</td>
+                    <td style="text-align: right;">{{ stats.drinks or 0 }}</td>
+                    <td style="text-align: right;">{{ '%.0f'|format(stats.salary or 0) }} ฿</td>
+                    <td style="text-align: right;">{{ '%.0f'|format(stats.commission or 0) }} ฿</td>
+                    <td style="text-align: right;" class="{% if (stats.profit or 0) > 0 %}profit-positive{% elif (stats.profit or 0) < 0 %}profit-negative{% endif %}">
+                        {{ '%.0f'|format(stats.profit or 0) }} ฿
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="9" style="text-align: center;">No assignment history found.</td></tr>
+>>>>>>> fix/payroll-latency:app/templates/profile_pdf.html
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+<<<<<<< HEAD:templates/profile_pdf.html
+
+</body>
+</html>
+=======
+</body>
+</html>
+>>>>>>> fix/payroll-latency:app/templates/profile_pdf.html

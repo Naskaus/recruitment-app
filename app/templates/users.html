@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Manage Users</h2>
+</div>
+
+<div class="flash-messages-container" style="margin-bottom: 2rem;">
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
+      {% endfor %}
+  {% endif %}
+{% endwith %}
+</div>
+
+<div class="user-management-container">
+    <div class="card">
+        <div class="card-header">
+            <h3>Create New User</h3>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('auth.users') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <div class="form-group">
+                    <label for="role">Role</label>
+                    <select id="role" name="role" required>
+                        <option value="" disabled selected>Select a role...</option>
+                        {% for role in roles %}
+                        <option value="{{ role }}">{{ role | title | replace('_', ' ') }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="button button-primary" style="width: 100%;">Create User</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3>Existing Users</h3>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            <table class="payroll-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for user in users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td>{{ user.username }}</td>
+                        <td>
+                             <span class="role-badge-table role-{{ user.role | lower | replace('_', '') }}">{{ user.role | title | replace('_', ' ') }}</span>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="button-table-edit" onclick="editUser({{ user.id }}, '{{ user.username }}', '{{ user.role }}')" title="Edit User">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                </button>
+                                {% if user.id != current_user.id and current_user.role in ['webdev', 'super_admin'] %}
+                                <form action="{{ url_for('auth.delete_user', user_id=user.id) }}" method="POST" onsubmit="return confirmDeleteUser('{{ user.username }}');" style="display: inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button type="submit" class="button-table-delete" title="Supprimer l'utilisateur">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal-overlay hidden" id="editUserModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit User</h3>
+            <button class="modal-close-btn" id="closeEditUserModalBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="editUserForm" action="{{ url_for('auth.edit_user') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" id="editUserId" name="user_id">
+                <div class="form-group">
+                    <label for="editUsername">Username</label>
+                    <input type="text" id="editUsername" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="editRole">Role</label>
+                    <select id="editRole" name="role" required>
+                        {% for role in roles %}
+                        <option value="{{ role }}">{{ role | title | replace('_', ' ') }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editPassword">New Password (leave blank to keep current)</label>
+                    <input type="password" id="editPassword" name="password">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="button button-secondary" id="cancelEditUserBtn">Cancel</button>
+            <button type="submit" class="button button-primary" form="editUserForm">Update User</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function editUser(userId, username, role) {
+    document.getElementById('editUserId').value = userId;
+    document.getElementById('editUsername').value = username;
+    document.getElementById('editRole').value = role;
+    document.getElementById('editPassword').value = '';
+    document.getElementById('editUserModal').classList.remove('hidden');
+}
+
+function confirmDeleteUser(username) {
+    return confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur "${username}" ?\n\nCette action est irréversible et supprimera définitivement l'utilisateur.`);
+}
+
+document.getElementById('closeEditUserModalBtn').addEventListener('click', function() {
+    document.getElementById('editUserModal').classList.add('hidden');
+});
+
+document.getElementById('cancelEditUserBtn').addEventListener('click', function() {
+    document.getElementById('editUserModal').classList.add('hidden');
+});
+
+// Close modal when clicking outside
+document.getElementById('editUserModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        this.classList.add('hidden');
+    }
+});
+</script>
+
+<style>
+.action-buttons {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.button-table-edit {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.button-table-edit:hover {
+    background: #0056b3;
+}
+
+.button-table-delete {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.button-table-delete:hover {
+    background: #c82333;
+}
+</style>
+
+{% endblock %}

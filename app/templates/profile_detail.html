@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div class="profile-detail-header">
+      <h2>Profile Details</h2>
+      <div class="header-actions">
+        <a href="{{ url_for('staff.profile_form', profile_id=profile.id) }}" class="button button-primary">
+          Edit Profile
+        </a>
+        <a href="{{ url_for('staff.profile_pdf', profile_id=profile.id) }}" class="button button-secondary" target="_blank">
+          Export PDF
+        </a>
+        <button 
+          class="button button-danger" 
+          type="button"
+          data-id="{{ profile.id }}" 
+          data-name="{{ profile.nickname }}">
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-body">
+    <div class="profile-detail-grid">
+
+      <div class="profile-photo-section">
+        <img src="{{ url_for('staff.uploaded_file', filename=profile.photo_url) if profile.photo_url else url_for('static', filename='images/default_avatar.png') }}" alt="Photo of {{ profile.nickname }}" class="profile-photo-large">
+        <div class="profile-main-names">
+          <h3>{{ profile.nickname }}</h3>
+          <p>{{ profile.first_name or '' }} {{ profile.last_name or '' }}</p>
+        </div>
+        <div class="staff-card-status">
+          <span class="status-badge status-{{ profile.status | lower | replace(' ', '-') }}">
+            {{ profile.status }}
+          </span>
+        </div>
+      </div>
+
+      <div class="profile-info-section">
+        <h4>Personal Information</h4>
+        <div class="info-grid">
+          <p><strong>Staff ID:</strong> {{ profile.staff_id or 'N/A' }}</p>
+          <p><strong>Preferred Position:</strong> {{ profile.preferred_position or 'N/A' }}</p>
+          <p><strong>First Name:</strong> {{ profile.first_name or 'N/A' }}</p>
+          <p><strong>Last Name:</strong> {{ profile.last_name or 'N/A' }}</p>
+          <p><strong>Age:</strong> {{ profile.age or 'N/A' }}</p>
+          <p><strong>Date of Birth:</strong> {{ profile.dob.strftime('%d %B %Y') if profile.dob else 'N/A' }}</p>
+          <p><strong>Height:</strong> {{ profile.height or 'N/A' }} cm</p>
+          <p><strong>Weight:</strong> {{ profile.weight or 'N/A' }} kg</p>
+        </div>
+
+        <h4>Contact & Social</h4>
+        <div class="info-grid">
+          <p><strong>Phone:</strong> {{ profile.phone or 'N/A' }}</p>
+          <p><strong>Line:</strong>
+            {% if profile.line_id %}
+              <a href="https://line.me/ti/p/~{{ profile.line_id }}" target="_blank">{{ profile.line_id }}</a>
+            {% else %}
+              N/A
+            {% endif %}
+          </p>
+          <p><strong>Instagram:</strong>
+            {% if profile.instagram %}
+              <a href="https://instagram.com/{{ profile.instagram }}" target="_blank">{{ profile.instagram }}</a>
+            {% else %}
+              N/A
+            {% endif %}
+          </p>
+          <p><strong>Facebook:</strong>
+            {% if profile.facebook %}
+              <a href="https://facebook.com/{{ profile.facebook }}" target="_blank">{{ profile.facebook }}</a>
+            {% else %}
+              N/A
+            {% endif %}
+          </p>
+        </div>
+
+        {% if profile.notes %}
+        <h4>Notes</h4>
+        <div class="notes-display" style="background-color: var(--color-main-bg); padding: 12px; border-radius: var(--border-radius-sm); white-space: pre-wrap;">
+          {{ profile.notes }}
+        </div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+
+  <hr style="margin: 48px 0; border-color: var(--color-border);">
+
+  <div class="performance-history-section">
+    <div class="profile-detail-header" style="margin-bottom: 24px; align-items: flex-end;">
+      <h4>Performance History</h4>
+
+      <form method="GET" action="{{ url_for('staff.profile_detail', profile_id=profile.id) }}" class="history-filter-form">
+        <div class="form-group">
+          <label for="start_date">From</label>
+          <input type="date" id="start_date" name="start_date" value="{{ filter_start_date.isoformat() if filter_start_date else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="end_date">To</label>
+          <input type="date" id="end_date" name="end_date" value="{{ filter_end_date.isoformat() if filter_end_date else '' }}">
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="button button-primary">Filter</button>
+          <a href="{{ url_for('staff.profile_detail', profile_id=profile.id) }}" class="button button-secondary">Clear</a>
+        </div>
+      </form>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <span class="kpi-label">Total Days Worked</span>
+        <span class="kpi-value">{{ history_stats.total_days_worked }}</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Total Drinks Sold</span>
+        <span class="kpi-value">{{ history_stats.total_drinks_sold }}</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Total Salary Paid</span>
+        <span class="kpi-value">{{ '%.0f'|format(history_stats.total_salary_paid) }} ฿</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Total Commission Paid</span>
+        <span class="kpi-value">{{ '%.0f'|format(history_stats.total_commission_paid) }} ฿</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Total Special Comm</span>
+        <span class="kpi-value">{{ '%.0f'|format(history_stats.total_special_comm) }} ฿</span>
+      </div>
+      <div class="kpi-card {% if history_stats.total_bar_profit > 0 %}profit-positive-bg{% elif history_stats.total_bar_profit < 0 %}profit-negative-bg{% endif %}">
+        <span class="kpi-label">Total Bar Profit</span>
+        <span class="kpi-value">{{ '%.0f'|format(history_stats.total_bar_profit) }} ฿</span>
+      </div>
+    </div>
+
+    <h5 style="margin-top: 32px; margin-bottom: 16px;">Recent history</h5>
+    <div class="table-responsive-wrapper">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Dr</th>
+            <th>Sp.</th>
+            <th>Sal.</th>
+            <th>Com.</th>
+            <th>Profit</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if detailed_history %}
+            {% for record in detailed_history %}
+              <tr>
+                <td>{{ record.record_date.split('-')[2] + '/' + record.record_date.split('-')[1] }}</td>
+                <td>{{ record.drinks_sold }}</td>
+                <td>{{ '%.0f'|format(record.special_commissions) }}฿</td>
+                <td>{{ '%.0f'|format(record.daily_salary) }}฿</td>
+                <td>{{ '%.0f'|format(record.daily_commission) }}฿</td>
+                <td>{{ '%.0f'|format(record.daily_profit) }}฿</td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="6" class="text-center">No history yet.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+    </div>
+</div>
+{% endblock %}

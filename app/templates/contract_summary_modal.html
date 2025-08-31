@@ -1,0 +1,212 @@
+<!-- Contract Summary Modal Content -->
+<div class="contract-summary-content">
+    <h3>Contract Summary for {{ assignment.staff.nickname if assignment.staff else assignment.archived_staff_name }}</h3>
+    
+    <div class="contract-details">
+        <div class="detail-row">
+            <span class="label">Venue:</span>
+            <span class="value">{{ assignment.venue.name }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Position:</span>
+            <span class="value">{{ assignment.contract_role }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Contract Type:</span>
+            <span class="value">{{ assignment.contract_type }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Period:</span>
+            <span class="value">{{ assignment.start_date.strftime('%d %b %Y') }} to {{ assignment.end_date.strftime('%d %b %Y') }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Base Salary:</span>
+            <span class="value">{{ '{:,}'.format(assignment.base_salary) }} ฿</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Status:</span>
+            <span class="value status-{{ assignment.status }}">{{ assignment.status|title }}</span>
+        </div>
+    </div>
+    
+    <div class="performance-summary">
+        <h4>Performance Summary</h4>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <span class="stat-label">Days Worked</span>
+                <span class="stat-value">{{ days_worked }} / {{ original_duration }}</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Total Drinks Sold</span>
+                <span class="stat-value">{{ '{:,}'.format(contract_stats.drinks) }}</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Special Commissions</span>
+                <span class="stat-value">{{ '{:,}'.format(contract_stats.special_comm) }} ฿</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Total Salary</span>
+                <span class="stat-value">{{ '{:,}'.format(contract_stats.salary) }} ฿</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Total Commission</span>
+                <span class="stat-value">{{ '{:,}'.format(contract_stats.commission) }} ฿</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Total Profit</span>
+                <span class="stat-value profit-{{ 'positive' if contract_stats.profit > 0 else 'negative' }}">
+                    {{ '{:,}'.format(contract_stats.profit) }} ฿
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal-actions">
+        <a href="/payroll/assignment/{{ assignment.id }}/pdf" class="btn btn-primary" target="_blank">
+            Download PDF
+        </a>
+        <button type="button" class="btn btn-secondary" onclick="closeContractSummaryModal()">Close</button>
+    </div>
+</div>
+
+<style>
+.contract-summary-content {
+    padding: 20px;
+}
+
+.contract-summary-content h3 {
+    margin-bottom: 20px;
+    color: #333;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
+}
+
+.contract-details {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    padding: 5px 0;
+}
+
+.detail-row:last-child {
+    margin-bottom: 0;
+}
+
+.label {
+    font-weight: 600;
+    color: #555;
+    min-width: 120px;
+}
+
+.value {
+    color: #333;
+    text-align: right;
+}
+
+.status-ongoing {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.status-completed {
+    color: #17a2b8;
+    font-weight: 600;
+}
+
+.status-archived {
+    color: #6c757d;
+    font-weight: 600;
+}
+
+.performance-summary {
+    margin-bottom: 20px;
+}
+
+.performance-summary h4 {
+    margin-bottom: 15px;
+    color: #333;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 5px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.stat-item {
+    background-color: white;
+    padding: 15px;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+    text-align: center;
+}
+
+.stat-label {
+    display: block;
+    font-size: 12px;
+    color: #6c757d;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-value {
+    display: block;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+}
+
+.profit-positive {
+    color: #28a745;
+}
+
+.profit-negative {
+    color: #dc3545;
+}
+
+.modal-actions {
+    margin-top: 20px;
+    text-align: right;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+</style>

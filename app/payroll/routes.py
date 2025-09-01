@@ -91,7 +91,7 @@ def payroll_page():
 
     # Base query scoped to the user's agency with eager loading to prevent N+1 queries
     q = Assignment.query.filter_by(agency_id=agency_id).options(
-        joinedload(Assignment.staff_profile),
+        joinedload(Assignment.staff),
         joinedload(Assignment.venue),
         joinedload(Assignment.contract_calculations),
         joinedload(Assignment.performance_records)
@@ -236,7 +236,7 @@ def get_performance(assignment_id, ymd):
     
     # Security: Ensure the requested assignment belongs to the user's agency
     Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).options(
-        joinedload(Assignment.staff_profile),
+        joinedload(Assignment.staff),
         joinedload(Assignment.venue)
     ).first_or_404()
     
@@ -262,7 +262,7 @@ def list_performance_for_assignment(assignment_id):
         agency_id = current_user.agency_id
     
     a = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).options(
-        joinedload(Assignment.staff_profile),
+        joinedload(Assignment.staff),
         joinedload(Assignment.venue),
         joinedload(Assignment.contract_calculations)
     ).first_or_404()
@@ -324,7 +324,7 @@ def upsert_performance():
         agency_id = current_user.agency_id
     
     a = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).options(
-        joinedload(Assignment.staff_profile),
+        joinedload(Assignment.staff),
         joinedload(Assignment.venue)
     ).first()
     if not a or a.status != 'active':
@@ -427,7 +427,7 @@ def preview_performance():
         agency_id = current_user.agency_id
     
     a = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).options(
-        joinedload(Assignment.staff_profile),
+        joinedload(Assignment.staff),
         joinedload(Assignment.venue)
     ).first()
     if not a or a.status != 'active':
@@ -517,7 +517,7 @@ def get_contract_summary(assignment_id):
         
         # Vérifier que l'assignment existe et appartient à l'agence
         assignment = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).options(
-            joinedload(Assignment.staff_profile),
+            joinedload(Assignment.staff),
             joinedload(Assignment.venue),
             joinedload(Assignment.contract_calculations)
         ).first()
@@ -591,7 +591,7 @@ def payroll_pdf():
 
     # Base query scoped to the user's agency with eager loading to prevent N+1 queries
     q = Assignment.query.filter_by(agency_id=agency_id).options(
-        joinedload(Assignment.staff_profile),
+        joinedload(Assignment.staff),
         joinedload(Assignment.venue),
         joinedload(Assignment.contract_calculations),
         joinedload(Assignment.performance_records)
@@ -703,10 +703,10 @@ def assignment_pdf(assignment_id):
     
     # Security: Ensure the assignment belongs to the user's agency
     assignment = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).options(
-        db.joinedload(Assignment.staff),
-        db.joinedload(Assignment.manager),
-        db.joinedload(Assignment.venue),
-        db.subqueryload(Assignment.performance_records)
+        joinedload(Assignment.staff),
+        joinedload(Assignment.manager),
+        joinedload(Assignment.venue),
+        joinedload(Assignment.performance_records)
     ).first_or_404()
 
     # Get contract duration from AgencyContract table
@@ -770,7 +770,7 @@ def report_view(assignment_id):
     
     # Security: Ensure the assignment belongs to the user's agency
     assignment = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).options(
-        joinedload(Assignment.staff_profile),
+        joinedload(Assignment.staff),
         joinedload(Assignment.venue),
         joinedload(Assignment.contract_calculations),
         joinedload(Assignment.performance_records)
@@ -826,7 +826,7 @@ def assignment_summary_api(assignment_id):
     
     # Security: Ensure the assignment belongs to the user's agency
     assignment = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).options(
-        joinedload(Assignment.staff_profile),
+        joinedload(Assignment.staff),
         joinedload(Assignment.venue),
         joinedload(Assignment.contract_calculations)
     ).first()

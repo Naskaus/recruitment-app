@@ -77,9 +77,9 @@ def reset_and_import_db():
         
         # 8. Créer des contrats d'agence
         contracts = [
-            {'name': '1jour', 'days': 1, 'drink_price': 120, 'staff_commission': 100},
-            {'name': '10jours', 'days': 10, 'drink_price': 120, 'staff_commission': 100},
-            {'name': '1mois', 'days': 30, 'drink_price': 120, 'staff_commission': 100}
+                {'name': '1day', 'days': 1, 'drink_price': 120, 'staff_commission': 100},
+    {'name': '10days', 'days': 10, 'drink_price': 120, 'staff_commission': 100},
+    {'name': '1month', 'days': 30, 'drink_price': 120, 'staff_commission': 100}
         ]
         
         for contract_data in contracts:

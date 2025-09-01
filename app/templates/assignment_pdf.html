@@ -75,12 +75,8 @@
             <p><strong>Position:</strong> {{ assignment.contract_role }}</p>
             <p><strong>Venue:</strong> {{ assignment.venue.name }}</p>
             <p><strong>Period:</strong> {{ assignment.start_date.strftime('%d %b %Y') }} - {{ assignment.end_date.strftime('%d %b %Y') }}</p>
-<<<<<<< HEAD:templates/payroll_pdf.html
-            <p><strong>Type:</strong> {{ '1-day' if assignment.contract_type == '1jour' else '10-days' if assignment.contract_type == '10jours' else '1-month' }}</p>
-=======
-            <p><strong>Type:</strong> {{ assignment.contract_type }}</p>
+            <p><strong>Type:</strong> {{ '1-day' if assignment.contract_type == '1day' else '10-days' if assignment.contract_type == '10days' else '1-month' }}</p>
             <p><strong>Base Salary:</strong> {{ '{:,}'.format(assignment.base_salary) }} ฿</p>
->>>>>>> fix/payroll-latency:app/templates/assignment_pdf.html
             <p><strong>Manager:</strong> {{ assignment.manager.username if assignment.manager else 'N/A' }}</p>
         </div>
         <div class="summary-box">
@@ -159,7 +155,7 @@
                 <tr>
                     <td><strong>{{ a.staff.nickname if a.staff else a.archived_staff_name }}</strong><br><span class="muted">{{ a.role }}</span></td>
                     <td>{{ a.venue }}</td>
-                    <td>{{ '1-day' if a.contract_type == '1jour' else '10-days' if a.contract_type == '10jours' else '1-month' }}<br><span class="muted">{{ '%.0f'|format(a.base_salary) }}฿</span></td>
+                    <td>{{ '1-day' if a.contract_type == '1day' else '10-days' if a.contract_type == '10days' else '1-month' }}<br><span class="muted">{{ '%.0f'|format(a.base_salary) }}฿</span></td>
                     <td>{{ a.start_date.strftime('%d/%m/%y') }} - {{ a.end_date.strftime('%d/%m/%y') }}</td>
                     <td style="text-align: center;">{{ row.days_worked }}</td>
                     <td class="profit-cell {% if row.contract_stats.profit > 0 %}profit-positive{% elif row.contract_stats.profit < 0 %}profit-negative{% endif %}">{{ '%.0f'|format(row.contract_stats.profit) }} ฿</td>

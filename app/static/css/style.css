@@ -1089,12 +1089,12 @@
                     /* This is our single source of truth for contract colors. */
                     /* ---------------------------------- */
                     :root {
-                        --contract-1jour-bg: #FFF8E6;
-                        --contract-1jour-border: #F0B429;
-                        --contract-10jours-bg: #ECF8EE;
-                        --contract-10jours-border: #2E7D32;
-                        --contract-1mois-bg: #EAF5FF;
-                        --contract-1mois-border: #1565C0;
+                        --contract-1day-bg: #FFF8E6;
+                        --contract-1day-border: #F0B429;
+                        --contract-10days-bg: #ECF8EE;
+                        --contract-10days-border: #2E7D32;
+                        --contract-1month-bg: #EAF5FF;
+                        --contract-1month-border: #1565C0;
                     }
                 
                     /* ---------------------------------- */
@@ -1102,25 +1102,25 @@
                     /* ---------------------------------- */
                 
                     /* Contract type is shown by a colored left border ONLY. */
-                    .payroll-table .row-contract-1jour {
-                        border-left: 4px solid var(--contract-1jour-border);
-                    }
-                    .payroll-table .row-contract-10jours {
-                        border-left: 4px solid var(--contract-10jours-border);
-                    }
-                    .payroll-table .row-contract-1mois {
-                        border-left: 4px solid var(--contract-1mois-border);
-                    }
-                    /* Dynamic contract row borders for new contract names */
-                    .payroll-table .row-contract-1-day {
-                        border-left: 4px solid var(--contract-1jour-border);
-                    }
-                    .payroll-table .row-contract-10-days {
-                        border-left: 4px solid var(--contract-10jours-border);
-                    }
-                    .payroll-table .row-contract-1-month {
-                        border-left: 4px solid var(--contract-1mois-border);
-                    }
+                        .payroll-table .row-contract-1day {
+        border-left: 4px solid var(--contract-1day-border);
+    }
+    .payroll-table .row-contract-10days {
+        border-left: 4px solid var(--contract-10days-border);
+    }
+    .payroll-table .row-contract-1month {
+        border-left: 4px solid var(--contract-1month-border);
+    }
+                        /* Dynamic contract row borders for new contract names */
+    .payroll-table .row-contract-1-day {
+        border-left: 4px solid var(--contract-1day-border);
+    }
+    .payroll-table .row-contract-10-days {
+        border-left: 4px solid var(--contract-10days-border);
+    }
+    .payroll-table .row-contract-1-month {
+        border-left: 4px solid var(--contract-1month-border);
+    }
                 
                     /* Contract STATUS is shown by the background color. */
                     .payroll-table tr.status-archived {
@@ -1148,35 +1148,35 @@
                         border: 1px solid;
                         vertical-align: middle;
                     }
-                    .badge-1jour {
-                        background-color: var(--contract-1jour-bg);
-                        border-color: var(--contract-1jour-border);
+                    .badge-1day {
+                        background-color: var(--contract-1day-bg);
+                        border-color: var(--contract-1day-border);
                         color: #8B6B00;
                     }
-                    .badge-10jours {
-                        background-color: var(--contract-10jours-bg);
-                        border-color: var(--contract-10jours-border);
+                    .badge-10days {
+                        background-color: var(--contract-10days-bg);
+                        border-color: var(--contract-10days-border);
                         color: #1E6B24;
                     }
-                    .badge-1mois {
-                        background-color: var(--contract-1mois-bg);
-                        border-color: var(--contract-1mois-border);
+                    .badge-1month {
+                        background-color: var(--contract-1month-bg);
+                        border-color: var(--contract-1month-border);
                         color: #0D47A1;
                     }
                     /* Dynamic contract badges for new contract names */
                     .badge-1-day {
-                        background-color: var(--contract-1jour-bg);
-                        border-color: var(--contract-1jour-border);
+                        background-color: var(--contract-1day-bg);
+                        border-color: var(--contract-1day-border);
                         color: #8B6B00;
                     }
                     .badge-10-days {
-                        background-color: var(--contract-10jours-bg);
-                        border-color: var(--contract-10jours-border);
+                        background-color: var(--contract-10days-bg);
+                        border-color: var(--contract-10days-border);
                         color: #1E6B24;
                     }
                     .badge-1-month {
-                        background-color: var(--contract-1mois-bg);
-                        border-color: var(--contract-1mois-border);
+                        background-color: var(--contract-1month-bg);
+                        border-color: var(--contract-1month-border);
                         color: #0D47A1;
                     }
                     /* Align badge nicely in modal header */
@@ -1189,14 +1189,14 @@
                     /* ---------------------------------- */
                 
                     /* Tints the modal card based on the contract type */
-                    #performanceModalCard.contract-1jour {
-                        border-top: 6px solid var(--contract-1jour-border);
+                    #performanceModalCard.contract-1day {
+                        border-top: 6px solid var(--contract-1day-border);
                     }
-                    #performanceModalCard.contract-10jours {
-                        border-top: 6px solid var(--contract-10jours-border);
+                    #performanceModalCard.contract-10days {
+                        border-top: 6px solid var(--contract-10days-border);
                     }
-                    #performanceModalCard.contract-1mois {
-                        border-top: 6px solid var(--contract-1mois-border);
+                    #performanceModalCard.contract-1month {
+                        border-top: 6px solid var(--contract-1month-border);
                     }
                 
                     /* ---------------------------------- */

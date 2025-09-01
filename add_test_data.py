@@ -136,7 +136,7 @@ def add_test_data():
                 'staff_id': created_staff[0].id,  # Sophie
                 'venue_id': venues[0].id,  # Red Dragon
                 'contract_role': 'Dancer',
-                'contract_type': '1jour',
+                'contract_type': '1day',
                 'start_date': today + timedelta(days=1),
                 'end_date': today + timedelta(days=1),
                 'base_salary': 2000,
@@ -146,7 +146,7 @@ def add_test_data():
                 'staff_id': created_staff[1].id,  # Maya
                 'venue_id': venues[1].id,  # Mandarin
                 'contract_role': 'Hostess',
-                'contract_type': '10jours',
+                'contract_type': '10days',
                 'start_date': today + timedelta(days=2),
                 'end_date': today + timedelta(days=11),
                 'base_salary': 15000,
@@ -156,7 +156,7 @@ def add_test_data():
                 'staff_id': created_staff[2].id,  # Yuki
                 'venue_id': venues[2].id,  # Shark
                 'contract_role': 'Dancer',
-                'contract_type': '1mois',
+                'contract_type': '1month',
                 'start_date': today + timedelta(days=3),
                 'end_date': today + timedelta(days=32),
                 'base_salary': 45000,
@@ -166,7 +166,7 @@ def add_test_data():
                 'staff_id': created_staff[3].id,  # Emma
                 'venue_id': venues[0].id,  # Red Dragon
                 'contract_role': 'Hostess',
-                'contract_type': '1jour',
+                'contract_type': '1day',
                 'start_date': today - timedelta(days=5),
                 'end_date': today - timedelta(days=5),
                 'base_salary': 2000,

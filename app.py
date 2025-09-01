@@ -45,7 +45,7 @@ ADMIN_LIST = ["Admin 1", "Mama Rose", "Mama Joy", "Khun Somchai"]
 VENUE_LIST = ["Red Dragon", "Mandarin", "Shark"]
 ROLE_LIST = ["Dancer", "Hostess"]
 STATUS_LIST = ["Active", "Working", "Quiet"] # NEW
-CONTRACT_TYPES = {"1jour": 1, "10jours": 10, "1mois": 30}
+CONTRACT_TYPES = {"1day": 1, "10days": 10, "1month": 30}
 DRINK_STAFF_COMMISSION = 100
 DRINK_BAR_PRICE = 120
 

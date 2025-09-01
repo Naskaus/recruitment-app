@@ -584,7 +584,7 @@ if (lists.length && window.Sortable) {
             const DRINK_BAR = 220;
             const BAR_COMMISSION = DRINK_BAR - DRINK_STAFF; // 220 - 100 = 120 THB per drink
             const LATE_CUTOFF = "19:30";
-            const TYPE_TO_DAYS = { '1jour': 1, '1day': 1, '10jours': 10, '10days': 10, '1mois': 30, '1month': 30 };
+            const TYPE_TO_DAYS = { '1day': 1, '10days': 10, '1month': 30 };
             const toTypeKey = (v) => String(v || '').trim().toLowerCase();
             
             // Contract rules will be loaded dynamically

@@ -1,6 +1,6 @@
 # app/services/payroll_service.py
 
-import time
+import time as time_module
 from app import db
 from app.models import Assignment, PerformanceRecord, ContractCalculations, AgencyContract, StaffProfile
 from datetime import datetime, time
@@ -70,7 +70,7 @@ def process_assignments_batch(assignments):
     if not assignments:
         return {}
     
-    batch_start = time.time()
+    batch_start = time_module.time()
     assignment_ids = [a.id for a in assignments]
     agency_ids = list(set(a.agency_id for a in assignments))
     
@@ -93,11 +93,11 @@ def process_assignments_batch(assignments):
     # Créer un dictionnaire pour accès rapide: assignment_id -> ContractCalculations
     calculations_dict = {calc.assignment_id: calc for calc in existing_calculations}
     
-    current_app.logger.info(f"[PERF] Pré-requêtes batch terminées en {(time.time() - batch_start):.3f}s")
+    current_app.logger.info(f"[PERF] Pré-requêtes batch terminées en {(time_module.time() - batch_start):.3f}s")
     
     # TRAITEMENT EN MÉMOIRE: Itérer sur les assignments sans nouvelles requêtes DB
     results = {}
-    calc_start = time.time()
+    calc_start = time_module.time()
     
     for assignment in assignments:
         # Récupérer le contrat depuis le dictionnaire (pas de requête DB)
@@ -123,28 +123,20 @@ def process_assignments_batch(assignments):
         
         # Calculer les totaux à partir des performances
         for record in performance_records:
-            total_drinks += record.drinks_sold
-            total_special_comm += record.special_commissions
+            total_drinks += record.drinks_sold if record.drinks_sold is not None else 0
+            total_special_comm += record.special_commissions if record.special_commissions is not None else 0.0
             
-            # Calcul des commissions sur les boissons
-            if agency_contract and record.drinks_sold > 0:
+            # Utiliser les valeurs journalières comme source de vérité
+            total_salary += record.daily_salary if record.daily_salary is not None else 0.0
+            total_profit += record.daily_profit if record.daily_profit is not None else 0.0
+
+            # Le calcul de la commission reste basé sur les règles du contrat
+            if agency_contract and record.drinks_sold and record.drinks_sold > 0:
                 drink_commission = record.drinks_sold * agency_contract.staff_commission
                 total_commission += drink_commission
-            
-            # Calculer la pénalité de retard
-            lateness_penalty = calculate_lateness_penalty(record, agency_contract) if agency_contract else 0.0
-            
-            # Ajouter au salaire total
-            total_salary += base_daily_salary + record.bonus - record.malus - lateness_penalty
-        
-        # Calculer le profit total
-        total_revenue = 0.0
-        if agency_contract and total_drinks > 0:
-            total_revenue += total_drinks * agency_contract.drink_price
-        total_revenue += total_special_comm
-        
-        total_costs = total_salary + total_commission
-        total_profit = total_revenue - total_costs
+
+        # Le profit total est maintenant la somme des profits journaliers, donc plus besoin de le calculer ici.
+        # Le salaire total est la somme des salaires journaliers.
         
         # Récupérer ou créer ContractCalculations depuis le dictionnaire
         contract_calc = calculations_dict.get(assignment.id)
@@ -178,7 +170,7 @@ def process_assignments_batch(assignments):
     # UN SEUL COMMIT pour tous les calculs
     try:
         db.session.commit()
-        calc_time = time.time() - calc_start
+        calc_time = time_module.time() - calc_start
         current_app.logger.info(f"[PERF] Batch de {len(assignments)} assignments traité en {calc_time:.3f}s")
         return results
     except Exception as e:
@@ -208,7 +200,7 @@ def update_or_create_contract_calculations(assignment_id):
     )
     
     # Début du chronométrage pour ce calcul
-    calc_start = time.time()
+    calc_start = time_module.time()
     
     # Récupérer l'assignment et vérifier qu'il existe
     assignment = Assignment.query.get(assignment_id)
@@ -301,7 +293,7 @@ def update_or_create_contract_calculations(assignment_id):
         db.session.commit()
         
         # Log de performance pour ce calcul
-        calc_time = time.time() - calc_start
+        calc_time = time_module.time() - calc_start
         current_app.logger.info(f"[PERF] Calcul contract {assignment_id} terminé en {calc_time:.3f}s")
         
         return contract_calc
@@ -389,7 +381,7 @@ def get_staff_performance_summary(staff_id, start_date=None, end_date=None):
             base_daily_salary = assignment.base_salary / agency_contract.days
         else:
             # Fallback avec les types de contrat standards
-            contract_days = {"1jour": 1, "10jours": 10, "1mois": 30}.get(assignment.contract_type, 1)
+            contract_days = {"1day": 1, "10days": 10, "1month": 30}.get(assignment.contract_type, 1)
             base_daily_salary = assignment.base_salary / contract_days if contract_days > 0 else assignment.base_salary
         
         # Récupérer les enregistrements de performance pour cet assignment

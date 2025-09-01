@@ -340,31 +340,65 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Confirmer la suppression
-    confirmDeleteBtn.addEventListener('click', function() {
+    // Confirmer la suppression avec export automatique
+    confirmDeleteBtn.addEventListener('click', async function() {
         const agencyId = parseInt(this.dataset.agencyId);
+        const agencyName = deleteAgencyName.textContent;
         
-        // Désactiver le bouton pendant la suppression
+        // Désactiver le bouton pendant le processus
         const deleteBtn = this;
         const originalText = deleteBtn.textContent;
         deleteBtn.disabled = true;
-        deleteBtn.textContent = 'Suppression en cours...';
         
-        // Trouver le formulaire caché correspondant
-        const form = document.getElementById(`delete-form-${agencyId}`);
-        
-        if (form) {
-            // Ajouter le token CSRF au formulaire
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = 'csrf_token';
-            csrfInput.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            form.appendChild(csrfInput);
+        try {
+            // ÉTAPE 1: Export des données
+            deleteBtn.textContent = 'Export en cours...';
+            const exportResponse = await fetch(`/admin/api/agencies/${agencyId}/export`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            });
             
-            // Soumettre le formulaire
-            form.submit();
-        } else {
-            console.error('Formulaire de suppression non trouvé pour l\'agence ID:', agencyId);
+            const exportData = await exportResponse.json();
+            
+            if (!exportData.success) {
+                throw new Error(`Erreur lors de l'export: ${exportData.error}`);
+            }
+            
+            // ÉTAPE 2: Téléchargement automatique
+            deleteBtn.textContent = 'Téléchargement...';
+            const downloadUrl = `/admin/api/agencies/${agencyId}/export/download/${exportData.filename}`;
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = exportData.filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // ÉTAPE 3: Suppression de l'agence
+            deleteBtn.textContent = 'Suppression en cours...';
+            const deleteResponse = await fetch(`/admin/delete_agency/${agencyId}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            });
+            
+            if (deleteResponse.ok) {
+                showNotification(`Agence "${agencyName}" exportée et supprimée avec succès!`, 'success');
+                // Fermer la modale et recharger la page
+                deleteConfirmModal.classList.add('hidden');
+                window.location.reload();
+            } else {
+                throw new Error('Erreur lors de la suppression de l\'agence');
+            }
+            
+        } catch (error) {
+            console.error('Erreur:', error);
+            showNotification(`Erreur: ${error.message}`, 'error');
+            
+            // Réactiver le bouton en cas d'erreur
             deleteBtn.disabled = false;
             deleteBtn.textContent = originalText;
         }

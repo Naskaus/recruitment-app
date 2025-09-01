@@ -183,28 +183,30 @@ def export_agency_data(agency_id):
     except Exception as e:
         return jsonify({'error': f'Erreur lors de l\'export: {str(e)}'}), 500
 
-@admin_bp.route('/api/agencies/<int:agency_id>/export/download/<filename>')
+@admin_bp.route('/api/agencies/<int:agency_id>/export/download/<path:filename>')
 @login_required
 @webdev_required
-def download_agency_export(agency_id, filename):
-    """Télécharger un fichier d'export d'agence"""
+def download_export_file(agency_id, filename):
+    """Sert un fichier d'export pour le téléchargement"""
     try:
         import os
         from flask import current_app
         
         export_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'exports')
-        filepath = os.path.join(export_dir, filename)
         
-        if not os.path.exists(filepath):
-            return jsonify({'error': 'Fichier non trouvé'}), 404
+        # Vérifier que le fichier existe et appartient à l'agence
+        if not filename.startswith(f"agency_{agency_id}_"):
+            return jsonify({'error': 'Accès non autorisé à ce fichier.'}), 403
         
-        return send_file(
-            filepath,
+        return send_from_directory(
+            directory=export_dir,
+            path=filename,
             as_attachment=True,
-            download_name=filename,
-            mimetype='application/json'
+            download_name=filename
         )
         
+    except FileNotFoundError:
+        return jsonify({'error': 'Fichier non trouvé.'}), 404
     except Exception as e:
         return jsonify({'error': f'Erreur lors du téléchargement: {str(e)}'}), 500
 

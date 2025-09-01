@@ -1,0 +1,217 @@
+[1mdiff --git a/app/README b/app/README[m
+[1mnew file mode 100644[m
+[1mindex 0000000..f310120[m
+[1m--- /dev/null[m
+[1m+++ b/app/README[m
+[36m@@ -0,0 +1,285 @@[m
+[32m+[m[32mOS Agency — Master README (v0.9.82)[m
+[32m+[m[32m1. Overview / Purpose[m
+[32m+[m
+[32m+[m[32mOS Agency is a SaaS platform for talent agencies (recruitment, dispatch, payroll, performance).[m
+[32m+[m[32mThe mission is to transform the current version (v0.9.82) into a robust, scalable, and market-ready SaaS (v1.0).[m
+[32m+[m
+[32m+[m[32mCore Roles in Workflow[m
+[32m+[m
+[32m+[m[32mGemini 2.5 Pro (Strategist) — defines vision, anticipates problems, produces sequential action plans.[m
+[32m+[m
+[32m+[m[32mIDE (Cursor or Windsurf Cascade, Implementer) — executes tasks, inspects files, runs tests, produces code.[m
+[32m+[m
+[32m+[m[32mSebastien (Boss) — provides context, validates priorities, makes final decisions.[m
+[32m+[m
+[32m+[m[32mImmediate Goal (v0.9.82): Stabilize locally by fixing all identified bugs before redeployment.[m
+[32m+[m
+[32m+[m[32mUltimate Goal (v1.0): A SaaS-ready, fast, secure, and scalable product.[m
+[32m+[m
+[32m+[m[32m2. Architecture & Tech Stack[m
+[32m+[m[32m🛠 Backend[m
+[32m+[m
+[32m+[m[32mLanguage: Python 3.9+[m
+[32m+[m
+[32m+[m[32mFramework: Flask (Application Factory + Blueprints)[m
+[32m+[m
+[32m+[m[32mORM: SQLAlchemy + Flask-Migrate[m
+[32m+[m
+[32m+[m[32mAuth: Flask-Login[m
+[32m+[m
+[32m+[m[32mServices: Payroll, Agency Management, Contract Calculations[m
+[32m+[m
+[32m+[m[32mPDF generation: WeasyPrint[m
+[32m+[m
+[32m+[m[32m🎨 Frontend[m
+[32m+[m
+[32m+[m[32mTemplates: Jinja2[m
+[32m+[m
+[32m+[m[32mCSS: Custom + Tailwind (migration in progress)[m
+[32m+[m
+[32m+[m[32mJavaScript: Monolithic app.js (58 KB, ~1100 lines → refactoring planned)[m
+[32m+[m
+[32m+[m[32m🗄 Database[m
+[32m+[m
+[32m+[m[32mDev: SQLite[m
+[32m+[m
+[32m+[m[32mProd: Heroku PostgreSQL[m
+[32m+[m
+[32m+[m[32m🚀 Deployment[m
+[32m+[m
+[32m+[m[32mPythonAnywhere (web server, $12/month)[m
+[32m+[m
+[32m+[m[32mHeroku Postgres (DB, $5/month)[m
+[32m+[m
+[32m+[m[32mCI/CD: Manual Git + Alembic migrations[m
+[32m+[m
+[32m+[m[32m📂 Project Structure (key excerpts)[m
+[32m+[m[32mrecruitment-app/[m
+[32m+[m[32m├── app.py (48KB) — Main application[m
+[32m+[m[32m├── config.py — Configuration[m
+[32m+[m[32m├── requirements.txt — Dependencies[m
+[32m+[m[32m├── run.py — Entry point[m
+[32m+[m[32m├── app/[m
+[32m+[m[32m│   ├── admin/routes.py (14KB)[m
+[32m+[m[32m│   ├── auth/routes.py (32KB)[m
+[32m+[m[32m│   ├── payroll/routes.py (37KB)[m
+[32m+[m[32m│   ├── services/payroll_service.py (21KB)[m
+[32m+[m[32m│   ├── static/js/app.js (58KB)[m
+[32m+[m[32m│   ├── static/css/style.css (106KB)[m
+[32m+[m[32m│   ├── templates/payroll.html (21KB)[m
+[32m+[m[32m│   └── models.py (12KB)[m
+[32m+[m[32m├── data/recruitment-dev.db — Local DB[m
+[32m+[m[32m├── migrations/ — Alembic migrations[m
+[32m+[m[32m├── uploads/exports/ — Exported JSON[m
+[32m+[m[32m└── tests/test_payroll_service.py[m
+[32m+[m
+[32m+[m[32m3. Features[m
+[32m+[m[32m✅ Completed[m
+[32m+[m
+[32m+[m[32mCentralized calculations: payroll_service, ContractCalculations, PerformanceRecord.[m
+[32m+[m
+[32m+[m[32mRBAC stabilized: WEBDEV, SUPER_ADMIN, ADMIN, MANAGER.[m
+[32m+[m
+[32m+[m[32mContract lifecycle: End conditions + conditional buttons.[m
+[32m+[m
+[32m+[m[32mMulti-agency support (Bangkok & Pattaya).[m
+[32m+[m
+[32m+[m[32m🔄 In Progress[m
+[32m+[m
+[32m+[m[32mLatency debugging on /payroll.[m
+[32m+[m
+[32m+[m[32mDecomposition of app.js monolith.[m
+[32m+[m
+[32m+[m[32mStabilization sprint v0.9.82 (7 identified bugs).[m
+[32m+[m
+[32m+[m[32m🚀 Planned[m
+[32m+[m
+[32m+[m[32mAutomated testing pipeline (Pytest, coverage).[m
+[32m+[m
+[32m+[m[32mFull UI refactor with Tailwind + DaisyUI/Flowbite.[m
+[32m+[m
+[32m+[m[32mContinuous validation of SaaS roadmap (scalability, UX, security).[m
+[32m+[m
+[32m+[m[32mPossible infra migration (Heroku-only hosting vs PythonAnywhere hybrid).[m
+[32m+[m
+[32m+[m[32m4. Version History & Sprint Notes[m
+[32m+[m[32mv0.9.8 (Strategic Orchestration Release)[m
+[32m+[m
+[32m+[m[32mAdded orchestration workflow (Gemini ↔ IDE ↔ Boss).[m
+[32m+[m
+[32m+[m[32mDefined 5 critical missions (Payroll latency, JS refactor, Tests, UI refactor, SaaS vision).[m
+[32m+[m
+[32m+[m[32mv0.9.82 (Préparation pour v0.9.9)[m
+[32m+[m
+[32m+[m[32mObjective: 100% local debugging before redeployment.[m
+[32m+[m
+[32m+[m[32mBugs Fixed ✅[m
+[32m+[m
+[32m+[m[32m#5 Contract PDF corruption (Git conflict markers).[m
+[32m+[m
+[32m+[m[32m#4 Performance Summary totals (batch aggregation fixed).[m
+[32m+[m
+[32m+[m[32m#3 Payroll Profit calculation (now correct).[m
+[32m+[m
+[32m+[m[32mBugs Pending 🎯[m
+[32m+[m
+[32m+[m[32m#6 Agency deletion button missing.[m
+[32m+[m
+[32m+[m[32m#7 Agency page translation (FR → EN).[m
+[32m+[m
+[32m+[m[32m#1 CSS desync (Staff List page).[m
+[32m+[m
+[32m+[m[32m#2 Incomplete user list (Admin missing, paused).[m
+[32m+[m
+[32m+[m[32m5. Critical Missions[m
+[32m+[m[32m🎯 Mission 1 — Payroll Latency (Highest Priority)[m
+[32m+[m
+[32m+[m[32mProblem: N+1 query issue, slow page rendering.[m
+[32m+[m
+[32m+[m[32mOptions: joinedload/subqueryload, pagination, indexing, caching, infra migration to Heroku.[m
+[32m+[m
+[32m+[m[32mSuccess: Page loads <1s with full dataset.[m
+[32m+[m
+[32m+[m[32m🎯 Mission 2 — app.js Refactor[m
+[32m+[m
+[32m+[m[32mSplit into dispatch.js, payroll.js, staff.js, ui.js.[m
+[32m+[m
+[32m+[m[32mOne module per sprint.[m
+[32m+[m
+[32m+[m[32m🎯 Mission 3 — Automated Testing[m
+[32m+[m
+[32m+[m[32mUnit tests (services, RBAC).[m
+[32m+[m
+[32m+[m[32mIntegration tests (API endpoints).[m
+[32m+[m
+[32m+[m[32mSaaS-ready validation (multi-agency, permissions).[m
+[32m+[m
+[32m+[m[32m🎯 Mission 4 — UI Refactor[m
+[32m+[m
+[32m+[m[32mTailwind migration.[m
+[32m+[m
+[32m+[m[32mReusable components with DaisyUI/Flowbite.[m
+[32m+[m
+[32m+[m[32mPages targeted: Login, Dispatch, Payroll.[m
+[32m+[m
+[32m+[m[32m🎯 Mission 5 — SaaS Roadmap[m
+[32m+[m
+[32m+[m[32mScalability & performance.[m
+[32m+[m
+[32m+[m[32mSecurity hardening.[m
+[32m+[m
+[32m+[m[32mUX enhancements.[m
+[32m+[m
+[32m+[m[32mInvestor-readiness for v1.0.[m
+[32m+[m
+[32m+[m[32m6. Deployment & DevOps[m
+[32m+[m[32m🔧 Environment Variables[m
+[32m+[m
+[32m+[m[32m.flaskenv, .env (Flask env, DATABASE_URL, secrets).[m
+[32m+[m
+[32m+[m[32m📜 Deployment Guide[m
+[32m+[m
+[32m+[m[32m4 Phases:[m
+[32m+[m
+[32m+[m[32mLocal prep → freeze deps, reset migrations, clean SQLite, create fresh migration, test upgrade, push Git.[m
+[32m+[m
+[32m+[m[32mHeroku DB setup → create app, add Postgres addon, reset, get DATABASE_URL.[m
+[32m+[m
+[32m+[m[32mPythonAnywhere deploy → clone repo, venv, install deps, create .env, configure WSGI.[m
+[32m+[m
+[32m+[m[32mFinalization → DB upgrade, create super admin, reload site.[m
+[32m+[m
+[32m+[m[32m✅ WSGI Config (PythonAnywhere)[m
+[32m+[m[32mimport os, sys[m
+[32m+[m[32mfrom dotenv import load_dotenv[m
+[32m+[m
+[32m+[m[32mpath = '/home/Naskaus/recruitment-app'[m
+[32m+[m[32mif path not in sys.path:[m
+[32m+[m[32m    sys.path.insert(0, path)[m
+[32m+[m
+[32m+[m[32mload_dotenv(os.path.join(path, '.env'))[m
+[32m+[m
+[32m+[m[32mfrom app import create_app[m
+[32m+[m[32mapplication = create_app()[m
+[32m+[m
+[32m+[m[32m📦 Backup Script (Heroku → PythonAnywhere)[m
+[32m+[m
+[32m+[m[32mAutomates daily DB backup via heroku pg:backups.[m
+[32m+[m
+[32m+[m[32mSends email with attachment (SMTP, Gmail app password).[m
+[32m+[m
+[32m+[m[32mScheduled via Pyth

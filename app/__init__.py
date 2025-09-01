@@ -9,6 +9,8 @@ import os
 import click # Import click for commands
 from dotenv import load_dotenv
 from config import config_by_name
+import logging
+from logging.handlers import RotatingFileHandler
 
 # Load environment variables from .env file
 load_dotenv()
@@ -27,6 +29,18 @@ def create_app():
     
     app = Flask(__name__)
     app.config.from_object(config_by_name[config_name])
+
+    # --- Logging Configuration ---
+    if not os.path.exists('logs'):
+        os.mkdir('logs')
+    file_handler = RotatingFileHandler('logs/os_agency.log', maxBytes=10240, backupCount=10)
+    file_handler.setFormatter(logging.Formatter(
+        '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'))
+    file_handler.setLevel(logging.INFO)
+    app.logger.addHandler(file_handler)
+
+    app.logger.setLevel(logging.INFO)
+    app.logger.info('OS Agency startup')
 
     # --- Initializations ---
     db.init_app(app)

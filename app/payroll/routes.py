@@ -12,7 +12,7 @@ from weasyprint import HTML
 payroll_bp = Blueprint('payroll', __name__, template_folder='../templates', url_prefix='/payroll')
 
 # --- Constants ---
-CONTRACT_TYPES = {"1jour": 1, "10jours": 10, "1mois": 30}
+CONTRACT_TYPES = {"1day": 1, "10days": 10, "1month": 30}
 DRINK_STAFF_COMMISSION = 100
 DRINK_BAR_PRICE = 220
 BAR_COMMISSION = DRINK_BAR_PRICE - DRINK_STAFF_COMMISSION  # 220 - 100 = 120 THB per drink
@@ -696,10 +696,9 @@ def assignment_pdf(assignment_id):
     original_duration = contract.days if contract else 1
     
     # Use ContractCalculations as single source of truth
-    try:
-        from app.services.payroll_service import update_or_create_contract_calculations, process_assignments_batch
-        contract_calc = update_or_create_contract_calculations(assignment_id)
-        
+    contract_calc = ContractCalculations.query.filter_by(assignment_id=assignment_id).first()
+
+    if contract_calc:
         contract_stats = {
             "drinks": contract_calc.total_drinks,
             "special_comm": contract_calc.total_special_comm,
@@ -708,11 +707,11 @@ def assignment_pdf(assignment_id):
             "profit": contract_calc.total_profit
         }
         days_worked = contract_calc.days_worked
-    except Exception as e:
-        current_app.logger.error(f"Error getting contract calculations for PDF: {str(e)}")
-        # Fallback to empty stats if service fails
+    else:
+        # Fallback de sécurité si aucun calcul n'a été pré-calculé
+        current_app.logger.warning(f"No pre-calculated ContractCalculations found for assignment {assignment_id}. Displaying zeros in PDF.")
         contract_stats = {"drinks": 0, "special_comm": 0, "salary": 0, "commission": 0, "profit": 0}
-        days_worked = len(assignment.performance_records)
+        days_worked = len(assignment.performance_records) # On se base sur les records s'ils existent
     
     try:
         html_for_pdf = render_template('assignment_pdf.html',

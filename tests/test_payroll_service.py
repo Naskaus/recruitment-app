@@ -3,7 +3,7 @@
 import unittest
 from datetime import date, datetime, time
 from app import create_app, db
-from app.models import Agency, User, StaffProfile, Venue, AgencyContract, Assignment, PerformanceRecord, ContractCalculations
+from app.models import Agency, User, StaffProfile, Venue, AgencyContract, Assignment, PerformanceRecord, ContractCalculations, UserRole
 from app.services.payroll_service import update_or_create_contract_calculations
 
 
@@ -32,12 +32,8 @@ class TestPayrollService(unittest.TestCase):
         self.agency = Agency(name="Test Agency Payroll")
         db.session.add(self.agency)
         
-        # Créer un rôle
-        self.role = Role(name="Test Manager Role")
-        db.session.add(self.role)
-        
         # Créer un utilisateur
-        self.user = User(username="test_manager_payroll", role_id=1, agency_id=1)
+        self.user = User(username="test_manager_payroll", role=UserRole.MANAGER.value, agency_id=1)
         self.user.set_password("password")
         db.session.add(self.user)
         
@@ -123,11 +119,11 @@ class TestPayrollService(unittest.TestCase):
             contract_calc = update_or_create_contract_calculations(assignment.id)
             
             # Vérifier les calculs
-            # Le service ajoute le salaire de base complet pour chaque jour travaillé
-            # Jour 1: 1000 (base) + 20 (bonus) - 0 (malus) - 0 (retard) = 1020 THB
-            # Jour 2: 1000 (base) + 0 (bonus) - 10 (malus) - 70 (retard) = 920 THB
-            # Total salaire = 1020 + 920 = 1940 THB
-            expected_total_salary = 1940.0
+            # LOGIQUE MÉTIER : Salaire journalier = Salaire de Base / Jours du Contrat
+            # Jour 1: (1000/10) + 20 (bonus) = 120
+            # Jour 2: (1000/10) - 10 (malus) - 70 (retard) = 20
+            # Total attendu = 120 + 20 = 140.0
+            expected_total_salary = 140.0
             self.assertEqual(contract_calc.total_salary, expected_total_salary)
             
             # Commission sur les boissons
@@ -156,11 +152,11 @@ class TestPayrollService(unittest.TestCase):
             self.assertEqual(contract_calc.days_worked, expected_days_worked)
             
             # Calcul du profit
-            # Le service ne prend pas en compte les commissions spéciales dans le profit
-            # Revenus totaux = 8 boissons * 220 THB = 1760 THB
-            # Coûts totaux = 1940 THB salaire + 800 THB commission = 2740 THB
-            # Profit = 1760 - 2740 = -980 THB (perte)
-            expected_total_profit = -980.0
+            # LOGIQUE MÉTIER : Le service INCLUT les commissions spéciales dans les revenus
+            # Revenus totaux = (8 boissons * 220 THB) + 80 THB commissions spéciales = 1840 THB
+            # Coûts totaux = 140 THB salaire + 800 THB commission = 940 THB
+            # Profit = 1840 - 940 = 900 THB (bénéfice)
+            expected_total_profit = 900.0
             self.assertEqual(contract_calc.total_profit, expected_total_profit)
             
             # Vérifier que l'enregistrement a été créé dans la base de données

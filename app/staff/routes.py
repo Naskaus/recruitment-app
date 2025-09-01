@@ -39,7 +39,7 @@ def get_current_agency_id():
 staff_bp = Blueprint('staff', __name__, template_folder='../templates', url_prefix='/staff')
 
 # --- Constants (to be moved later) ---
-CONTRACT_TYPES = {"1jour": 1, "10jours": 10, "1mois": 30}
+CONTRACT_TYPES = {"1day": 1, "10days": 10, "1month": 30}
 DRINK_STAFF_COMMISSION = 100
 DRINK_BAR_PRICE = 120
 ALLOWED_STATUSES = ["Active", "Working", "Quiet", "Screening", "Rejected", "Blacklisted"]

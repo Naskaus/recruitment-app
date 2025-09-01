@@ -2,10 +2,13 @@
 
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, send_file, send_from_directory
 from flask_login import login_required, current_user
-from app.decorators import webdev_required, role_required
+from app.decorators import webdev_required, role_required, admin_required
 from app.models import Agency, User, UserRole, StaffProfile, Venue, AgencyPosition, AgencyContract, Assignment, PerformanceRecord, ContractCalculations
 from app.services.agency_management_service import AgencyManagementService
 from app import db
+import subprocess
+import time
+from sqlalchemy import func
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -372,3 +375,45 @@ def export_and_download(agency_id):
         
     except Exception as e:
         return jsonify({'error': f'Erreur lors de l\'export et téléchargement: {str(e)}'}), 500
+
+@admin_bp.route('/debug-vitals')
+@login_required
+@admin_required
+def debug_vitals():
+    """
+    Endpoint de diagnostic pour vérifier la version du code et la performance de la DB.
+    """
+    # 1. Vérification de la version du code via Git
+    try:
+        commit_hash = subprocess.check_output(
+            ['git', 'rev-parse', 'HEAD'],
+            cwd='/home/Naskaus/recruitment-app'  # Chemin absolu du projet sur PythonAnywhere
+        ).decode('utf-8').strip()
+    except Exception as e:
+        commit_hash = f"Error getting git hash: {str(e)}"
+
+    # 2. Test de performance de la requête DB de base
+    start_time = time.time()
+    try:
+        # Simule la requête initiale de la page payroll
+        assignment_count = db.session.query(func.count(Assignment.id)).scalar()
+        db_status = "OK"
+    except Exception as e:
+        assignment_count = -1
+        db_status = f"Error connecting to DB: {str(e)}"
+    end_time = time.time()
+
+    db_query_time = (end_time - start_time) * 1000  # en ms
+
+    # 3. Renvoyer les résultats
+    return jsonify({
+        'status': 'OK',
+        'version_info': {
+            'deployed_commit_hash': commit_hash
+        },
+        'database_vitals': {
+            'status': db_status,
+            'total_assignments_found': assignment_count,
+            'query_time_ms': round(db_query_time, 2)
+        }
+    })

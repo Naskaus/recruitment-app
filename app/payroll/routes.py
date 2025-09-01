@@ -8,6 +8,7 @@ from app.services.payroll_service import update_or_create_contract_calculations,
 from app.decorators import admin_required, manager_required, super_admin_required, webdev_required, payroll_view_required
 from datetime import datetime, date, time as dt_time, timedelta
 from weasyprint import HTML
+from sqlalchemy.orm import joinedload
 
 payroll_bp = Blueprint('payroll', __name__, template_folder='../templates', url_prefix='/payroll')
 
@@ -88,12 +89,12 @@ def payroll_page():
     start_date_str = request.args.get('start_date')
     end_date_str = request.args.get('end_date')
 
-    # Base query scoped to the user's agency
+    # Base query scoped to the user's agency with eager loading to prevent N+1 queries
     q = Assignment.query.filter_by(agency_id=agency_id).options(
-        db.joinedload(Assignment.staff), 
-        db.joinedload(Assignment.manager), 
-        db.joinedload(Assignment.venue),
-        db.subqueryload(Assignment.performance_records)
+        joinedload(Assignment.staff_profile),
+        joinedload(Assignment.venue),
+        joinedload(Assignment.contract_calculations),
+        joinedload(Assignment.performance_records)
     )
 
     # Apply filters
@@ -234,7 +235,10 @@ def get_performance(assignment_id, ymd):
         agency_id = current_user.agency_id
     
     # Security: Ensure the requested assignment belongs to the user's agency
-    Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).first_or_404()
+    Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).options(
+        joinedload(Assignment.staff_profile),
+        joinedload(Assignment.venue)
+    ).first_or_404()
     
     try:
         day = datetime.fromisoformat(ymd).date()
@@ -257,7 +261,11 @@ def list_performance_for_assignment(assignment_id):
     else:
         agency_id = current_user.agency_id
     
-    a = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).first_or_404()
+    a = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).options(
+        joinedload(Assignment.staff_profile),
+        joinedload(Assignment.venue),
+        joinedload(Assignment.contract_calculations)
+    ).first_or_404()
     
     records = PerformanceRecord.query.filter_by(assignment_id=assignment_id) \
                                      .order_by(PerformanceRecord.record_date.desc()).all()
@@ -315,7 +323,10 @@ def upsert_performance():
     else:
         agency_id = current_user.agency_id
     
-    a = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).first()
+    a = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).options(
+        joinedload(Assignment.staff_profile),
+        joinedload(Assignment.venue)
+    ).first()
     if not a or a.status != 'active':
         return jsonify({"status": "error", "message": "Performance can only be added to active assignments."}), 400
     if not (a.start_date <= ymd <= a.end_date):
@@ -415,7 +426,10 @@ def preview_performance():
     else:
         agency_id = current_user.agency_id
     
-    a = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).first()
+    a = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).options(
+        joinedload(Assignment.staff_profile),
+        joinedload(Assignment.venue)
+    ).first()
     if not a or a.status != 'active':
         return jsonify({"status": "error", "message": "Performance can only be previewed for active assignments."}), 400
     
@@ -502,7 +516,11 @@ def get_contract_summary(assignment_id):
             agency_id = current_user.agency_id
         
         # Vérifier que l'assignment existe et appartient à l'agence
-        assignment = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).first()
+        assignment = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).options(
+            joinedload(Assignment.staff_profile),
+            joinedload(Assignment.venue),
+            joinedload(Assignment.contract_calculations)
+        ).first()
         if not assignment:
             return jsonify({"status": "error", "message": "Assignment not found"}), 404
         
@@ -571,12 +589,12 @@ def payroll_pdf():
     start_date_str = request.args.get('start_date')
     end_date_str = request.args.get('end_date')
 
-    # Base query scoped to the user's agency
+    # Base query scoped to the user's agency with eager loading to prevent N+1 queries
     q = Assignment.query.filter_by(agency_id=agency_id).options(
-        db.joinedload(Assignment.staff), 
-        db.joinedload(Assignment.manager), 
-        db.joinedload(Assignment.venue),
-        db.subqueryload(Assignment.performance_records)
+        joinedload(Assignment.staff_profile),
+        joinedload(Assignment.venue),
+        joinedload(Assignment.contract_calculations),
+        joinedload(Assignment.performance_records)
     )
 
     # Apply filters (same logic as payroll_page)
@@ -752,10 +770,10 @@ def report_view(assignment_id):
     
     # Security: Ensure the assignment belongs to the user's agency
     assignment = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).options(
-        db.joinedload(Assignment.staff),
-        db.joinedload(Assignment.manager),
-        db.joinedload(Assignment.venue),
-        db.subqueryload(Assignment.performance_records)
+        joinedload(Assignment.staff_profile),
+        joinedload(Assignment.venue),
+        joinedload(Assignment.contract_calculations),
+        joinedload(Assignment.performance_records)
     ).first_or_404()
 
     # Get contract duration from AgencyContract table
@@ -807,7 +825,11 @@ def assignment_summary_api(assignment_id):
         agency_id = current_user.agency_id
     
     # Security: Ensure the assignment belongs to the user's agency
-    assignment = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).first()
+    assignment = Assignment.query.filter_by(id=assignment_id, agency_id=agency_id).options(
+        joinedload(Assignment.staff_profile),
+        joinedload(Assignment.venue),
+        joinedload(Assignment.contract_calculations)
+    ).first()
     if not assignment:
         return jsonify({'error': 'Assignment not found'}), 404
     

@@ -31,4 +31,4 @@ archive/
 
 # Quarantine folder for cleanup operations
 _quarantine/
-
+/logs/

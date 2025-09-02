@@ -623,13 +623,13 @@ def payroll_pdf():
             start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
             q = q.filter(Assignment.end_date >= start_date)
         except ValueError:
-            pass
+            pass # Ignore invalid date format for PDF generation
     if end_date_str:
         try:
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
             q = q.filter(Assignment.start_date <= end_date)
         except ValueError:
-            pass
+            pass # Ignore invalid date format for PDF generation
     
     status_order = db.case((Assignment.status == 'active', 1), (Assignment.status == 'ended', 2), (Assignment.status == 'archived', 3), else_=4).label("status_order")
     all_assignments = q.order_by(status_order, Assignment.start_date.asc()).all()

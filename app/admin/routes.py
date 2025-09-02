@@ -5,7 +5,7 @@ from flask_login import login_required, current_user
 from app.decorators import webdev_required, role_required, admin_required
 from app.models import Agency, User, UserRole, StaffProfile, Venue, AgencyPosition, AgencyContract, Assignment, PerformanceRecord, ContractCalculations
 from app.services.agency_management_service import AgencyManagementService
-from app.services.payroll_service import process_assignments_batch, calculate_totals_with_aggregation
+
 from app import db
 import subprocess
 import time
@@ -420,42 +420,4 @@ def debug_vitals():
     })
 
 
-@admin_bp.route('/debug-payroll-comparison')
-@login_required
-@admin_required
-def debug_payroll_comparison():
-    """
-    Page de test temporaire pour comparer les résultats de l'ancienne et de la
-    nouvelle méthode de calcul de paie.
-    """
-    # Sélectionner un échantillon d'assignments pour le test
-    assignments_to_test = Assignment.query.filter(
-        Assignment.status == 'ongoing'
-    ).limit(20).all()
-    assignment_ids = [a.id for a in assignments_to_test]
 
-    # Méthode 1: L'ancienne fonction (lente)
-    results_old = process_assignments_batch(assignments_to_test)
-
-    # Méthode 2: La nouvelle fonction (rapide)
-    # Note: La nouvelle fonction retourne une liste, convertissons-la en dict
-    new_calcs_list = calculate_totals_with_aggregation(assignment_ids)
-    results_new_raw = {calc.assignment_id: calc for calc in new_calcs_list}
-    
-    # Préparer les données pour le template
-    comparison_data = []
-    for assignment in assignments_to_test:
-        old_calc = results_old.get(assignment.id)
-        new_calc = results_new_raw.get(assignment.id)
-        comparison_data.append({
-            'assignment_id': assignment.id,
-            'staff_name': assignment.staff.nickname if assignment.staff else 'N/A',
-            'old_salary': old_calc.total_salary if old_calc else 'N/A',
-            'new_salary': new_calc.total_salary if new_calc else 'N/A',
-            'salary_match': (old_calc.total_salary == new_calc.total_salary) if old_calc and new_calc else False,
-            'old_profit': old_calc.total_profit if old_calc else 'N/A',
-            'new_profit': new_calc.total_profit if new_calc else 'N/A',
-            'profit_match': (old_calc.total_profit == new_calc.total_profit) if old_calc and new_calc else False
-        })
-
-    return render_template('admin/debug_payroll_comparison.html', comparison_data=comparison_data)

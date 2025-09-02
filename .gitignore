@@ -29,3 +29,6 @@ uploads/
 archive/
 .housekeeping/
 
+# Quarantine folder for cleanup operations
+_quarantine/
+

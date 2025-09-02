@@ -81,7 +81,7 @@
 </style>
 
 <div class="page-header">
-  <h2>Payroll & Performance (Contracts)</h2>
+  <h2>Payroll & Performance (Contracts) v2</h2>
 </div>
 
 <div class="card" style="margin-bottom: 24px;">
@@ -110,15 +110,15 @@
           {% endfor %}
         </select>
       </div>
-      <div class="filter-group">
-        <label for="status">Status</label>
-        <select id="status" name="status">
-          <option value="">All Statuses</option>
-          {% for status in filters.statuses %}
-            <option value="{{ status }}" {% if filters.selected_status == status %}selected{% endif %}>{{ status|capitalize }}</option>
-          {% endfor %}
-        </select>
-      </div>
+             <div class="filter-group">
+         <label for="status">Status</label>
+         <select id="status" name="status">
+           <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Ongoing</option>
+           <option value="ended" {% if status_filter == 'ended' %}selected{% endif %}>Ended</option>
+           <option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Archived</option>
+           <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Statuses</option>
+         </select>
+       </div>
       <div class="filter-group">
         <label for="manager_id">Managed by</label>
         <select id="manager_id" name="manager_id">

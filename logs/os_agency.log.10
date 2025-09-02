@@ -1,152 +1,63 @@
-2025-09-01 22:44:54,175 ERROR: Exception on / [GET] [in C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py:825]
-Traceback (most recent call last):
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
-    self.dialect.do_execute(
-    ~~~~~~~~~~~~~~~~~~~~~~~^
-        cursor, str_statement, effective_parameters, context
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\default.py", line 951, in do_execute
-    cursor.execute(statement, parameters)
-    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-sqlite3.OperationalError: no such table: user
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 1455, in wsgi_app
-    response = self.full_dispatch_request()
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 869, in full_dispatch_request
-    rv = self.handle_user_exception(e)
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 867, in full_dispatch_request
-    rv = self.dispatch_request()
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 852, in dispatch_request
-    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask_login\utils.py", line 284, in decorated_view
-    elif not current_user.is_authenticated:
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\werkzeug\local.py", line 318, in __get__
-    obj = instance._get_current_object()
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\werkzeug\local.py", line 526, in _get_current_object
-    return get_name(local())
-                    ~~~~~^^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask_login\utils.py", line 25, in <lambda>
-    current_user = LocalProxy(lambda: _get_user())
-                                      ~~~~~~~~~^^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask_login\utils.py", line 370, in _get_user
-    current_app.login_manager._load_user()
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask_login\login_manager.py", line 364, in _load_user
-    user = self._user_callback(user_id)
-  File "C:\Users\User\os_agency_v0.55\recruitment-app\app\__init__.py", line 283, in load_user
-    return User.query.get(int(user_id))
-           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^
-  File "<string>", line 2, in get
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\util\deprecations.py", line 386, in warned
-    return fn(*args, **kwargs)  # type: ignore[no-any-return]
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\query.py", line 1126, in get
-    return self._get_impl(ident, loading.load_on_pk_identity)
-           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\query.py", line 1135, in _get_impl
-    return self.session._get_impl(
-           ~~~~~~~~~~~~~~~~~~~~~~^
-        mapper,
-        ^^^^^^^
-    ...<6 lines>...
-        execution_options=self._execution_options,
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\session.py", line 3873, in _get_impl
-    return db_load_fn(
-        self,
-    ...<5 lines>...
-        bind_arguments=bind_arguments,
-    )
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\loading.py", line 695, in load_on_pk_identity
-    session.execute(
-    ~~~~~~~~~~~~~~~^
-        q,
-        ^^
-    ...<2 lines>...
-        bind_arguments=bind_arguments,
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\session.py", line 2365, in execute
-    return self._execute_internal(
-           ~~~~~~~~~~~~~~~~~~~~~~^
-        statement,
-        ^^^^^^^^^^
-    ...<4 lines>...
-        _add_event=_add_event,
-        ^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\session.py", line 2251, in _execute_internal
-    result: Result[Any] = compile_state_cls.orm_execute_statement(
-                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
-        self,
-        ^^^^^
-    ...<4 lines>...
-        conn,
-        ^^^^^
-    )
-    ^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
-    result = conn.execute(
-        statement, params or {}, execution_options=execution_options
-    )
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
-    return meth(
-        self,
-        distilled_parameters,
-        execution_options or NO_OPTIONS,
-    )
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\sql\elements.py", line 526, in _execute_on_connection
-    return connection._execute_clauseelement(
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
-        self, distilled_params, execution_options
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
-    ret = self._execute_context(
-        dialect,
-    ...<8 lines>...
-        cache_hit=cache_hit,
-    )
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
-    return self._exec_single_context(
-           ~~~~~~~~~~~~~~~~~~~~~~~~~^
-        dialect, context, statement, parameters
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
-    self._handle_dbapi_exception(
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
-        e, str_statement, effective_parameters, cursor, context
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\base.py", line 2355, in _handle_dbapi_exception
-    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
-    self.dialect.do_execute(
-    ~~~~~~~~~~~~~~~~~~~~~~~^
-        cursor, str_statement, effective_parameters, context
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\default.py", line 951, in do_execute
-    cursor.execute(statement, parameters)
-    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such table: user
-[SQL: SELECT user.id AS user_id, user.username AS user_username, user.password_hash AS user_password_hash, user.role AS user_role, user.agency_id AS user_agency_id 
-FROM user 
-WHERE user.id = ?]
-[parameters: (2,)]
-(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-09-01 23:04:42,412 INFO: Looking for contract: name='3 days', agency_id=2 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:269]
+2025-09-01 23:04:42,413 INFO: Found contract: <AgencyContract 3 days (3 days) for FINAL TEST AGENCY> [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:270]
+2025-09-01 23:04:42,414 INFO: Contract rules: first_minute_penalty=0.0, additional_minute_penalty=5.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:272]
+2025-09-01 23:04:50,204 INFO: Calculs automatiques pour assignment 1, date 2025-09-02: [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:375]
+2025-09-01 23:04:50,207 INFO:   - Salaire journalier: 1000.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:377]
+2025-09-01 23:04:50,208 INFO:   - Profit journalier: 1700.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:378]
+2025-09-01 23:04:51,208 INFO: Looking for contract: name='3 days', agency_id=2 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:269]
+2025-09-01 23:04:51,209 INFO: Found contract: <AgencyContract 3 days (3 days) for FINAL TEST AGENCY> [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:270]
+2025-09-01 23:04:51,210 INFO: Contract rules: first_minute_penalty=0.0, additional_minute_penalty=5.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:272]
+2025-09-01 23:04:56,389 INFO: Looking for contract: name='3 days', agency_id=2 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:269]
+2025-09-01 23:04:56,390 INFO: Found contract: <AgencyContract 3 days (3 days) for FINAL TEST AGENCY> [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:270]
+2025-09-01 23:04:56,391 INFO: Contract rules: first_minute_penalty=0.0, additional_minute_penalty=5.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:272]
+2025-09-01 23:05:04,365 INFO: Calculs automatiques pour assignment 1, date 2025-09-03: [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:375]
+2025-09-01 23:05:04,367 INFO:   - Salaire journalier: 1000.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:377]
+2025-09-01 23:05:04,368 INFO:   - Profit journalier: 7000.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:378]
+2025-09-01 23:05:05,536 INFO: Looking for contract: name='3 days', agency_id=2 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:269]
+2025-09-01 23:05:05,537 INFO: Found contract: <AgencyContract 3 days (3 days) for FINAL TEST AGENCY> [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:270]
+2025-09-01 23:05:05,537 INFO: Contract rules: first_minute_penalty=0.0, additional_minute_penalty=5.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:272]
+2025-09-01 23:05:15,710 INFO: Looking for contract: name='1 day', agency_id=2 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:269]
+2025-09-01 23:05:15,711 INFO: Found contract: <AgencyContract 1 day (1 days) for FINAL TEST AGENCY> [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:270]
+2025-09-01 23:05:15,711 INFO: Contract rules: first_minute_penalty=0.0, additional_minute_penalty=5.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:272]
+2025-09-01 23:05:24,285 INFO: Calculs automatiques pour assignment 2, date 2025-09-01: [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:375]
+2025-09-01 23:05:24,288 INFO:   - Salaire journalier: 1000.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:377]
+2025-09-01 23:05:24,288 INFO:   - Profit journalier: 1200.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:378]
+2025-09-01 23:05:25,483 INFO: Looking for contract: name='1 day', agency_id=2 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:269]
+2025-09-01 23:05:25,485 INFO: Found contract: <AgencyContract 1 day (1 days) for FINAL TEST AGENCY> [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:270]
+2025-09-01 23:05:25,486 INFO: Contract rules: first_minute_penalty=0.0, additional_minute_penalty=5.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:272]
+2025-09-01 23:05:36,374 INFO: Looking for contract: name='10 days', agency_id=2 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:269]
+2025-09-01 23:05:36,375 INFO: Found contract: <AgencyContract 10 days (10 days) for FINAL TEST AGENCY> [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:270]
+2025-09-01 23:05:36,375 INFO: Contract rules: first_minute_penalty=0.0, additional_minute_penalty=5.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:272]
+2025-09-01 23:05:38,789 INFO: Calculs automatiques pour assignment 3, date 2025-09-01: [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:375]
+2025-09-01 23:05:38,791 INFO:   - Salaire journalier: 1000.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:377]
+2025-09-01 23:05:38,791 INFO:   - Profit journalier: -1000.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:378]
+2025-09-01 23:05:39,567 INFO: Looking for contract: name='10 days', agency_id=2 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:269]
+2025-09-01 23:05:39,568 INFO: Found contract: <AgencyContract 10 days (10 days) for FINAL TEST AGENCY> [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:270]
+2025-09-01 23:05:39,569 INFO: Contract rules: first_minute_penalty=0.0, additional_minute_penalty=5.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:272]
+2025-09-01 23:05:41,277 INFO: Looking for contract: name='10 days', agency_id=2 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:269]
+2025-09-01 23:05:41,279 INFO: Found contract: <AgencyContract 10 days (10 days) for FINAL TEST AGENCY> [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:270]
+2025-09-01 23:05:41,279 INFO: Contract rules: first_minute_penalty=0.0, additional_minute_penalty=5.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:272]
+2025-09-01 23:05:45,743 INFO: Calculs automatiques pour assignment 3, date 2025-09-02: [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:375]
+2025-09-01 23:05:45,745 INFO:   - Salaire journalier: 1000.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:377]
+2025-09-01 23:05:45,745 INFO:   - Profit journalier: -1000.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:378]
+2025-09-01 23:05:46,833 INFO: Looking for contract: name='10 days', agency_id=2 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:269]
+2025-09-01 23:05:46,834 INFO: Found contract: <AgencyContract 10 days (10 days) for FINAL TEST AGENCY> [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:270]
+2025-09-01 23:05:46,834 INFO: Contract rules: first_minute_penalty=0.0, additional_minute_penalty=5.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:272]
+2025-09-01 23:06:08,389 INFO: Looking for contract: name='10 days', agency_id=2 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:269]
+2025-09-01 23:06:08,390 INFO: Found contract: <AgencyContract 10 days (10 days) for FINAL TEST AGENCY> [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:270]
+2025-09-01 23:06:08,391 INFO: Contract rules: first_minute_penalty=0.0, additional_minute_penalty=5.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:272]
+2025-09-01 23:06:14,886 INFO: Calculs automatiques pour assignment 3, date 2025-09-03: [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:375]
+2025-09-01 23:06:14,889 INFO:   - Salaire journalier: 1000.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:377]
+2025-09-01 23:06:14,889 INFO:   - Profit journalier: -1000.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:378]
+2025-09-01 23:06:15,800 INFO: Looking for contract: name='10 days', agency_id=2 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:269]
+2025-09-01 23:06:15,801 INFO: Found contract: <AgencyContract 10 days (10 days) for FINAL TEST AGENCY> [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:270]
+2025-09-01 23:06:15,801 INFO: Contract rules: first_minute_penalty=0.0, additional_minute_penalty=5.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:272]
+2025-09-01 23:08:32,559 INFO: PDF generation started [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:552]
+2025-09-01 23:08:32,559 INFO: Processing PDF for agency_id: 2 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:563]
+2025-09-01 23:08:32,596 INFO: Rendering PDF template with 2 assignments [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:651]
+2025-09-01 23:08:32,610 INFO: Generating PDF from HTML [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:658]
+2025-09-01 23:08:32,711 INFO: PDF generated successfully, size: 12444 bytes [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:662]
+2025-09-01 23:37:37,711 INFO: OS Agency startup [in C:\Users\User\os_agency_v0.55\recruitment-app\app\__init__.py:43]
+2025-09-01 23:39:04,408 INFO: Looking for contract: name='10 days', agency_id=2 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:269]
+2025-09-01 23:39:04,409 INFO: Found contract: <AgencyContract 10 days (10 days) for FINAL TEST AGENCY> [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:270]
+2025-09-01 23:39:04,409 INFO: Contract rules: first_minute_penalty=0.0, additional_minute_penalty=5.0 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:272]

@@ -65,6 +65,12 @@ def _get_or_create_daily_record(assignment_id: int, ymd: date) -> 'PerformanceRe
 @login_required
 @payroll_view_required
 def payroll_page():
+    """
+    Page principale de la paie avec filtrage par défaut optimisé.
+    
+    PERFORMANCE: Par défaut, ne charge que les assignments 'active' pour améliorer
+    significativement les temps de chargement. Utilisez ?status=all pour voir tous les statuts.
+    """
     from flask import session
     
     # Début du chronométrage
@@ -83,7 +89,7 @@ def payroll_page():
     # Get filter arguments from request
     selected_venue_id = request.args.get('venue_id', type=int)
     selected_contract_type = request.args.get('contract_type')
-    selected_status = request.args.get('status')
+    selected_status = request.args.get('status', 'active')  # Default to 'active' for better performance
     search_nickname = request.args.get('nickname')
     selected_manager_id = request.args.get('manager_id', type=int)
     start_date_str = request.args.get('start_date')
@@ -102,10 +108,11 @@ def payroll_page():
         q = q.filter(Assignment.venue_id == selected_venue_id)
     if selected_contract_type:
         q = q.filter(Assignment.contract_type == selected_contract_type)
-    if selected_status:
+    
+    # Apply status filter with default to 'active' for better performance
+    if selected_status and selected_status != 'all':
         q = q.filter(Assignment.status == selected_status)
-    else:
-        q = q.filter(Assignment.status.in_(['active', 'ended', 'archived']))
+    # Note: If status is 'all' or not provided, no status filter is applied (shows all statuses)
     if search_nickname:
         q = q.join(StaffProfile).filter(StaffProfile.nickname.ilike(f'%{search_nickname}%'))
     if selected_manager_id:
@@ -203,7 +210,7 @@ def payroll_page():
     filter_data = {
         "venues": agency_venues,
         "contract_types": CONTRACT_TYPES.keys(),
-        "statuses": ['active', 'ended', 'archived'],
+        "statuses": ['ongoing', 'active', 'ended', 'archived', 'all'],
         "managers": agency_managers,
         "selected_venue_id": selected_venue_id,
         "selected_contract_type": selected_contract_type,
@@ -216,9 +223,9 @@ def payroll_page():
 
     # Log final avant le rendu
     total_time = time.time() - start_time
-    current_app.logger.info(f"[PERF] Page payroll prête pour rendu en {total_time:.3f}s total")
+    current_app.logger.info(f"[PERF] Page payroll prête pour rendu en {total_time:.3f}s total (filtre statut: {selected_status})")
     
-    return render_template('payroll.html', assignments=rows, filters=filter_data, summary=summary_stats)
+    return render_template('payroll.html', assignments=rows, filters=filter_data, summary=summary_stats, status_filter=selected_status)
 
 # --- API Performance ---
 

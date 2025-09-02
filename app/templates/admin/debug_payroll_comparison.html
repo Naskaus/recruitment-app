@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto mt-8">
+    <h1 class="text-2xl font-bold mb-4">Comparaison des Méthodes de Calcul de Paie</h1>
+    <p class="mb-4">Cette page compare les résultats de l'ancienne méthode (lente) et de la nouvelle (rapide). Vérifiez que les chiffres sont identiques pour chaque ligne.</p>
+
+    <div class="overflow-x-auto">
+        <table class="min-w-full bg-white border border-gray-200">
+            <thead class="bg-gray-100">
+                <tr>
+                    <th class="py-2 px-4 border-b">Assignment ID</th>
+                    <th class="py-2 px-4 border-b">Staff</th>
+                    <th class="py-2 px-4 border-b">Ancien Salaire</th>
+                    <th class="py-2 px-4 border-b">Nouveau Salaire</th>
+                    <th class="py-2 px-4 border-b">Match?</th>
+                    <th class="py-2 px-4 border-b">Ancien Profit</th>
+                    <th class="py-2 px-4 border-b">Nouveau Profit</th>
+                    <th class="py-2 px-4 border-b">Match?</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for data in comparison_data %}
+                <tr class="hover:bg-gray-50">
+                    <td class="py-2 px-4 border-b text-center">{{ data.assignment_id }}</td>
+                    <td class="py-2 px-4 border-b">{{ data.staff_name }}</td>
+                    <td class="py-2 px-4 border-b text-right">{{ "%.2f"|format(data.old_salary) }}</td>
+                    <td class="py-2 px-4 border-b text-right">{{ "%.2f"|format(data.new_salary) }}</td>
+                    <td class="py-2 px-4 border-b text-center">
+                        {% if data.salary_match %}
+                            <span class="text-green-500 font-bold">✓ Oui</span>
+                        {% else %}
+                            <span class="text-red-500 font-bold">✗ NON</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-2 px-4 border-b text-right">{{ "%.2f"|format(data.old_profit) }}</td>
+                    <td class="py-2 px-4 border-b text-right">{{ "%.2f"|format(data.new_profit) }}</td>
+                    <td class="py-2 px-4 border-b text-center">
+                        {% if data.profit_match %}
+                            <span class="text-green-500 font-bold">✓ Oui</span>
+                            {% else %}
+                            <span class="text-red-500 font-bold">✗ NON</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

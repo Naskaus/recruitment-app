@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Performance Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid full-width-page">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div class="page-title">
+            <h1>Performance Dashboard</h1>
+            <p>Analysis of contracts based on the current filters.</p>
+        </div>
+        <div class="action-buttons">
+            <a href="{{ url_for('payroll.payroll_dashboard_pdf', **request.args) }}" class="btn btn-primary" target="_blank">
+                <i class="fas fa-file-pdf"></i> Download PDF Report
+            </a>
+            <a href="{{ url_for('payroll.payroll_page') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Payroll
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter Summary Header -->
+    <div class="filter-summary-header">
+        <div class="filter-info-grid">
+            <div class="filter-item">
+                <i class="fas fa-user-tie"></i>
+                <div class="filter-content">
+                    <span class="filter-label">Manager</span>
+                    <span class="filter-value">
+                        {% if selected_manager %}
+                            {{ selected_manager.username }}
+                        {% else %}
+                            All Managers
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="filter-item">
+                <i class="fas fa-calendar-alt"></i>
+                <div class="filter-content">
+                    <span class="filter-label">Date Range</span>
+                    <span class="filter-value">
+                        {% if request.args.get('start_date') and request.args.get('end_date') %}
+                            {{ request.args.get('start_date') }} to {{ request.args.get('end_date') }}
+                        {% elif request.args.get('start_date') %}
+                            From {{ request.args.get('start_date') }}
+                        {% elif request.args.get('end_date') %}
+                            Until {{ request.args.get('end_date') }}
+                        {% else %}
+                            All Time
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="filter-item">
+                <i class="fas fa-filter"></i>
+                <div class="filter-content">
+                    <span class="filter-label">Status</span>
+                    <span class="filter-value">
+                        {% if request.args.get('status') and request.args.get('status') != 'all' %}
+                            {{ request.args.get('status')|title }}
+                        {% else %}
+                            All Statuses
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="filter-item">
+                <i class="fas fa-map-marker-alt"></i>
+                <div class="filter-content">
+                    <span class="filter-label">Venue</span>
+                    <span class="filter-value">
+                        {% if selected_venue %}
+                            {{ selected_venue.name }}
+                        {% else %}
+                            All Venues
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% include 'payroll/_dashboard_content.html' %}
+</div>
+{% endblock %}

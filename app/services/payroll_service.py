@@ -94,7 +94,7 @@ def process_assignments_batch(assignments):
     # Créer un dictionnaire pour accès rapide: assignment_id -> ContractCalculations
     calculations_dict = {calc.assignment_id: calc for calc in existing_calculations}
     
-    current_app.logger.info(f"[PERF] Pré-requêtes batch terminées en {(time_module.time() - batch_start):.3f}s")
+    current_app.logger.info(f"[PERF] Batch pre-queries finished in {(time_module.time() - batch_start):.3f}s")
     
     # TRAITEMENT EN MÉMOIRE: Itérer sur les assignments sans nouvelles requêtes DB
     results = {}
@@ -172,7 +172,7 @@ def process_assignments_batch(assignments):
     try:
         db.session.commit()
         calc_time = time_module.time() - calc_start
-        current_app.logger.info(f"[PERF] Batch de {len(assignments)} assignments traité en {calc_time:.3f}s")
+        current_app.logger.info(f"[PERF] Batch of {len(assignments)} assignments processed in {calc_time:.3f}s")
         return results
     except Exception as e:
         db.session.rollback()
@@ -609,3 +609,127 @@ def recalculate_all_contracts():
             continue
     
     return count
+
+
+def generate_performance_stats(assignments):
+    """
+    Generates performance statistics based on filtered contracts.
+    Analyzes actual work history (PerformanceRecord) for each contract.
+    
+    Args:
+        assignments (list): List of Assignment objects with preloaded performance_records
+        
+    Returns:
+        dict: Dictionary containing performance statistics
+    """
+    if not assignments:
+        return {
+            'total_profit': 0,
+            'total_days_worked': 0,
+            'unique_staff_count': 0,
+            'contract_breakdown': {
+                'by_type': {},
+                'by_status': {'complete': 0, 'incomplete': 0}
+            }
+        }
+    
+    # Initialize counters
+    total_profit = 0
+    total_days_worked = 0
+    unique_staff_ids = set()
+    
+    # Dictionaries for breakdown
+    contract_type_counts = {}
+    contract_status_counts = {'complete': 0, 'incomplete': 0}
+    
+    # Process each assignment
+    for assignment in assignments:
+        # Count unique staff
+        if assignment.staff:
+            unique_staff_ids.add(assignment.staff.id)
+        elif assignment.archived_staff_name:
+            # For deleted staff, use unique identifier based on name
+            unique_staff_ids.add(f"archived_{assignment.archived_staff_name}")
+        
+        # Get contract calculations (single source of truth)
+        contract_calc = ContractCalculations.query.filter_by(assignment_id=assignment.id).first()
+        
+        if contract_calc:
+            # Use pre-calculated data
+            total_profit += contract_calc.total_profit or 0
+            total_days_worked += contract_calc.days_worked or 0
+            
+            # Count by contract type
+            contract_type = assignment.contract_type
+            if contract_type not in contract_type_counts:
+                contract_type_counts[contract_type] = {
+                    'count': 0,
+                    'total_profit': 0,
+                    'total_days': 0
+                }
+            contract_type_counts[contract_type]['count'] += 1
+            contract_type_counts[contract_type]['total_profit'] += contract_calc.total_profit or 0
+            contract_type_counts[contract_type]['total_days'] += contract_calc.days_worked or 0
+            
+            # Determine if contract is complete or incomplete
+            # Get expected duration from AgencyContract
+            agency_contract = AgencyContract.query.filter_by(
+                name=assignment.contract_type,
+                agency_id=assignment.agency_id
+            ).first()
+            
+            expected_days = agency_contract.days if agency_contract else 1
+            actual_days = contract_calc.days_worked or 0
+            
+            if actual_days >= expected_days:
+                contract_status_counts['complete'] += 1
+            else:
+                contract_status_counts['incomplete'] += 1
+                
+        else:
+            # Fallback: calculate manually if no ContractCalculations
+            days_worked = len(assignment.performance_records)
+            total_days_worked += days_worked
+            
+            # Calculate profit manually
+            daily_profit = 0
+            for record in assignment.performance_records:
+                daily_profit += record.daily_profit or 0
+            total_profit += daily_profit
+            
+            # Count by contract type
+            contract_type = assignment.contract_type
+            if contract_type not in contract_type_counts:
+                contract_type_counts[contract_type] = {
+                    'count': 0,
+                    'total_profit': 0,
+                    'total_days': 0
+                }
+            contract_type_counts[contract_type]['count'] += 1
+            contract_type_counts[contract_type]['total_profit'] += daily_profit
+            contract_type_counts[contract_type]['total_days'] += days_worked
+            
+            # Determine status
+            agency_contract = AgencyContract.query.filter_by(
+                name=assignment.contract_type,
+                agency_id=assignment.agency_id
+            ).first()
+            
+            expected_days = agency_contract.days if agency_contract else 1
+            if days_worked >= expected_days:
+                contract_status_counts['complete'] += 1
+            else:
+                contract_status_counts['incomplete'] += 1
+    
+    # Build contract type breakdown
+    contract_breakdown = {
+        'by_type': contract_type_counts,
+        'by_status': contract_status_counts
+    }
+    
+    return {
+        'total_profit': total_profit,
+        'total_days_worked': total_days_worked,
+        'unique_staff_count': len(unique_staff_ids),
+        'contract_breakdown': contract_breakdown
+    }

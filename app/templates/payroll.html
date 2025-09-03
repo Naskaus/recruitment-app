@@ -138,11 +138,11 @@
           <input type="date" id="end_date" name="end_date" value="{{ filters.selected_end_date or '' }}">
       </div>
 
-      <div class="filter-actions">
-        <button type="submit" class="button button-primary">Apply Filters</button>
-        <a href="{{ url_for('payroll.payroll_page') }}" class="button button-secondary">Clear</a>
-        <a href="{{ url_for('payroll.payroll_pdf', **request.args) }}" target="_blank" class="button button-secondary payroll-export-pdf">Export PDF</a>
-        <!-- DEBUG: URL générée: {{ url_for('payroll.payroll_pdf', **request.args) }} -->
+      <div class="flex items-center space-x-2">
+          <button type="submit" class="button button-primary">Apply Filters</button>
+          <a href="{{ url_for('payroll.payroll_page') }}" class="button button-secondary">Clear</a>
+          <a href="{{ url_for('payroll.payroll_pdf', **request.args) }}" target="_blank" class="button button-secondary">Export PDF</a>
+          <a href="{{ url_for('payroll.payroll_dashboard', **request.args) }}" class="button button-secondary">Performance Report</a>
       </div>
     </form>
   </div>

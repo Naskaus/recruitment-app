@@ -2690,3 +2690,546 @@
     }
 }
 
+/* =============================================== */
+/* == Performance Dashboard Styles == */
+/* =============================================== */
+
+.dashboard-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem; /* Espace entre les sections */
+}
+
+.dashboard-section {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.summary-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem; /* Espace entre les cartes */
+    justify-content: center;
+}
+
+.summary-card {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-width: 200px;
+    max-width: 250px;
+    aspect-ratio: 1 / 1; /* Assure que la carte est carrée */
+    text-align: center;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    transition: all 0.2s ease-in-out;
+}
+
+.summary-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.summary-card-value {
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.summary-card-label {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin-top: 0.5rem;
+}
+
+/* =============================================== */
+/* == Performance Dashboard V2 Styles (PDF-like) ==*/
+/* =============================================== */
+
+.dashboard-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.dashboard-section {
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.section-title {
+    margin-bottom: 1rem;
+    font-weight: 600;
+    color: #343a40;
+}
+
+.section-title i {
+    margin-right: 0.5rem;
+    color: #495057;
+}
+
+/* Summary Cards (Gradient Style) */
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.summary-card {
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    min-height: 150px;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    transition: transform 0.2s ease-in-out;
+}
+
+.summary-card:hover {
+    transform: translateY(-5px);
+}
+
+.summary-card-profit {
+    background: linear-gradient(45deg, #5c67e8 0%, #8963b3 100%);
+}
+.summary-card-staff {
+    background: linear-gradient(45deg, #4776E6 0%, #8E54E9 100%);
+}
+.summary-card-days {
+    background: linear-gradient(45deg, #3b82f6 0%, #8b5cf6 100%);
+}
+
+.summary-card-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+}
+
+.summary-card-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    opacity: 0.8;
+    margin-top: 0.5rem;
+    color: #ffffff;
+}
+
+/* Breakdown Grid Layout */
+.breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+/* Breakdown Table Style */
+.breakdown-table thead {
+    background-color: #f8f9fa;
+}
+.breakdown-table th {
+    font-weight: 600;
+}
+.breakdown-table th, .breakdown-table td {
+    text-align: center;
+    vertical-align: middle;
+}
+.text-success { color: #198754 !important; }
+.text-danger { color: #dc3545 !important; }
+
+
+/* Status Breakdown & Progress Bars */
+.status-item {
+    margin-bottom: 1rem;
+}
+.status-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+}
+.progress {
+    height: 1rem;
+    border-radius: 0.25rem;
+}
+
+/* Detailed Table Styles */
+.detailed-table {
+    font-size: 0.9rem;
+}
+
+.status-badge {
+    color: #fff;
+    padding: 0.25em 0.6em;
+    border-radius: 0.25rem;
+    font-weight: 600;
+}
+.status-active { background-color: #0d6efd; }
+.status-archived { background-color: #6c757d; }
+.status-ended { background-color: #198754; }
+/* Add other statuses as needed */
+
+/* Final Dashboard Tweaks */
+.detailed-table tbody tr {
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* =============================================== */
+/* == Dashboard Table & Button Enhancements == */
+/* =============================================== */
+
+/* Enhanced Table Styling */
+.detailed-table {
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.detailed-table thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.detailed-table thead th {
+    border: 1px solid #5a6fd8;
+    padding: 12px 8px;
+    font-weight: 600;
+    text-align: center;
+    vertical-align: middle;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+.detailed-table tbody tr {
+    border-bottom: 1px solid #dee2e6;
+    transition: all 0.2s ease;
+}
+
+.detailed-table tbody tr:hover {
+    background-color: #f8f9fa;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.detailed-table tbody td {
+    border: 1px solid #dee2e6;
+    padding: 10px 8px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.detailed-table tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.detailed-table tbody tr:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+/* Enhanced Breakdown Table */
+.breakdown-table {
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.breakdown-table thead {
+    background: linear-gradient(135deg, #4776E6 0%, #8E54E9 100%);
+    color: white;
+}
+
+.breakdown-table thead th {
+    border: 1px solid #3d6bd8;
+    padding: 12px 8px;
+    font-weight: 600;
+    text-align: center;
+    vertical-align: middle;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+.breakdown-table tbody tr {
+    border-bottom: 1px solid #dee2e6;
+    transition: all 0.2s ease;
+}
+
+.breakdown-table tbody tr:hover {
+    background-color: #f8f9fa;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.breakdown-table tbody td {
+    border: 1px solid #dee2e6;
+    padding: 10px 8px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.breakdown-table tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.breakdown-table tbody tr:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+/* Enhanced Action Buttons */
+.action-buttons .btn {
+    padding: 12px 24px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    position: relative;
+    overflow: hidden;
+}
+
+.action-buttons .btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.action-buttons .btn:hover::before {
+    left: 100%;
+}
+
+.action-buttons .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+}
+
+.action-buttons .btn-primary:hover {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+}
+
+.action-buttons .btn-secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    border: none;
+    color: white;
+}
+
+.action-buttons .btn-secondary:hover {
+    background: linear-gradient(135deg, #5a6268 0%, #3d4449 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(108, 117, 125, 0.4);
+}
+
+/* Enhanced Status Badges */
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.status-badge.status-active {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border-color: #1e7e34;
+}
+
+.status-badge.status-ended {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    color: white;
+    border-color: #545b62;
+}
+
+.status-badge.status-archived {
+    background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%);
+    color: white;
+    border-color: #c82333;
+}
+
+.status-badge.status-ongoing {
+    background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+    color: white;
+    border-color: #e0a800;
+}
+
+/* Enhanced Summary Cards Hover Effects */
+.summary-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Enhanced Section Titles */
+.section-title {
+    position: relative;
+    padding-bottom: 10px;
+}
+
+.section-title::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 50px;
+    height: 3px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    border-radius: 2px;
+}
+
+.section-title i {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* =============================================== */
+/* == Filter Summary Header == */
+/* =============================================== */
+
+.filter-summary-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 2px solid #dee2e6;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    position: relative;
+    overflow: hidden;
+}
+
+.filter-summary-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea, #764ba2, #4776E6, #8E54E9);
+}
+
+.filter-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    align-items: center;
+}
+
+.filter-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 10px;
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.filter-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+    transition: left 0.6s;
+}
+
+.filter-item:hover::before {
+    left: 100%;
+}
+
+.filter-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.15);
+    border-color: rgba(102, 126, 234, 0.4);
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.filter-item i {
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+}
+
+.filter-content {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex: 1;
+}
+
+.filter-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+    margin: 0;
+}
+
+.filter-value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #343a40;
+    margin: 0;
+    line-height: 1.2;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .filter-info-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .filter-item {
+        padding: 12px;
+    }
+    
+    .filter-item i {
+        font-size: 20px;
+        width: 35px;
+        height: 35px;
+    }
+    
+    .filter-value {
+        font-size: 0.9rem;
+    }
+}
+

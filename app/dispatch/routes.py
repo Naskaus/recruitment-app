@@ -5,6 +5,7 @@ from flask_login import login_required, current_user
 from app.models import db, StaffProfile, User, Assignment, Venue
 from app.decorators import admin_required, manager_required, super_admin_required, webdev_required, assignment_management_required, dispatch_view_required, dispatch_edit_required
 from datetime import datetime, date, timedelta
+from app.services.payroll_service import update_or_create_contract_calculations
 
 dispatch_bp = Blueprint('dispatch', __name__, template_folder='../templates', url_prefix='/dispatch')
 
@@ -17,7 +18,9 @@ def compute_end_date(start_date: date, contract_name: str, agency_id: int) -> da
     if not contract:
         raise ValueError(f"Contract '{contract_name}' not found for this agency")
     
-    return start_date + timedelta(days=contract.days - 1)
+    end_date = start_date + timedelta(days=contract.days - 1)
+    print(f"DEBUG 1 [Calcul]: start={start_date}, days={contract.days}, end_date calculée={end_date}")
+    return end_date
 
 # --- VIEWS (HTML PAGE) ---
 @dispatch_bp.route('/')
@@ -140,6 +143,7 @@ def create_assignment():
         return jsonify({"status": "error", "message": "Venue not found in your agency."}), 404
 
     end_date = compute_end_date(start_date, contract_name, agency_id)
+    print(f"DEBUG 2 [Après Calcul]: end_date reçue={end_date}")
     
     # Final clean version of the constructor
     new_a = Assignment(
@@ -154,10 +158,14 @@ def create_assignment():
         status='active',
         managed_by_user_id=managed_by_user_id
     )
+    
+    print(f"DEBUG 3 [Avant Sauvegarde]: new_a.end_date={new_a.end_date}")
 
     staff.status = 'Working'
     db.session.add(new_a)
     db.session.commit()
+    
+    update_or_create_contract_calculations(new_a.id)
     
     return jsonify({"status": "success", "assignment": new_a.to_dict()}), 201
 
@@ -179,7 +187,7 @@ def end_assignment_now(assignment_id):
         return jsonify({"status": "error", "message": "Assignment is not active."}), 400
     
     today = date.today()
-    a.end_date = today if today >= a.start_date else a.start_date
+
     a.status = 'ended'
     
     if a.staff:
@@ -193,6 +201,9 @@ def end_assignment_now(assignment_id):
             a.staff.status = 'Active'
 
     db.session.commit()
+    
+    update_or_create_contract_calculations(a.id)
+    
     return jsonify({
         "status": "success", 
         "assignment": a.to_dict(),

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Performance Dashboard - OS Agency</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1cm;
+            @bottom-center {
+                content: "Page " counter(page) " of " counter(pages);
+                font-size: 10px;
+                color: #6c757d;
+            }
+        }
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 12px;
+            color: #343a40;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            color: #667eea;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 5px 0 0;
+            color: #6c757d;
+            font-size: 12px;
+        }
+        .filters {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 11px;
+        }
+        h2 {
+            font-size: 16px;
+            color: #495057;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        .text-danger {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .text-success {
+            color: #198754;
+            font-weight: bold;
+        }
+        .text-danger {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        a {
+            color: #0d6efd;
+            text-decoration: none;
+        }
+        /* Dashboard Content Styles */
+        .dashboard-container {
+            margin-top: 20px;
+        }
+        .summary-cards {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            gap: 15px;
+        }
+        .summary-card {
+            flex: 1;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .summary-card-value {
+            display: block;
+            font-size: 24px;
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+        .summary-card-label {
+            display: block;
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .breakdown-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .dashboard-section {
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .section-title {
+            font-size: 16px;
+            color: #495057;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .breakdown-table {
+            margin-top: 15px;
+        }
+        .breakdown-table th,
+        .breakdown-table td {
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #dee2e6;
+        }
+        .breakdown-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: bold;
+            border-radius: 4px;
+            background-color: #6c757d;
+            color: #ffffff;
+        }
+        .bg-light {
+            background-color: #f8f9fa !important;
+            color: #495057 !important;
+        }
+        .status-item {
+            margin-bottom: 20px;
+        }
+        .status-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+        .status-info span:first-child {
+            color: #495057;
+        }
+        .status-info .fw-bold {
+            font-weight: bold;
+            color: #495057;
+        }
+        .progress {
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #198754;
+            transition: width 0.6s ease;
+        }
+        .bg-success {
+            background-color: #198754 !important;
+        }
+        .bg-warning {
+            background-color: #ffc107 !important;
+        }
+        .detailed-table {
+            margin-top: 15px;
+        }
+        .detailed-table th,
+        .detailed-table td {
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #dee2e6;
+        }
+        .detailed-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: bold;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+        .status-active {
+            background-color: #198754;
+            color: #ffffff;
+        }
+        .status-ended {
+            background-color: #6c757d;
+            color: #ffffff;
+        }
+        .status-archived {
+            background-color: #495057;
+            color: #ffffff;
+        }
+        .status-ongoing {
+            background-color: #0d6efd;
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Performance Dashboard</h1>
+        <p>OS Agency - Generated on {{ today_date }}</p>
+    </div>
+
+    <div class="filters">
+        <strong>Report Filters:</strong>
+        <strong>Manager:</strong> {{ header_data.manager_name }} |
+        <strong>Status:</strong> {{ header_data.status }} |
+        <strong>Period:</strong> {{ header_data.date_range }}
+    </div>
+
+    <!-- Filter Summary Header -->
+    <div class="filter-summary-header" style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-user-tie" style="color: #667eea; font-size: 16px;"></i>
+                <div>
+                    <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Manager</div>
+                    <div style="font-weight: bold; color: #495057;">{{ header_data.manager_name }}</div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-map-marker-alt" style="color: #667eea; font-size: 16px;"></i>
+                <div>
+                    <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Venue</div>
+                    <div style="font-weight: bold; color: #495057;">{{ header_data.venue_name }}</div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-calendar-alt" style="color: #667eea; font-size: 16px;"></i>
+                <div>
+                    <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Date Range</div>
+                    <div style="font-weight: bold; color: #495057;">{{ header_data.date_range }}</div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-filter" style="color: #667eea; font-size: 16px;"></i>
+                <div>
+                    <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
+                    <div style="font-weight: bold; color: #495057;">{{ header_data.status }}</div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-list-alt" style="color: #667eea; font-size: 16px;"></i>
+                <div>
+                    <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Contract Type</div>
+                    <div style="font-weight: bold; color: #495057;">{{ header_data.contract_type }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% include 'payroll/_dashboard_content.html' %}
+
+</body>
+</html>

@@ -1,7 +1,7 @@
 # app/payroll/routes.py
 
 import time
-from flask import Blueprint, render_template, request, flash, Response, jsonify, abort, redirect, url_for, current_app
+from flask import Blueprint, render_template, request, flash, Response, jsonify, abort, redirect, url_for, current_app, session, make_response
 from flask_login import login_required, current_user
 from app.models import db, Assignment, StaffProfile, User, PerformanceRecord, Venue, AgencyContract, ContractCalculations
 from app.services.payroll_service import update_or_create_contract_calculations, process_assignments_batch
@@ -75,7 +75,7 @@ def payroll_page():
     
     # Début du chronométrage
     start_time = time.time()
-    current_app.logger.info(f"[PERF] Début du chargement de la page payroll - {datetime.now()}")
+    current_app.logger.info(f"[PERF] Starting payroll page load - {datetime.now()}")
     
     # Get current agency ID
     if current_user.role == 'webdev':
@@ -135,7 +135,7 @@ def payroll_page():
     all_assignments = q.order_by(status_order, Assignment.start_date.asc()).all()
     
     # Log après récupération des assignments
-    current_app.logger.info(f"[PERF] Assignments récupérés: {len(all_assignments)} en {(time.time() - start_time):.3f}s")
+    current_app.logger.info(f"[PERF] Assignments retrieved: {len(all_assignments)} in {(time.time() - start_time):.3f}s")
     
     # Process rows for display and calculation using optimized batch service
     rows = []
@@ -144,12 +144,12 @@ def payroll_page():
     
     # Début du traitement des calculs en lot
     calc_start_time = time.time()
-    current_app.logger.info(f"[PERF] Début du traitement batch pour {len(all_assignments)} assignments")
+    current_app.logger.info(f"[PERF] Starting batch processing for {len(all_assignments)} assignments")
     
     # OPTIMISATION: Traitement par lots au lieu de boucle individuelle
     try:
         batch_results = process_assignments_batch(all_assignments)
-        current_app.logger.info(f"[PERF] Batch terminé en {(time.time() - calc_start_time):.3f}s")
+        current_app.logger.info(f"[PERF] Batch finished in {(time.time() - calc_start_time):.3f}s")
     except Exception as e:
         current_app.logger.error(f"Error in batch processing: {str(e)}")
         # Fallback to individual processing if batch fails
@@ -199,7 +199,7 @@ def payroll_page():
         total_days_worked += days_worked
 
     # Log après traitement des calculs
-    current_app.logger.info(f"[PERF] Calculs terminés en {(time.time() - calc_start_time):.3f}s")
+    current_app.logger.info(f"[PERF] Calculations finished in {(time.time() - calc_start_time):.3f}s")
     
     summary_stats = {"total_profit": total_profit, "total_days_worked": total_days_worked}
 
@@ -223,7 +223,7 @@ def payroll_page():
 
     # Log final avant le rendu
     total_time = time.time() - start_time
-    current_app.logger.info(f"[PERF] Page payroll prête pour rendu en {total_time:.3f}s total (filtre statut: {selected_status})")
+    current_app.logger.info(f"[PERF] Payroll page ready to render in {total_time:.3f}s total (status filter: {selected_status})")
     
     return render_template('payroll.html', assignments=rows, filters=filter_data, summary=summary_stats, status_filter=selected_status)
 
@@ -861,3 +861,196 @@ def assignment_summary_api(assignment_id):
     except Exception as e:
         current_app.logger.error(f"Error calculating contract summary for assignment {assignment_id}: {e}")
         return jsonify({'error': 'Failed to calculate contract summary'}), 500
+
+
+# --- PERFORMANCE DASHBOARD ---
+@payroll_bp.route('/dashboard')
+@login_required
+@super_admin_required
+def payroll_dashboard():
+    """
+    Dashboard de performance pour analyser les données de paie avec des graphiques et statistiques.
+    """
+    from flask import session
+    
+    # Get current agency ID
+    if current_user.role == 'webdev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    if not agency_id:
+        abort(403, "User not associated with an agency.")
+    
+    # Get filter arguments from request (same as payroll_page)
+    selected_venue_id = request.args.get('venue_id', type=int)
+    selected_contract_type = request.args.get('contract_type')
+    selected_status = request.args.get('status')
+    search_nickname = request.args.get('nickname')
+    selected_manager_id = request.args.get('manager_id', type=int)
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+    
+    # Base query scoped to the user's agency with eager loading to prevent N+1 queries
+    q = Assignment.query.filter_by(agency_id=agency_id).options(
+        joinedload(Assignment.staff),
+        joinedload(Assignment.venue),
+        joinedload(Assignment.contract_calculations),
+        joinedload(Assignment.performance_records)
+    )
+    
+    # Apply filters (same logic as payroll_page)
+    if selected_venue_id:
+        q = q.filter(Assignment.venue_id == selected_venue_id)
+    if selected_contract_type:
+        q = q.filter(Assignment.contract_type == selected_contract_type)
+    
+    # Apply status filter
+    if selected_status and selected_status != 'all':
+        q = q.filter(Assignment.status == selected_status)
+    
+    if search_nickname:
+        q = q.join(StaffProfile).filter(StaffProfile.nickname.ilike(f'%{search_nickname}%'))
+    if selected_manager_id:
+        q = q.filter(Assignment.managed_by_user_id == selected_manager_id)
+    
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            q = q.filter(Assignment.end_date >= start_date)
+        except ValueError:
+            pass  # Ignore invalid date format for dashboard
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            q = q.filter(Assignment.start_date <= end_date)
+        except ValueError:
+            pass  # Ignore invalid date format for dashboard
+    
+    # Récupérer les assignments filtrés
+    filtered_assignments = q.order_by(Assignment.start_date.desc()).all()
+    
+    # Générer les statistiques de performance
+    from app.services.payroll_service import generate_performance_stats
+    performance_stats = generate_performance_stats(filtered_assignments)
+    
+    # Fetch dynamic filter data, scoped to the agency
+    agency_managers = User.query.filter_by(agency_id=agency_id).order_by(User.username).all()
+    agency_venues = Venue.query.filter_by(agency_id=agency_id).order_by(Venue.name).all()
+    
+    # Debug: Log the filter data being passed
+    current_app.logger.info(f"[DEBUG] Dashboard - Agency ID: {agency_id}")
+    current_app.logger.info(f"[DEBUG] Dashboard - Managers found: {len(agency_managers)}")
+    current_app.logger.info(f"[DEBUG] Dashboard - Venues found: {len(agency_venues)}")
+    if selected_manager_id:
+        current_app.logger.info(f"[DEBUG] Dashboard - Selected manager ID: {selected_manager_id} (type: {type(selected_manager_id)})")
+        for manager in agency_managers:
+            current_app.logger.info(f"[DEBUG] Dashboard - Manager {manager.id} (type: {type(manager.id)}): {manager.username}")
+    
+    # Get the selected manager object if manager_id is provided
+    selected_manager = None
+    if selected_manager_id:
+        selected_manager = User.query.get(selected_manager_id)
+    
+    # Get the selected venue object if venue_id is provided
+    selected_venue = None
+    if selected_venue_id:
+        selected_venue = Venue.query.get(selected_venue_id)
+    
+    # Prepare filter data for template (same approach as PDF route)
+    filter_data = {
+        "venues": agency_venues,
+        "managers": agency_managers
+    }
+    
+    # Pass data to the template with names expected by the frontend
+    return render_template('payroll/dashboard.html',
+                           active_filters=request.args,
+                           stats=performance_stats,
+                           contracts=filtered_assignments,
+                           filter_data=filter_data,
+                           selected_manager=selected_manager,
+                           selected_venue=selected_venue)
+
+
+@payroll_bp.route('/dashboard/pdf')
+@login_required
+@payroll_view_required
+def payroll_dashboard_pdf():
+    from app.services.payroll_service import generate_performance_stats
+    from app.models import User
+
+    if current_user.role == 'webdev':
+        agency_id = session.get('current_agency_id', current_user.agency_id)
+    else:
+        agency_id = current_user.agency_id
+    
+    if not agency_id:
+        abort(403)
+
+    q = Assignment.query.filter_by(agency_id=agency_id).options(
+        joinedload(Assignment.staff),
+        joinedload(Assignment.venue),
+        joinedload(Assignment.contract_calculations),
+        joinedload(Assignment.performance_records)
+    )
+
+    # Apply all filters from the request args (same logic as main dashboard)
+    selected_venue_id = request.args.get('venue_id', type=int)
+    selected_contract_type = request.args.get('contract_type')
+    selected_status = request.args.get('status')
+    search_nickname = request.args.get('nickname')
+    selected_manager_id = request.args.get('manager_id', type=int)
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    if selected_venue_id:
+        q = q.filter(Assignment.venue_id == selected_venue_id)
+    if selected_contract_type:
+        q = q.filter(Assignment.contract_type == selected_contract_type)
+    if selected_status and selected_status != 'all':
+        q = q.filter(Assignment.status == selected_status)
+    if search_nickname:
+        q = q.join(StaffProfile).filter(StaffProfile.nickname.ilike(f'%{search_nickname}%'))
+    if selected_manager_id:
+        q = q.filter(Assignment.managed_by_user_id == selected_manager_id)
+    
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            q = q.filter(Assignment.end_date >= start_date)
+        except ValueError:
+            pass  # Ignore invalid date format for PDF
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            q = q.filter(Assignment.start_date <= end_date)
+        except ValueError:
+            pass  # Ignore invalid date format for PDF
+
+    filtered_assignments = q.order_by(Assignment.start_date.desc()).all()
+    performance_stats = generate_performance_stats(filtered_assignments)
+
+    # Prepare header data for PDF
+    header_data = {
+        'manager_name': User.query.get(selected_manager_id).username if selected_manager_id else 'All Managers',
+        'status': selected_status.capitalize() if selected_status else 'All Statuses',
+        'date_range': f"{start_date_str} to {end_date_str}" if start_date_str and end_date_str else 'All Time',
+        'venue_name': Venue.query.get(selected_venue_id).name if selected_venue_id else 'All Venues',
+        'contract_type': selected_contract_type.capitalize() if selected_contract_type else 'All Types'
+    }
+
+    rendered_html = render_template(
+        'payroll/dashboard_pdf.html',
+        stats=performance_stats,
+        contracts=filtered_assignments,
+        header_data=header_data
+    )
+    
+    pdf = HTML(string=rendered_html, base_url=request.url_root).write_pdf()
+    
+    response = make_response(pdf)
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'inline; filename=performance_dashboard_{date.today().isoformat()}.pdf'
+    
+    return response

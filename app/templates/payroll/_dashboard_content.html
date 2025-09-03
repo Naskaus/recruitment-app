@@ -1,0 +1,109 @@
+<!-- Dashboard Content - Partiel réutilisable pour HTML et PDF -->
+<div class="dashboard-container">
+    <div class="summary-cards">
+        <div class="summary-card summary-card-profit">
+            <span class="summary-card-value">{{ stats.total_profit|round(0) }} THB</span>
+            <span class="summary-card-label">TOTAL PROFIT</span>
+        </div>
+        <div class="summary-card summary-card-staff">
+            <span class="summary-card-value">{{ stats.unique_staff_count }}</span>
+            <span class="summary-card-label">UNIQUE STAFF</span>
+        </div>
+        <div class="summary-card summary-card-days">
+            <span class="summary-card-value">{{ stats.total_days_worked }}</span>
+            <span class="summary-card-label">TOTAL DAYS WORKED</span>
+        </div>
+    </div>
+
+    <div class="breakdown-grid">
+        <div class="dashboard-section">
+            <h5 class="section-title"><i class="fas fa-list-alt"></i> Breakdown by Contract Type</h5>
+            <table class="table breakdown-table">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Count</th>
+                        <th>Total Profit</th>
+                        <th>Days</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for type, data in stats.contract_breakdown.by_type.items() %}
+                    <tr>
+                        <td><span class="badge bg-light text-dark">{{ type }}</span></td>
+                        <td>{{ data.count }}</td>
+                        <td class="{{ 'text-success' if data.total_profit >= 0 else 'text-danger' }} fw-bold">
+                            {{ data.total_profit|round(2) }}
+                        </td>
+                        <td>{{ data.total_days }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="dashboard-section">
+            <h5 class="section-title"><i class="fas fa-check-circle"></i> Breakdown by Status</h5>
+            {% set complete = stats.contract_breakdown.by_status.get('complete', 0) %}
+            {% set incomplete = stats.contract_breakdown.by_status.get('incomplete', 0) %}
+            {% set total_status = complete + incomplete %}
+            
+            <div class="status-item">
+                <div class="status-info">
+                    <span>Complete Contracts</span>
+                    <span class="fw-bold">{{ complete }}</span>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ (complete / total_status * 100) if total_status else 0 }}%" aria-valuenow="{{ complete }}" aria-valuemin="0" aria-valuemax="{{ total_status }}"></div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div class="status-info">
+                    <span>Incomplete Contracts</span>
+                    <span class="fw-bold">{{ incomplete }}</span>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar bg-warning" role="progressbar" style="width: {{ (incomplete / total_status * 100) if total_status else 0 }}%" aria-valuenow="{{ incomplete }}" aria-valuemin="0" aria-valuemax="{{ total_status }}"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-section">
+        <h5 class="section-title"><i class="fas fa-file-contract"></i> Detailed Contracts ({{ contracts|length }})</h5>
+        <div class="table-responsive">
+            <table class="table table-hover detailed-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Staff</th>
+                        <th>Staff ID</th>
+                        <th>Venue</th>
+                        <th>Contract Type</th>
+                        <th>Status</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Days Worked</th>
+                        <th>Total Profit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contract in contracts %}
+                    <tr>
+                        <td>{{ contract.id }}</td>
+                        <td>{{ contract.staff.nickname if contract.staff else contract.archived_staff_name }}</td>
+                        <td>{{ contract.staff.staff_id if contract.staff else 'N/A' }}</td>
+                        <td>{{ contract.venue.name if contract.venue else 'N/A' }}</td>
+                        <td>{{ contract.contract_type }}</td>
+                        <td><span class="badge status-badge status-{{ contract.status|lower }}">{{ contract.status }}</span></td>
+                        <td>{{ contract.start_date.strftime('%Y-%m-%d') if contract.start_date else 'N/A' }}</td>
+                        <td>{{ contract.end_date.strftime('%Y-%m-%d') if contract.end_date else 'N/A' }}</td>
+                        <td>{{ contract.contract_calculations.days_worked if contract.contract_calculations else 'N/A' }}</td>
+                        <td class="{{ 'text-success' if contract.contract_calculations and contract.contract_calculations.total_profit >= 0 else 'text-danger' }}">{{ contract.contract_calculations.total_profit if contract.contract_calculations else 'N/A' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

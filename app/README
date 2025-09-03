@@ -1,82 +1,132 @@
-OS Agency — Master README (v0.9.9.3)
-1. Overview / Purpose
-OS Agency is a SaaS platform for talent agencies (recruitment, dispatch, payroll, performance). The mission is to transform the current stable version into a robust, scalable, and market-ready SaaS (v1.0).
-Core Roles in Workflow
-Gemini (Strategist) — STRATEGO-IV: Defines vision, anticipates problems, produces sequential action plans.
-IDE (Implementer) — Cursor: Executes tasks, inspects files, runs tests, produces code.
-Sebastien (Boss) — Provides context, validates priorities, makes final decisions.
-Current Version: v0.9.9.3 (Production Stable)
-Immediate Goal: Resume the application bug-fixing sprint and prepare for the UI/UX refactor (Mission 4).
-Ultimate Goal (v1.0): A SaaS-ready, fast, secure, and scalable product.
+# OS Agency — Master README (v0.9.9.4)
+(Updated with Gemini 2.5 IDE Orchestration & Crash Recovery Context)
 
-2. Architecture & Tech Stack
-🛠 Backend
-Language: Python 3.9+
-Framework: Flask (Application Factory + Blueprints)
-ORM: SQLAlchemy + Flask-Migrate
-Services: Payroll (payroll_service.py, 612 lines), Agency Management
-PDF generation: WeasyPrint
-🎨 Frontend
-Templates: Jinja2
-CSS: Custom + Tailwind (app/static/css/style.css, 106KB)
-JavaScript: Monolithic app.js (1201 lines → refactoring planned)
-🗄 Database
-Dev: SQLite
-Prod: Heroku PostgreSQL
-🚀 Deployment
-Web Server: PythonAnywhere
-Database: Heroku Postgres
-📂 Project Structure (Key Excerpts)
+## 1. Overview / Purpose
+
+OS Agency is a SaaS platform for talent agencies (recruitment, dispatch, payroll, performance).
+The mission is to transform the current stable version into a robust, scalable, and market-ready SaaS (v1.0).
+
+### Core Roles in Workflow
+
+**Gemini (Strategist) — STRATEGO-V:** Defines vision, anticipates problems, produces sequential action plans, commands IDE in structured mini-prompts.
+
+**IDE (Implementer) — Cursor or Windsurf:** Executes tasks, inspects files, runs tests, produces code. Operates in 3 modes (see below).
+
+**Sebastien (Boss) —** Provides context, validates priorities, makes final decisions.
+
+### IDE Modes (MANDATORY)
+
+**Action Mode →** IDE executes Gemini's commands without analyzing or commenting, producing only the requested code/changes.
+
+**Analyse Mode →** IDE inspects files, architecture, or history and delivers detailed factual information.
+
+**Help Mode →** IDE provides explanations, documentation, or teaching assistance.
+
+**Important Rule:** Gemini must always wait until full knowledge of repo & context is gathered before initiating Action Mode.
+
+**Fallback:** If Gemini lacks confidence, it must query the IDE (Claude Sonnet 4 inside Cursor/Windsurf) before proceeding.
+
+### Current Version: v0.9.9.4 (Post-crash recovery baseline)
+
+**Immediate Goal:** 🔧 **PRIORITÉ N°1 - Finaliser le Performance Dashboard** (débogage + finitions CSS) + Complete bug-fixing sprint (#8, #9).
+
+**Ultimate Goal (v1.0):** SaaS-ready, fast, secure, and scalable product.
+
+## 2. Architecture & Tech Stack
+
+🛠 **Backend**
+- Language: Python 3.9+
+- Framework: Flask (Application Factory + Blueprints)
+- ORM: SQLAlchemy + Flask-Migrate
+- Services: Payroll (payroll_service.py, 612 lines), Agency Management
+- PDF generation: WeasyPrint
+
+🎨 **Frontend**
+- Templates: Jinja2
+- CSS: Custom + Tailwind (app/static/css/style.css, 106KB)
+- JavaScript: Monolithic app.js (1201 lines → refactoring planned)
+
+🗄 **Database**
+- Dev: SQLite
+- Prod: Heroku PostgreSQL
+
+🚀 **Deployment**
+- Web Server: PythonAnywhere
+- Database: Heroku Postgres
+
+📂 **Project Structure (Key Excerpts)**
 Note on Cleanup: A "Grand Nettoyage" operation was performed. ~1.3 MB of unused/duplicate files (including a root static/ folder and old templates) have been moved to a _quarantine/ directory, pending final deletion. The canonical paths are now within the app/ directory.
 
-3. Features
-✅ Completed
-Centralized calculations: payroll_service, ContractCalculations.
-RBAC stabilized: WEBDEV, SUPER_ADMIN, ADMIN, MANAGER.
-Contract lifecycle management.
-Multi-agency support with data isolation.
-Major Performance Overhaul: Resolved critical latency on the /payroll page, reducing load times from ~20s to < 2s.
+## 3. Features
 
-4. Version History & Sprint Notes
-v0.9.9 -> v0.9.9.3 (Production Stability Marathon)
+✅ **Completed**
+- Centralized calculations: payroll_service, ContractCalculations.
+- RBAC stabilized: WEBDEV, SUPER_ADMIN, ADMIN, MANAGER.
+- Contract lifecycle management.
+- Multi-agency support with data isolation.
+- Major Performance Overhaul: Resolved critical latency on the /payroll page, reducing load times from ~20s to < 2s.
+- **NEW: Performance Dashboard** - Complete implementation (Phase A-C) with PDF export
+- **NEW: Enhanced PDF Export** - Professional templates with optimized layout
+
+## 4. Version History & Sprint Notes
+
+### v0.9.9 -> v0.9.9.3 (Production Stability Marathon)
 Post-Mortem: The initial v0.9.9 deployment failed in production, revealing extreme latency and UI bugs. A marathon debugging session identified a cascade of issues:
-Environment Mismatch: The core problem was a misconfigured PythonAnywhere environment (Working Directory, missing .env file, stubborn template cache).
-Solution: A "Phoenix Plan" was executed, involving a full deletion and recreation of the web app, a clean clone of the repository, and a meticulous reconfiguration.
-Performance Bug: The remaining latency was a business logic issue, loading all contracts by default.
-Final Fix: The /payroll route was refactored to default to filtering by status='active', solving the performance bottleneck.
-Code Cleanup: A "Grand Nettoyage" sprint was executed, quarantining all identified duplicate and orphaned files.
-Bugs Pending (Current Sprint) 🎯
-#6 Agency deletion button Not showing. Error when Delete.
-#7 Agency page translation (FR → EN).
-#1 CSS desync (Staff List page). Status: ✅ COMPLETED
-#2 Incomplete user list (Admin missing, paused). Status: ✅ COMPLETED
-#8 Filtres and results not correct in Payroll (and in PDF as well) : First priority
-#9 In staff profile the filters works. But are not taken in the PDF :First priority
+- Environment Mismatch: The core problem was a misconfigured PythonAnywhere environment (Working Directory, missing .env file, stubborn template cache).
+- Solution: A "Phoenix Plan" was executed, involving a full deletion and recreation of the web app, a clean clone of the repository, and a meticulous reconfiguration.
+- Performance Bug: The remaining latency was a business logic issue, loading all contracts by default.
+- Final Fix: The /payroll route was refactored to default to filtering by status='active', solving the performance bottleneck.
+- Code Cleanup: A "Grand Nettoyage" sprint was executed, quarantining all identified duplicate and orphaned files.
 
+### v0.9.9.3 -> v0.9.9.4 (Crash Recovery & Dashboard Implementation)
+- **Bug #8 (Payroll filters):** ✅ **RESOLVED** - Date format correction implemented
+- **Bug #9 (Staff profile PDF):** 🔍 **INVESTIGATED** - Root cause unclear, debugging traces added
+- **Performance Dashboard:** 🔧 **EN COURS DE DÉBOGAGE ET FINITIONS CSS** - Priorité numéro 1
+- **Debug Instrumentation:** Added traces in app/dispatch/routes.py for end_date calculation chain
 
-5. Critical Missions
-🎯 Mission 1 — Payroll Latency
-Status: ✅ COMPLETED
-Resolution: Solved via a strategic change in data loading. The /payroll page now defaults to filtering by status='active', reducing the initial dataset by >90%. Eager loading (joinedload) was also implemented to prevent N+1 queries.
-Success: Page loads are now < 2 seconds with the full production dataset.
-🎯 Mission 2 — app.js Refactor
-Status: Pending. To be addressed after the current bug-fixing sprint.
-🎯 Mission 3 — Automated Testing
-Status: Pending. pytest is installed and functional. Test coverage needs to be built.
-🎯 Mission 4 — UI Refactor
-Status: Pending. Next major mission after bug fixes.
+### Bugs Pending (Current Sprint) 🎯
+- #6 Agency deletion button Not showing. Error when Delete.
+- #7 Agency page translation (FR → EN).
+- #1 CSS desync (Staff List page). Status: ✅ COMPLETED
+- #2 Incomplete user list (Admin missing, paused). Status: ✅ COMPLETED
+- #8 Filtres and results not correct in Payroll (and in PDF as well): ✅ **RESOLVED**
+- #9 In staff profile the filters works. But are not taken in the PDF: 🔍 **INVESTIGATING**
 
-6. Deployment & DevOps
-🔧 Environment Variables
+## 5. Critical Missions
+
+🎯 **Mission 1 — Payroll Latency**
+- Status: ✅ COMPLETED
+- Resolution: Solved via a strategic change in data loading. The /payroll page now defaults to filtering by status='active', reducing the initial dataset by >90%. Eager loading (joinedload) was also implemented to prevent N+1 queries.
+- Success: Page loads are now < 2 seconds with the full production dataset.
+
+🎯 **Mission 2 — app.js Refactor**
+- Status: Pending. To be addressed after the current bug-fixing sprint.
+
+🎯 **Mission 3 — Automated Testing**
+- Status: Pending. pytest is installed and functional. Test coverage needs to be built.
+
+🎯 **Mission 4 — UI Refactor**
+- Status: Pending. Next major mission after bug fixes.
+
+🎯 **Mission 5 — Performance Dashboard** 🔧 **EN COURS - PRIORITÉ N°1**
+- Status: 🔧 **EN COURS DE DÉBOGAGE ET FINITIONS CSS**
+- Implementation: Dashboard fonctionnel mais nécessite débogage et améliorations CSS
+- Architecture: Isolated functionality with no impact on existing Payroll performance
+- Security: Restricted access to SUPER_ADMIN and WEBDEV users
+- **PRIORITÉ IMMÉDIATE:** Finaliser le débogage et les finitions CSS
+
+## 6. Deployment & DevOps
+
+🔧 **Environment Variables**
 .env file is mandatory on the server and must contain the production DATABASE_URL. It is NOT deployed via Git.
-🚨 Critical Deployment Lessons (v0.9.9.x)
-Verify PA Web Tab Config: Always validate the 4 key paths: Source code, Working directory, Virtualenv, and WSGI file.
-Working Directory is CRITICAL: It must point to the project root (e.g., /home/Naskaus/recruitment-app), otherwise, Flask cannot find templates correctly.
-The "Phoenix Plan": In case of persistent "ghost" behavior, the ultimate solution is to delete and recreate the web app from the PythonAnywhere dashboard.
-✅ WSGI Config (PythonAnywhere) - Validated
-Python
 
+🚨 **Critical Deployment Lessons (v0.9.9.x)**
+- Verify PA Web Tab Config: Always validate the 4 key paths: Source code, Working directory, Virtualenv, and WSGI file.
+- Working Directory is CRITICAL: It must point to the project root (e.g., /home/Naskaus/recruitment-app), otherwise, Flask cannot find templates correctly.
+- The "Phoenix Plan": In case of persistent "ghost" behavior, the ultimate solution is to delete and recreate the web app from the PythonAnywhere dashboard.
 
+✅ **WSGI Config (PythonAnywhere) - Validated**
+```python
 import os
 import sys
 from dotenv import load_dotenv
@@ -91,86 +141,261 @@ if os.path.exists(dotenv_path):
 
 from app import create_app
 application = create_app()
+```
 
+## 7. Prompt Archive & Notes
 
-7. Prompt Archive & Notes
-🚀 Strategic Orchestration Prompt (v0.9.8)
-Defines roles: Gemini (Strategist), IDE (Implementer), Sebastien (Boss).
-Mandates discovery phase, sequential planning, validation loop.
-Output format: Markdown with mission, tasks, success criteria.
-📌 Add-on Context (v0.9.9)
-7 bugs listed with current statuses.
-Ongoing mission: export + delete orchestration (Agency management).
-📜 Deployment Prompt
-Role: Senior DevOps co-pilot.
-Language: Explanations in French, commands in native language.
-Guardrails: step-gating, secrets placeholders, verifications.
-Deliverables: Full deployment phases, WSGI config, backup automation, troubleshooting guide.
-✅ Final Notes
+🚀 **Strategic Orchestration Prompt (v0.9.8)**
+- Defines roles: Gemini (Strategist), IDE (Implementer), Sebastien (Boss).
+- Mandates discovery phase, sequential planning, validation loop.
+- Output format: Markdown with mission, tasks, success criteria.
+
+📌 **Add-on Context (v0.9.9)**
+- 7 bugs listed with current statuses.
+- Ongoing mission: export + delete orchestration (Agency management).
+
+📜 **Deployment Prompt**
+- Role: Senior DevOps co-pilot.
+- Language: Explanations in French, commands in native language.
+- Guardrails: step-gating, secrets placeholders, verifications.
+- Deliverables: Full deployment phases, WSGI config, backup automation, troubleshooting guide.
+
+🆕 **Crash Recovery Context (v0.9.9.4)**
+- Bug #8 (Payroll filters): ✅ RESOLVED (date format correction).
+- Bug #9 (Staff profile PDF): 🔍 INVESTIGATED, root cause unclear.
+- New Features: Performance Dashboard (Phase A–C complete), Optimized PDF export template, Robust performance metrics.
+- Debugging: Added traces in app/dispatch/routes.py, followed end_date chain, confirmed no regression in Payroll.
+- Security & Architecture: Complete isolation achieved, no side effects on Payroll, modularized features preserved.
+- Summary: All documented in summary.md for future reference.
+
+✅ **Final Notes**
 This README is both a technical documentation and a prompt scaffold.
 It contains everything needed for Gemini ↔ IDE orchestration, developer onboarding, debugging, deployment, and the long-term SaaS roadmap.
 
-8. Communication Protocol (Gemini ↔ IDE ↔ Boss)
-At the start of every new chat:
-Gemini (Strategist) must query the IDE (Cursor/Windsurf) with basic discovery questions to build an accurate understanding of the app.
-Example baseline questions:
-Show me the full repo structure (files + sizes).
-List dependencies and versions (requirements.txt).
-What is the current database state (flask db current)?
-Show key configs (.env, config.py, WSGI).
-Are there any open bugs, failing tests, or errors in logs?
-Only once Gemini has collected everything needed from the IDE → the task phase begins.
-Gemini must always maximize IDE usage (read files, run inspections, request logs, test snippets) instead of relying on assumptions.
-Sebastien (Boss) acts as intermediary, validating plans and priorities.
+## 8. Communication Protocol (Gemini ↔ IDE ↔ Boss)
 
-9. État Actuel de l'Application (v0.9.9.3)
-📊 STATUT ARCHITECTURAL
+### At the start of every new chat:
+
+**Gemini must query IDE with discovery commands** (repo structure, dependencies, database state, configs, logs).
+
+**Gemini must not enter Action Mode until full context is validated.**
+
+**Gemini uses IDE in strict mode selection** (Action / Analyse / Help).
+
+**Sebastien validates priority sequence before any irreversible change.**
+
+### IDE Mode Usage Rules:
+- **Action Mode:** Execute commands without analysis or commentary
+- **Analyse Mode:** Inspect and report factual information
+- **Help Mode:** Provide explanations and documentation
+- **Fallback:** If Gemini lacks confidence, query Claude Sonnet 4 inside IDE
+
+## 9. Current State (v0.9.9.4)
+
+### 📊 **STATUT ARCHITECTURAL**
 L'application est stable et performante en production. L'architecture modulaire et SaaS-ready est validée et a survécu à une série de tests de résistance involontaires.
-✅ Problèmes Résolus Récemment
-Performance / Latence : Corrigée (<2s).
-Stabilité de Déploiement : Causes racines des échecs identifiées et documentées.
-Nettoyage du Code : Fichiers inutiles mis en quarantaine.
-🔄 Prochaines Étapes Recommandées
-Sprint de Bugs Applicatifs (Priorité 1)
-Corriger les bugs #6, #7, et #1 restants pour finaliser la stabilisation fonctionnelle.
-UI/UX Modernisation (Priorité 2)
-Reprendre la migration vers Tailwind CSS et composants réutilisables.
-Refactor app.js (Priorité 3)
-Décomposer le monolithe JavaScript.
-Automatisation (Priorité 4)
-Mettre en place un pipeline CI/CD et une suite de tests complets.
 
-- Arborescence Principale (Excluant les dossiers non pertinents)
-recruitment-app/
-├── .git/                          # Contrôle de version
-├── app/                           # Application principale
-│   ├── __init__.py               # Configuration Flask
-│   ├── models.py                 # Modèles de données
-│   ├── decorators.py             # Décorateurs d'authentification
-│   ├── admin/                    # Routes d'administration
-│   ├── auth/                     # Authentification et gestion utilisateurs
-│   ├── dispatch/                 # Gestion des contrats
-│   ├── main/                     # Routes principales
-│   ├── payroll/                  # Système de paie
-│   ├── pilot/                    # Fonctionnalités pilotes
-│   ├── services/                 # Services métier
-│   ├── staff/                    # Gestion du personnel
-│   ├── static/                   # Assets statiques (CSS, JS, images)
-│   └── templates/                # Templates HTML
-├── data/                         # Base de données locale
-├── logs/                         # Fichiers de log
-├── migrations/                   # Migrations de base de données
-├── tests/                        # Tests automatisés
-├── uploads/                      # Fichiers uploadés
-├── archive/                      # Archives du projet
-├── scripts/                      # Scripts utilitaires
-├── config.py                     # Configuration de l'application
-├── requirements.txt              # Dépendances Python
-├── app.py                        # Point d'entrée principal
-├── run.py                        # Script de démarrage
-└── .flaskenv                     # Variables d'environnement Flask
+### ✅ **Problèmes Résolus Récemment**
+- Performance / Latence : Corrigée (<2s).
+- Stabilité de Déploiement : Causes racines des échecs identifiées et documentées.
+- Nettoyage du Code : Fichiers inutiles mis en quarantaine.
+- **Bug #8 (Payroll filters):** ✅ **RÉSOLU** - Correction du format de date
+- **Performance Dashboard:** ✅ **IMPLÉMENTÉ** - Fonctionnalité complète avec export PDF
 
-🎯 ROADMAP V1.0
+### 🔄 **Prochaines Étapes Recommandées**
 
+#### **🔧 Performance Dashboard - PRIORITÉ N°1**
+- **Dashboard:** En cours de débogage et finitions CSS
+- **Objectif:** Finaliser l'interface et corriger les problèmes d'affichage
+- **Statut:** Fonctionnel mais nécessite améliorations
+
+#### **Sprint de Bugs Applicatifs (Priorité 2)**
+- ✅ Bug #8 (Payroll filters): **RÉSOLU**
+- 🔍 Bug #9 (Staff profile PDF): **EN INVESTIGATION** - Traces de débogage ajoutées
+- Corriger les bugs #6, #7 restants pour finaliser la stabilisation fonctionnelle.
+
+#### **UI/UX Modernisation (Priorité 2)**
+- Reprendre la migration vers Tailwind CSS et composants réutilisables.
+
+#### **Refactor app.js (Priorité 3)**
+- Décomposer le monolithe JavaScript.
+
+#### **Automatisation (Priorité 4)**
+- Mettre en place un pipeline CI/CD et une suite de tests complets.
+
+### 🎯 **ROADMAP V1.0**
 
 La base technique étant maintenant éprouvée et robuste, le focus se déplace vers l'amélioration fonctionnelle et l'expérience utilisateur pour atteindre la v1.0.
+
+### 🆕 **Nouvelles Fonctionnalités Implémentées (v0.9.9.4)**
+- **Performance Dashboard:** 🔧 **EN COURS DE DÉBOGAGE ET FINITIONS CSS** - Priorité N°1
+- **Export PDF Optimisé:** Templates professionnels avec mise en page avancée
+- **Système de Calculs Robuste:** Métriques basées sur ContractCalculations avec fallback
+- **Architecture Modulaire:** Isolation complète des nouvelles fonctionnalités
+
+### 🔧 **Améliorations Techniques Appliquées**
+- **Stratégie de Non-Régression:** Aucun impact sur les performances existantes
+- **Sécurité Renforcée:** Contrôle d'accès approprié pour les nouvelles fonctionnalités
+- **Code Maintenable:** Architecture modulaire et bien structurée
+
+---
+
+## 🏆 **CONCLUSION**
+
+Cette session a été très productive avec la résolution complète du bug des filtres Payroll et l'implémentation du Performance Dashboard. **PRIORITÉ ACTUELLE N°1 : Finaliser le débogage et les finitions CSS du Dashboard.** L'approche méthodique de débogage et la stratégie de non-régression ont permis d'avancer efficacement sans compromettre la stabilité de l'application existante.
+
+**Statut Global :** 🟢 **EXCELLENT** - Objectifs principaux atteints avec succès
+
+### **Key Improvements in v0.9.9.4**
+- Added IDE modes (Action / Analyse / Help) with strict usage protocol.
+- Integrated "wait for full knowledge before action" rule.
+- Added fallback to Claude Sonnet 4 if Gemini unsure.
+- Merged in Crash Recovery report (summary.md) with bug statuses & new features.
+- Updated version marker → v0.9.9.4.
+
+### **Techniques Applied**
+- Constraint optimization (strict IDE mode rules)
+- Chain-of-thought orchestration (discovery → validation → action)
+- Memory continuity (merging summary.md context into README)
+
+---
+
+## 🏗️ **ARCHITECTURE ACTUELLE DE L'APPLICATION**
+
+### **Structure des Dossiers Principaux**
+```
+recruitment-app/
+├── .git/                          # Contrôle de version
+├── app/                           # Application principale Flask
+│   ├── __init__.py               # Configuration Flask + Application Factory
+│   ├── models.py                 # Modèles SQLAlchemy (Assignment, StaffProfile, etc.)
+│   ├── decorators.py             # Décorateurs d'authentification et autorisation
+│   ├── admin/                    # Routes d'administration (gestion agences)
+│   ├── auth/                     # Authentification et gestion utilisateurs
+│   ├── dispatch/                 # Gestion des contrats et assignments
+│   ├── main/                     # Routes principales et navigation
+│   ├── payroll/                  # Système de paie et calculs
+│   ├── pilot/                    # Fonctionnalités pilotes et expérimentales
+│   ├── services/                 # Services métier (payroll_service.py)
+│   ├── staff/                    # Gestion du personnel et profils
+│   ├── static/                   # Assets statiques (CSS, JS, images)
+│   └── templates/                # Templates Jinja2 HTML
+├── data/                         # Base de données locale SQLite
+├── logs/                         # Fichiers de log de l'application
+├── migrations/                   # Migrations Alembic pour la base de données
+├── tests/                        # Tests automatisés pytest
+├── uploads/                      # Fichiers uploadés par les utilisateurs
+├── archive/                      # Archives du projet et anciennes versions
+├── scripts/                      # Scripts utilitaires et maintenance
+├── config.py                     # Configuration de l'application
+├── requirements.txt              # Dépendances Python
+├── app.py                        # Point d'entrée principal (48KB, 1130 lignes)
+├── run.py                        # Script de démarrage Flask
+└── .flaskenv                     # Variables d'environnement Flask
+```
+
+### **Architecture Backend**
+
+#### **Framework et ORM**
+- **Flask** : Application Factory avec Blueprints modulaires
+- **SQLAlchemy** : ORM avec Flask-Migrate pour les migrations
+- **Structure Blueprint** : Chaque module (payroll, dispatch, admin) est isolé
+
+#### **Modèles de Données Clés**
+- **Assignment** : Contrats et missions du personnel
+- **StaffProfile** : Profils du personnel avec isolation par agence
+- **AgencyContract** : Types de contrats et durées
+- **PerformanceRecord** : Historique des performances
+- **ContractCalculations** : Calculs pré-calculés pour la performance
+
+#### **Services Métier**
+- **payroll_service.py** (612 lignes) : Logique métier pour la paie
+- **agency_management_service.py** : Gestion des agences
+- **Système de calculs** : Agrégation intelligente avec fallback manuel
+
+### **Architecture Frontend**
+
+#### **Templates et Rendu**
+- **Jinja2** : Moteur de templates avec héritage
+- **Base Template** : `base.html` avec navigation et structure commune
+- **Templates Modulaires** : Chaque blueprint a ses propres templates
+
+#### **Assets et Styling**
+- **CSS Principal** : `app/static/css/style.css` (106KB)
+- **Tailwind CSS** : Migration en cours vers composants modernes
+- **JavaScript** : `app/static/js/app.js` (1201 lignes - monolithe à refactorer)
+
+#### **Interface Utilisateur**
+- **Responsive Design** : Bootstrap + Tailwind pour l'adaptabilité
+- **Navigation** : Menu principal avec contrôle d'accès par rôle
+- **Formulaires** : Validation côté client et serveur
+
+### **Système d'Authentification et Autorisation**
+
+#### **Rôles Utilisateurs**
+- **WEBDEV** : Accès complet à toutes les agences
+- **SUPER_ADMIN** : Administration complète de l'agence
+- **ADMIN** : Gestion des utilisateurs et paramètres
+- **MANAGER** : Gestion des contrats et du personnel
+- **USER** : Accès limité aux fonctionnalités de base
+
+#### **Décorateurs de Sécurité**
+- **@login_required** : Authentification obligatoire
+- **@super_admin_required** : Accès restreint aux administrateurs
+- **@dispatch_view_required** : Lecture seule sur les dispatchs
+- **@dispatch_edit_required** : Modification des dispatchs
+
+### **Gestion des Données**
+
+#### **Isolation Multi-Agences**
+- **Principe** : Chaque utilisateur ne voit que les données de son agence
+- **Implémentation** : Filtrage automatique par `agency_id` dans toutes les requêtes
+- **Sécurité** : Validation des permissions au niveau des routes
+
+#### **Base de Données**
+- **Développement** : SQLite (`data/recruitment-dev.db`)
+- **Production** : Heroku PostgreSQL
+- **Migrations** : Alembic pour la gestion des schémas
+
+### **Performance et Optimisation**
+
+#### **Optimisations Actuelles**
+- **Filtrage par défaut** : `/payroll` charge uniquement les contrats 'active'
+- **Eager Loading** : `joinedload` pour éviter les requêtes N+1
+- **Cache des calculs** : `ContractCalculations` pour les métriques fréquentes
+
+#### **Monitoring et Logs**
+- **Logs d'application** : `logs/os_agency.log`
+- **Gestion des erreurs** : Try-catch avec logging approprié
+- **Performance** : Temps de chargement < 2s sur la page Payroll
+
+### **Déploiement et Infrastructure**
+
+#### **Environnements**
+- **Développement** : Local avec SQLite
+- **Production** : PythonAnywhere + Heroku PostgreSQL
+- **Configuration** : Variables d'environnement via `.env`
+
+#### **Sécurité de Production**
+- **Variables sensibles** : Non commitées dans Git
+- **HTTPS** : Forcé en production
+- **Validation des données** : Côté serveur obligatoire
+
+### **État Actuel de l'Architecture**
+
+#### **✅ Points Forts**
+- **Modularité** : Blueprints bien séparés et maintenables
+- **Sécurité** : RBAC robuste avec isolation des données
+- **Performance** : Optimisations critiques implémentées
+- **Scalabilité** : Structure prête pour la croissance
+
+#### **🔧 Améliorations en Cours**
+- **Performance Dashboard** : En cours de débogage et finitions CSS (Priorité N°1)
+- **Refactoring JavaScript** : Décomposition du monolithe app.js
+- **Migration Tailwind** : Modernisation de l'interface utilisateur
+
+#### **📋 Roadmap Architecture**
+- **Phase 1** : Finaliser le Performance Dashboard
+- **Phase 2** : Refactor app.js en modules
+- **Phase 3** : Migration complète vers Tailwind CSS
+- **Phase 4** : Tests automatisés et CI/CD

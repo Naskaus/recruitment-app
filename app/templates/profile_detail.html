@@ -9,7 +9,7 @@
         <a href="{{ url_for('staff.profile_form', profile_id=profile.id) }}" class="button button-primary">
           Edit Profile
         </a>
-        <a href="{{ url_for('staff.profile_pdf', profile_id=profile.id) }}" class="button button-secondary" target="_blank">
+        <a href="{{ url_for('staff.profile_pdf', profile_id=profile.id, start_date=filter_start_date.isoformat() if filter_start_date else '', end_date=filter_end_date.isoformat() if filter_end_date else '') }}" class="button button-secondary" target="_blank">
           Export PDF
         </a>
         <button 

@@ -634,13 +634,17 @@ def payroll_pdf():
     status_order = db.case((Assignment.status == 'active', 1), (Assignment.status == 'ended', 2), (Assignment.status == 'archived', 3), else_=4).label("status_order")
     all_assignments = q.order_by(status_order, Assignment.start_date.asc()).all()
     
+    # Récupérer tous les contrats de l'agence en une seule requête
+    agency_contracts = AgencyContract.query.filter_by(agency_id=agency_id).all()
+    contracts_dict = {contract.name: contract for contract in agency_contracts}
+    
     # Process rows for display and calculation using ContractCalculations as single source of truth
     rows = []
     total_profit = 0
     total_days_worked = 0
     for a in all_assignments:
-        # Get contract duration from AgencyContract table
-        contract = AgencyContract.query.filter_by(name=a.contract_type, agency_id=agency_id).first()
+        # Obtenir la durée du contrat depuis le dictionnaire (pas de requête DB)
+        contract = contracts_dict.get(a.contract_type)
         original_duration = contract.days if contract else 1
         
         # Use ContractCalculations as single source of truth
@@ -661,11 +665,18 @@ def payroll_pdf():
             # Fallback to empty stats if service fails
             contract_stats = {"drinks": 0, "special_comm": 0, "salary": 0, "commission": 0, "profit": 0}
             days_worked = len(a.performance_records)
+        # Récupérer le nom du contrat depuis le dictionnaire des contrats
+        contract_name = None
+        contract = contracts_dict.get(a.contract_type)
+        if contract:
+            contract_name = f"{contract.name} ({contract.days} days)"
+            
         rows.append({
             "assignment": a,
             "days_worked": days_worked,
             "original_duration": original_duration,
-            "contract_stats": contract_stats
+            "contract_stats": contract_stats,
+            "contract_name": contract_name
         })
         total_profit += contract_stats["profit"]
         total_days_worked += days_worked
@@ -1036,7 +1047,7 @@ def payroll_dashboard_pdf():
         'manager_name': User.query.get(selected_manager_id).username if selected_manager_id else 'All Managers',
         'status': selected_status.capitalize() if selected_status else 'All Statuses',
         'date_range': f"{start_date_str} to {end_date_str}" if start_date_str and end_date_str else 'All Time',
-        'venue_name': Venue.query.get(selected_venue_id).name if selected_venue_id else 'All Venues',
+        'venue': Venue.query.get(selected_venue_id).name if selected_venue_id else 'All Venues',
         'contract_type': selected_contract_type.capitalize() if selected_contract_type else 'All Types'
     }
 
@@ -1044,7 +1055,8 @@ def payroll_dashboard_pdf():
         'payroll/dashboard_pdf.html',
         stats=performance_stats,
         contracts=filtered_assignments,
-        header_data=header_data
+        header_data=header_data,
+        today_date=date.today().strftime('%Y-%m-%d')
     )
     
     pdf = HTML(string=rendered_html, base_url=request.url_root).write_pdf()

@@ -52,7 +52,12 @@
                     <td>{{ row.assignment.staff.nickname if row.assignment.staff else row.assignment.archived_staff_name }}</td>
                     <td>{{ row.assignment.venue.name }}</td>
                     <td>{{ row.assignment.manager.username if row.assignment.manager else 'N/A' }}</td>
-                    <td>{{ row.assignment.start_date.strftime('%d/%m/%y') }} - {{ row.assignment.end_date.strftime('%d/%m/%y') }}</td>
+                    <td>
+                        {{ row.assignment.start_date.strftime('%d/%m/%y') }} - {{ row.assignment.end_date.strftime('%d/%m/%y') }}
+                        <div style="font-size: 7pt; color: #666; white-space: nowrap;">
+                            {{ row.contract_name or row.assignment.contract_type }}
+                        </div>
+                    </td>
                     <td>{{ row.days_worked }}</td>
                     <td class="text-right">{{ '%.0f'|format(row.contract_stats.salary) }} ฿</td>
                     <td class="text-right">{{ '%.0f'|format(row.contract_stats.commission) }} ฿</td>

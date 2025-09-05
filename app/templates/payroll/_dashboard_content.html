@@ -1,7 +1,7 @@
 <!-- Dashboard Content - Partiel réutilisable pour HTML et PDF -->
 <div class="dashboard-container">
     <div class="summary-cards">
-        <div class="summary-card summary-card-profit">
+        <div class="summary-card summary-card-profit {{ 'profit-positive' if stats.total_profit >= 0 else 'profit-negative' }}">
             <span class="summary-card-value">{{ stats.total_profit|round(0) }} THB</span>
             <span class="summary-card-label">TOTAL PROFIT</span>
         </div>
@@ -12,6 +12,10 @@
         <div class="summary-card summary-card-days">
             <span class="summary-card-value">{{ stats.total_days_worked }}</span>
             <span class="summary-card-label">TOTAL DAYS WORKED</span>
+        </div>
+        <div class="summary-card summary-card-contracts">
+            <span class="summary-card-value">{{ stats.total_contracts }}</span>
+            <span class="summary-card-label">TOTAL COUNT CONTRACTS</span>
         </div>
     </div>
 
@@ -69,41 +73,117 @@
         </div>
     </div>
 
-    <div class="dashboard-section">
-        <h5 class="section-title"><i class="fas fa-file-contract"></i> Detailed Contracts ({{ contracts|length }})</h5>
-        <div class="table-responsive">
-            <table class="table table-hover detailed-table">
+    <div class="dashboard-section" style="text-align: center; page-break-before: always;">
+        <!-- Header répété pour page 2 -->
+        <div class="header" style="text-align: center; margin-bottom: 20px;">
+            <h1 style="color: #4A90E2; font-size: 24px; margin-bottom: 5px;">Performance Dashboard</h1>
+            <p style="color: #6c757d; font-size: 14px; margin: 0;">OS Agency - Generated on {{ today_date }}</p>
+        </div>
+        
+        <!-- Filter Summary Header répété pour page 2 -->
+        <div class="filter-summary-header" style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <div style="display: table; width: 100%; table-layout: fixed;">
+                <div style="display: table-row;">
+                    <div style="display: table-cell; width: 50%; vertical-align: top; padding: 10px;">
+                        <div style="margin-bottom: 15px;">
+                            <div style="font-size: 12px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">MANAGER</div>
+                            <div style="font-weight: bold; color: #495057; font-size: 14px; line-height: 1.2;">
+                                {% if header_data %}
+                                    {{ header_data.manager_name }}
+                                {% elif selected_manager %}
+                                    {{ selected_manager.username }}
+                                {% else %}
+                                    All Managers
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <div style="font-size: 12px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">VENUE</div>
+                            <div style="font-weight: bold; color: #495057; font-size: 14px; line-height: 1.2;">
+                                {% if header_data %}
+                                    {{ header_data.venue }}
+                                {% elif selected_venue %}
+                                    {{ selected_venue.name }}
+                                {% else %}
+                                    All Venues
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: table-cell; width: 50%; vertical-align: top; padding: 10px;">
+                        <div style="margin-bottom: 15px;">
+                            <div style="font-size: 12px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">DATE RANGE</div>
+                            <div style="font-weight: bold; color: #495057; font-size: 14px; line-height: 1.2;">
+                                {% if header_data %}
+                                    {{ header_data.date_range }}
+                                {% elif active_filters.start_date and active_filters.end_date %}
+                                    {{ active_filters.start_date }} to {{ active_filters.end_date }}
+                                {% else %}
+                                    All Dates
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <div style="font-size: 12px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">STATUS</div>
+                            <div style="font-weight: bold; color: #495057; font-size: 14px; line-height: 1.2;">
+                                {% if header_data %}
+                                    {{ header_data.status }}
+                                {% elif active_filters.status %}
+                                    {{ active_filters.status|title }}
+                                {% else %}
+                                    All Statuses
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">CONTRACT TYPE</div>
+                            <div style="font-weight: bold; color: #495057; font-size: 14px; line-height: 1.2;">
+                                {% if header_data %}
+                                    {{ header_data.contract_type }}
+                                {% elif active_filters.contract_type %}
+                                    {{ active_filters.contract_type|title }}
+                                {% else %}
+                                    All Types
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <h5 class="section-title" style="text-align: left !important;"><i class="fas fa-file-contract"></i> Detailed Contracts ({{ contracts|length }})</h5>
+        <table class="detailed-table" style="margin: 0 auto; display: inline-table;">
                 <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Staff</th>
-                        <th>Staff ID</th>
-                        <th>Venue</th>
-                        <th>Contract Type</th>
-                        <th>Status</th>
-                        <th>Start Date</th>
-                        <th>End Date</th>
-                        <th>Days Worked</th>
-                        <th>Total Profit</th>
+                    <tr style="border-bottom: 3px solid #495057;">
+                        <th style="font-weight: 900;">ID</th>
+                        <th style="font-weight: 900;">Staff</th>
+                        <th style="font-weight: 900;">Staff ID</th>
+                        <th style="font-weight: 900;">Venue</th>
+                        <th style="font-weight: 900;">Contract<br>Type</th>
+                        <th style="font-weight: 900;">Status</th>
+                        <th style="font-weight: 900;">Start<br>Date</th>
+                        <th style="font-weight: 900;">End<br>Date</th>
+                        <th style="font-weight: 900;">Days<br>Worked</th>
+                        <th style="font-weight: 900;">Total<br>Profit</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for contract in contracts %}
                     <tr>
-                        <td>{{ contract.id }}</td>
-                        <td>{{ contract.staff.nickname if contract.staff else contract.archived_staff_name }}</td>
-                        <td>{{ contract.staff.staff_id if contract.staff else 'N/A' }}</td>
-                        <td>{{ contract.venue.name if contract.venue else 'N/A' }}</td>
-                        <td>{{ contract.contract_type }}</td>
-                        <td><span class="badge status-badge status-{{ contract.status|lower }}">{{ contract.status }}</span></td>
-                        <td>{{ contract.start_date.strftime('%Y-%m-%d') if contract.start_date else 'N/A' }}</td>
-                        <td>{{ contract.end_date.strftime('%Y-%m-%d') if contract.end_date else 'N/A' }}</td>
-                        <td>{{ contract.contract_calculations.days_worked if contract.contract_calculations else 'N/A' }}</td>
-                        <td class="{{ 'text-success' if contract.contract_calculations and contract.contract_calculations.total_profit >= 0 else 'text-danger' }}">{{ contract.contract_calculations.total_profit if contract.contract_calculations else 'N/A' }}</td>
+                        <td><a href="{{ url_for('payroll.report_view', assignment_id=contract.id) }}" style="color: #4A90E2; text-decoration: none; font-weight: bold;">{{ contract.id }}</a></td>
+                        <td><strong>{{ contract.staff.nickname if contract.staff else contract.archived_staff_name }}</strong></td>
+                        <td><strong>{{ contract.staff.staff_id if contract.staff else 'N/A' }}</strong></td>
+                        <td><strong>{{ contract.venue.name if contract.venue else 'N/A' }}</strong></td>
+                        <td><strong>{{ contract.contract_type }}</strong></td>
+                        <td><span class="badge status-badge status-{{ contract.status|lower }}"><strong>{{ contract.status }}</strong></span></td>
+                        <td><strong>{{ contract.start_date.strftime('%d-%m') if contract.start_date else 'N/A' }}</strong></td>
+                        <td><strong>{{ contract.end_date.strftime('%d-%m') if contract.end_date else 'N/A' }}</strong></td>
+                        <td><strong>{{ contract.contract_calculations.days_worked if contract.contract_calculations else 'N/A' }}</strong></td>
+                        <td class="{{ 'text-success' if contract.contract_calculations and contract.contract_calculations.total_profit >= 0 else 'text-danger' }}"><strong>{{ contract.contract_calculations.total_profit if contract.contract_calculations else 'N/A' }}</strong></td>
                     </tr>
                     {% endfor %}
                 </tbody>
-            </table>
-        </div>
+        </table>
     </div>
 </div>

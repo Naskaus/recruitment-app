@@ -1,6 +1,6 @@
 # app/admin/routes.py
 
-from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, send_file, send_from_directory
+from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, send_file, send_from_directory, current_app
 from flask_login import login_required, current_user
 from app.decorators import webdev_required, role_required, admin_required
 from app.models import Agency, User, UserRole, StaffProfile, Venue, AgencyPosition, AgencyContract, Assignment, PerformanceRecord, ContractCalculations
@@ -143,25 +143,21 @@ def update_agency(agency_id):
 @login_required
 @webdev_required
 def delete_agency(agency_id):
-    """API pour supprimer une agence"""
+    """API pour marquer une agence comme supprimée"""
     agency = Agency.query.get_or_404(agency_id)
     
-    # Vérifier si l'agence a des données associées
-    users_count = User.query.filter_by(agency_id=agency_id).count()
-    staff_count = agency.staff_profiles.count()
-    venues_count = agency.venues.count()
-    
-    if users_count > 0 or staff_count > 0 or venues_count > 0:
-        return jsonify({
-            'error': f'Impossible de supprimer l\'agence "{agency.name}". Elle contient des données associées: {users_count} utilisateurs, {staff_count} profils staff, {venues_count} venues.'
-        }), 400
+    # Vérifier si l'agence n'est pas déjà marquée comme supprimée
+    if agency.is_deleted:
+        return jsonify({'error': f'L\'agence "{agency.name}" est déjà marquée comme supprimée'}), 400
     
     try:
-        db.session.delete(agency)
+        # Marquer l'agence comme supprimée au lieu de la supprimer physiquement
+        agency.is_deleted = True
         db.session.commit()
-        
-        return jsonify({'message': f'Agence "{agency.name}" supprimée avec succès'})
-        
+        return jsonify({
+            'message': f'Agence "{agency.name}" marquée comme supprimée avec succès',
+            'is_deleted': True
+        })
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'Erreur lors de la suppression de l\'agence: {str(e)}'}), 500
@@ -252,15 +248,69 @@ def delete_export_file():
 @login_required
 @webdev_required
 def delete_agency_post(agency_id):
-    """Supprimer une agence"""
+    """Marquer une agence comme supprimée (soft delete)"""
     try:
         # Récupérer l'agence
         agency = Agency.query.get(agency_id)
         if not agency:
-            flash('Agence non trouvée', 'error')
+            flash('Agency not found', 'error')
             return redirect(url_for('admin.manage_agencies'))
         
-        agency_name = agency.name
+        if agency.is_deleted:
+            flash('This agency is already marked as deleted', 'warning')
+            return redirect(url_for('admin.manage_agencies'))
+        
+        # Marquer l'agence comme supprimée
+        agency.is_deleted = True
+        db.session.commit()
+        
+        flash(f'Agency "{agency.name}" has been marked as deleted', 'success')
+        return redirect(url_for('admin.manage_agencies'))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error marking agency as deleted: {str(e)}', 'error')
+        return redirect(url_for('admin.manage_agencies'))
+
+@admin_bp.route('/force_delete_agency/<int:agency_id>', methods=['POST'])
+@login_required
+@webdev_required
+def force_delete_agency(agency_id):
+    """Supprimer définitivement une agence avec sauvegarde préalable"""
+    try:
+        # Récupérer l'agence
+        agency = Agency.query.get(agency_id)
+        if not agency:
+            flash('Agency not found', 'error')
+            return redirect(url_for('admin.manage_agencies'))
+        
+        # Créer une sauvegarde avant suppression
+        try:
+            # Créer un dossier pour les sauvegardes si nécessaire
+            import os
+            from datetime import datetime
+            
+            backup_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'backups')
+            os.makedirs(backup_dir, exist_ok=True)
+            
+            # Nom du fichier de sauvegarde
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            backup_filename = f'agency_{agency_id}_backup_{timestamp}.sqlite'
+            backup_path = os.path.join(backup_dir, backup_filename)
+            
+            # Copier la base de données actuelle comme sauvegarde
+            import shutil
+            from app import basedir
+            
+            db_path = os.path.join(basedir, 'recruitment.db')
+            shutil.copy2(db_path, backup_path)
+            
+            flash(f'Backup created successfully: {backup_filename}', 'info')
+            
+        except Exception as backup_error:
+            db.session.rollback()
+            flash(f'Error creating backup: {str(backup_error)}', 'error')
+            return redirect(url_for('admin.manage_agencies'))
         
         # Supprimer toutes les données associées à l'agence
         try:
@@ -301,17 +351,18 @@ def delete_agency_post(agency_id):
             db.session.delete(agency)
             db.session.commit()
             
-            flash(f'Agence "{agency_name}" supprimée avec succès.', 'success')
+            flash(f'Agency "{agency.name}" has been permanently deleted.', 'success')
             
-        except Exception as e:
+        except Exception as delete_error:
             db.session.rollback()
-            flash(f'Erreur lors de la suppression des données: {str(e)}', 'error')
+            flash(f'Error during agency deletion: {str(delete_error)}', 'error')
             return redirect(url_for('admin.manage_agencies'))
         
         return redirect(url_for('admin.manage_agencies'))
         
     except Exception as e:
-        flash(f'Erreur lors de la suppression de l\'agence: {str(e)}', 'error')
+        db.session.rollback()
+        flash(f'Error processing agency deletion: {str(e)}', 'error')
         return redirect(url_for('admin.manage_agencies'))
 
 @admin_bp.route('/download_backup/<path:filename>')

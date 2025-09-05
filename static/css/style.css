@@ -6,19 +6,6 @@
         
         /* Color Palette (New Soft/Professional Theme) */
         --color-sidebar-bg:         #1A2035;
-        --color-sidebar-text:       #D0D2D6;
-        --color-main-bg:            #F8F9FB;
-        --color-surface:            #FFFFFF;
-        --color-text-primary:       #2C3E50;
-        --color-text-secondary:     #7F8C99;
-        --color-accent-primary:     #4A90E2; /* Bright sky blue for actions */
-        --color-accent-primary-dark:#357ABD; /* Darker version for hover */
-        --color-accent-focus:       rgba(74, 144, 226, 0.25); /* Halo effect using the primary blue */
-        --color-accent-secondary:   #FFD4DC; /* soft light pink */
-        --color-hover-bg:           #F4F6F8; /* very light grey for hover */
-        --color-border:             #E1E5EB;
-        --color-danger:             #F28B9E; /* Light rose red */
-        --color-danger-dark:        #E05A75; /* Darker rose red */
 
         /* Status Colors */
         --success-bg: #d1e7dd;
@@ -1455,9 +1442,41 @@
     .logout-button svg {
         margin-right: 0.5rem;
     }
-    /* ===================================
-       32. User Management & Settings (NEW)
-       =================================== */
+
+    /* Tables avec données en gras et taille augmentée */
+    .breakdown-table {
+        table-layout: auto;
+        width: auto;
+    }
+    
+    .breakdown-table td {
+        font-weight: bold;
+        font-size: calc(1rem + 2px);
+        white-space: nowrap;
+        padding: 8px 12px;
+    }
+
+    
+    .detailed-table td {
+        font-weight: bold !important;
+        font-size: calc(1rem + 2px) !important;
+        white-space: nowrap !important;
+        padding: 4px 2px !important;
+        width: auto !important;
+        text-align: center !important;
+    }
+    
+    .detailed-table th {
+        white-space: nowrap !important;
+        padding: 4px 6px !important;
+    }
+
+    .detailed-table th:nth-child(2),
+    .detailed-table td:nth-child(2) {
+        width: auto !important;
+        text-align: left !important;
+        padding: 4px 6px !important;
+    }
 
     /* --- Settings Dropdown in Sidebar --- */
     .sidebar-dropdown {
@@ -1629,22 +1648,25 @@
 .staff-list-table th:nth-child(4),
 .staff-list-table td:nth-child(4) { width: 12%; text-align: center;} /* Weight */
 
-.staff-list-table th:nth-child(5),
-.staff-list-table td:nth-child(5) { width: 12%; text-align: center;} /* Status */
+        .staff-list-table th:nth-child(5),
+        .staff-list-table td:nth-child(5) { width: 12%; text-align: center;} /* Status */
 
-.staff-list-table th:nth-child(6),
-.staff-list-table td:nth-child(6) { width: 16%; } /* Actions */
+        .staff-list-table th:nth-child(6),
+        .staff-list-table td:nth-child(6) { width: 16%; } /* Actions */
 
-.staff-list-table th {
-    font-weight: 600;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    color: var(--color-text-secondary);
-    background-color: var(--color-main-bg);
-}
+        .staff-list-table th {
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: var(--color-text-secondary);
+            background-color: var(--color-main-bg);
+        }
 
-.staff-list-table tbody tr:hover {
-    background-color: var(--color-hover-bg);
+        .staff-list-table tbody tr:hover {
+            background-color: var(--color-hover-bg);
+        }
+.detailed-table tbody tr:hover {
+    background-color: #f5f5f5;
 }
 
 .list-actions {
@@ -1907,4 +1929,20 @@
         flex-direction: column; /* Stack photo and name vertically again on very small screens */
         text-align: center;
     }
+}
+
+.dashboard-section {
+    text-align: center !important;
+}
+
+.dashboard-section .section-title {
+    text-align: left !important;
+}
+
+.detailed-table {
+    display: inline-table !important;
+    margin: 0 auto !important;
+    text-align: left !important;
+    width: auto !important;
+    table-layout: auto !important;
 }

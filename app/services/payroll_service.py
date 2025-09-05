@@ -731,5 +731,6 @@ def generate_performance_stats(assignments):
         'total_profit': total_profit,
         'total_days_worked': total_days_worked,
         'unique_staff_count': len(unique_staff_ids),
+        'total_contracts': len(assignments),
         'contract_breakdown': contract_breakdown
     }

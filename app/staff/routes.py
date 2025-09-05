@@ -366,6 +366,7 @@ def uploaded_file(filename):
 @login_required
 def profile_pdf(profile_id):
     """Generates a PDF report for a staff profile."""
+    print(f"DEBUG: Generating PDF for profile {profile_id} with args: {request.args}")  # <--- TRACE DE DÉBOGAGE
     from flask import session
     from app.services.payroll_service import get_staff_performance_summary
     
@@ -382,11 +383,22 @@ def profile_pdf(profile_id):
             photo_path = os.path.join(current_app.config['UPLOAD_FOLDER'], profile.photo_url)
             if os.path.exists(photo_path):
                 photo_url_for_pdf = pathlib.Path(photo_path).as_uri()
+        
+        # Récupérer les paramètres de filtre de date depuis la requête
+        start_date_str = request.args.get('start_date')
+        end_date_str = request.args.get('end_date')
+        
+        start_date, end_date = None, None
+        if start_date_str and start_date_str != '':
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        if end_date_str and end_date_str != '':
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
             
         # Utiliser le service de paie pour obtenir les statistiques de performance
         try:
-            performance_summary = get_staff_performance_summary(profile_id)
+            performance_summary = get_staff_performance_summary(profile_id, start_date, end_date)
             history_stats = performance_summary['summary_totals']
+            detailed_history = performance_summary.get('detailed_history', [])
             contract_calculations = performance_summary['contract_calculations']
         except Exception as e:
             # Fallback en cas d'erreur
@@ -398,12 +410,25 @@ def profile_pdf(profile_id):
                 "total_commission_paid": 0,
                 "total_bar_profit": 0
             }
+            detailed_history = []
             contract_calculations = []
             current_app.logger.error(f"Erreur lors du calcul des statistiques de performance pour le PDF: {str(e)}")
 
         # Préparer les assignments avec leurs statistiques pour le PDF
         assignments_with_stats = []
-        for assignment in profile.assignments:
+        
+        # Trier les assignements par date de début (du plus récent au plus ancien)
+        sorted_assignments = sorted(profile.assignments, key=lambda a: a.start_date, reverse=True)
+        
+        # Filtrer les assignements en fonction des dates de filtre
+        if start_date or end_date:
+            sorted_assignments = [
+                a for a in sorted_assignments
+                if (start_date is None or a.end_date >= start_date) and \
+                   (end_date is None or a.start_date <= end_date)
+            ]
+        
+        for assignment in sorted_assignments:
             # Chercher les calculs de contrat pour cet assignment
             assignment_calc = next((calc for calc in contract_calculations if calc['assignment_id'] == assignment.id), None)
             
@@ -418,16 +443,36 @@ def profile_pdf(profile_id):
                 }
             else:
                 # Fallback si pas de calculs disponibles
-                assignment_stats = {"drinks": 0, "special_comm": 0, "salary": 0, "commission": 0, "profit": 0}
+                assignment_stats = {
+                    "days_worked": 0, 
+                    "drinks": 0, 
+                    "special_comm": 0, 
+                    "salary": 0, 
+                    "commission": 0, 
+                    "profit": 0
+                }
             
+            # Ne pas inclure les assignements sans jour travaillé si un filtre de date est actif
+            if (start_date or end_date) and assignment_stats['days_worked'] == 0:
+                continue
+                
             assignments_with_stats.append({
                 'assignment': assignment,
                 'contract_stats': assignment_stats
             })
 
-        rendered_html = render_template('profile_pdf.html', profile=profile, photo_url=photo_url_for_pdf,
-                                        history_stats=history_stats, assignments=assignments_with_stats, 
-                                        report_date=datetime.utcnow())
+        # Trier l'historique détaillé par date décroissante
+        detailed_history = sorted(detailed_history, key=lambda x: x.get('record_date', ''), reverse=True)
+
+        rendered_html = render_template('profile_pdf.html', 
+                                      profile=profile, 
+                                      photo_url=photo_url_for_pdf,
+                                      history_stats=history_stats, 
+                                      detailed_history=detailed_history,
+                                      assignments=assignments_with_stats, 
+                                      report_date=datetime.utcnow(),
+                                      filter_start_date=start_date,
+                                      filter_end_date=end_date)
         
         # Generate PDF with better error handling
         try:
@@ -439,7 +484,7 @@ def profile_pdf(profile_id):
         filename = f"profile_{secure_filename(profile.nickname)}_{date.today()}.pdf"
         
         response = Response(pdf, mimetype='application/pdf')
-        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.headers['Content-Disposition'] = f'inline; filename="{filename}"'
         response.headers['Content-Length'] = len(pdf)
         return response
         

@@ -207,9 +207,9 @@ def get_agencies():
     from app.models import Agency
     from flask import session
     
-    # For WebDev, show all agencies
+    # For WebDev, show only active agencies
     if current_user.role == UserRole.WEBDEV.value:
-        agencies = Agency.query.all()
+        agencies = Agency.query.filter_by(is_deleted=False).all()
         # Use session agency for WebDev if set, otherwise use first agency
         current_agency_id = session.get('current_agency_id', agencies[0].id if agencies else None)
     else:
@@ -240,8 +240,8 @@ def switch_agency():
     
     # Check if user can access this agency
     if current_user.role == UserRole.WEBDEV.value:
-        # WebDev can access any agency
-        agency = Agency.query.get(agency_id)
+        # WebDev can access any active agency
+        agency = Agency.query.filter_by(id=agency_id, is_deleted=False).first()
     else:
         # Other users can only access their assigned agency
         if current_user.agency_id != agency_id:
@@ -249,7 +249,7 @@ def switch_agency():
         agency = current_user.agency
     
     if not agency:
-        return jsonify({'message': 'Agency not found'}), 404
+        return jsonify({'message': 'This agency no longer exists. Please contact your manager.'}), 403
     
     # Store the selected agency in session for WebDev users
     if current_user.role == UserRole.WEBDEV.value:
@@ -409,11 +409,11 @@ def contracts():
     if not agency_id:
         abort(403, "User not associated with an agency.")
     
-    # Get current agency
+    # Get current active agency
     from app.models import Agency
-    current_agency = Agency.query.get(agency_id)
+    current_agency = Agency.query.filter_by(id=agency_id, is_deleted=False).first()
     if not current_agency:
-        abort(403, "Agency not found.")
+        abort(403, "This agency no longer exists. Please contact your manager.")
     
     # Get existing contracts
     contracts = AgencyContract.query.filter_by(agency_id=agency_id).order_by(AgencyContract.days).all()
@@ -446,10 +446,10 @@ def profile_form_config():
     if not agency_id:
         abort(403, "User not associated with an agency.")
     
-    # Get current agency
-    current_agency = Agency.query.get(agency_id)
+    # Get current active agency
+    current_agency = Agency.query.filter_by(id=agency_id, is_deleted=False).first()
     if not current_agency:
-        abort(403, "Agency not found.")
+        abort(403, "This agency no longer exists. Please contact your manager.")
     
     # Get positions for current agency
     positions = AgencyPosition.query.filter_by(agency_id=agency_id).order_by(AgencyPosition.name).all()
@@ -706,7 +706,7 @@ def add_agency():
         
         # Check if agency with same name already exists
         from app.models import Agency
-        existing_agency = Agency.query.filter_by(name=agency_name).first()
+        existing_agency = Agency.query.filter_by(name=agency_name, is_deleted=False).first()
         if existing_agency:
             flash(f'Agency "{agency_name}" already exists.', 'danger')
             return redirect(url_for('auth.add_agency'))

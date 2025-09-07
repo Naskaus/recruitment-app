@@ -11,7 +11,7 @@ import subprocess
 import time
 from sqlalchemy import func
 
-admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
+admin_bp = Blueprint('admin', __name__, template_folder='../templates', url_prefix='/admin')
 
 @admin_bp.route('/manage_agencies')
 @login_required
@@ -31,6 +31,7 @@ def manage_agencies():
             'id': agency.id,
             'name': agency.name,
             'created_at': agency.created_at,
+            'is_deleted': agency.is_deleted,
             'users_count': users_count,
             'staff_count': staff_count,
             'venues_count': venues_count
@@ -43,7 +44,7 @@ def manage_agencies():
 @webdev_required
 def get_agencies():
     """API pour récupérer la liste des agences"""
-    agencies = Agency.query.all()
+    agencies = Agency.query.filter_by(is_deleted=False).all()
     agencies_data = []
     
     for agency in agencies:
@@ -106,7 +107,9 @@ def create_agency():
 @webdev_required
 def update_agency(agency_id):
     """API pour modifier une agence"""
-    agency = Agency.query.get_or_404(agency_id)
+    agency = Agency.query.filter_by(id=agency_id, is_deleted=False).first()
+    if not agency:
+        return jsonify({'error': 'This agency no longer exists. Please contact your manager.'}), 403
     data = request.get_json()
     
     if not data or 'name' not in data:
@@ -118,8 +121,8 @@ def update_agency(agency_id):
         return jsonify({'error': 'Le nom de l\'agence ne peut pas être vide'}), 400
     
     # Vérifier si le nouveau nom existe déjà (sauf pour cette agence)
-    existing_agency = Agency.query.filter_by(name=name).first()
-    if existing_agency and existing_agency.id != agency_id:
+    existing_agency = Agency.query.filter(Agency.name == name, Agency.id != agency_id, Agency.is_deleted == False).first()
+    if existing_agency:
         return jsonify({'error': f'Une agence avec le nom "{name}" existe déjà'}), 400
     
     try:
@@ -144,7 +147,9 @@ def update_agency(agency_id):
 @webdev_required
 def delete_agency(agency_id):
     """API pour marquer une agence comme supprimée"""
-    agency = Agency.query.get_or_404(agency_id)
+    agency = Agency.query.filter_by(id=agency_id, is_deleted=False).first()
+    if not agency:
+        return jsonify({'error': 'This agency no longer exists. Please contact your manager.'}), 403
     
     # Vérifier si l'agence n'est pas déjà marquée comme supprimée
     if agency.is_deleted:
@@ -168,10 +173,15 @@ def delete_agency(agency_id):
 def export_agency_data(agency_id):
     """API pour exporter les données d'une agence vers JSON"""
     try:
+        # Ensure agency is active
+        a = Agency.query.filter_by(id=agency_id, is_deleted=False).first()
+        if not a:
+            return jsonify({'error': 'This agency no longer exists. Please contact your manager.'}), 403
         result = AgencyManagementService.export_agency_data_to_json(agency_id)
         
         if result['success']:
             return jsonify({
+                'success': True,
                 'message': f'Données de l\'agence exportées avec succès',
                 'filename': result['filename'],
                 'filepath': result['filepath'],
@@ -216,6 +226,10 @@ def download_export_file(agency_id, filename):
 def get_agency_export_history(agency_id):
     """Récupérer l'historique des exports pour une agence"""
     try:
+        # Verify active agency before listing history
+        a = Agency.query.filter_by(id=agency_id, is_deleted=False).first()
+        if not a:
+            return jsonify({'error': 'This agency no longer exists. Please contact your manager.'}), 403
         exports = AgencyManagementService.get_agency_export_history(agency_id)
         return jsonify({'exports': exports})
         
@@ -251,9 +265,17 @@ def delete_agency_post(agency_id):
     """Marquer une agence comme supprimée (soft delete)"""
     try:
         # Récupérer l'agence
-        agency = Agency.query.get(agency_id)
+        agency = Agency.query.filter_by(id=agency_id, is_deleted=False).first()
         if not agency:
             flash('Agency not found', 'error')
+            # If the deleted agency was selected in session for WebDev, clear it
+            try:
+                from flask import session
+                if session.get('current_agency_id') == agency_id:
+                    session.pop('current_agency_id', None)
+                    session.pop('current_agency_name', None)
+            except Exception:
+                pass
             return redirect(url_for('admin.manage_agencies'))
         
         if agency.is_deleted:
@@ -272,6 +294,50 @@ def delete_agency_post(agency_id):
         flash(f'Error marking agency as deleted: {str(e)}', 'error')
         return redirect(url_for('admin.manage_agencies'))
 
+@admin_bp.route('/api/agencies/import', methods=['POST'])
+@login_required
+@webdev_required
+def import_agency():
+    """Receive and process uploaded agency JSON file."""
+    file = request.files.get('file')
+    if not file:
+        flash('No file provided.', 'error')
+        return redirect(url_for('admin.manage_agencies'))
+    # Basic content-type / extension check
+    if not (file.mimetype in ('application/json',) or (file.filename and file.filename.lower().endswith('.json'))):
+        flash('Invalid file type. Please upload a .json file.', 'error')
+        return redirect(url_for('admin.manage_agencies'))
+
+    try:
+        raw = file.read()
+        if not raw:
+            flash('Uploaded file is empty.', 'error')
+            return redirect(url_for('admin.manage_agencies'))
+        import json
+        payload = json.loads(raw)
+    except Exception as e:
+        flash(f'Invalid JSON file: {str(e)}', 'error')
+        return redirect(url_for('admin.manage_agencies'))
+
+    # Call service to import
+    try:
+        result = AgencyManagementService.import_agency_data(payload)
+        if not result.get('success'):
+            flash(f"Import failed: {result.get('error', 'Unknown error')}", 'error')
+            return redirect(url_for('admin.manage_agencies'))
+        created = result.get('created', {})
+        warnings = result.get('warnings', [])
+        summary = (
+            f"Agency '{result.get('agency_name')}' imported successfully. "
+            f"Users: {created.get('users',0)}, Staff: {created.get('staff_profiles',0)}, Venues: {created.get('venues',0)}, "
+            f"Positions: {created.get('positions',0)}, Contracts: {created.get('contracts',0)}, Assignments: {created.get('assignments',0)}."
+        )
+        flash(summary, 'success')
+        if warnings:
+            flash(f"Warnings: {'; '.join(warnings[:5])}{' ...' if len(warnings)>5 else ''}", 'warning')
+    except Exception as e:
+        flash(f'Unexpected error during import: {str(e)}', 'error')
+    return redirect(url_for('admin.manage_agencies'))
 @admin_bp.route('/force_delete_agency/<int:agency_id>', methods=['POST'])
 @login_required
 @webdev_required
@@ -279,6 +345,7 @@ def force_delete_agency(agency_id):
     """Supprimer définitivement une agence avec sauvegarde préalable"""
     try:
         # Récupérer l'agence
+        # Allow force-delete regardless of current soft-delete state
         agency = Agency.query.get(agency_id)
         if not agency:
             flash('Agency not found', 'error')
@@ -300,9 +367,9 @@ def force_delete_agency(agency_id):
             
             # Copier la base de données actuelle comme sauvegarde
             import shutil
-            from app import basedir
+            from config import basedir
             
-            db_path = os.path.join(basedir, 'recruitment.db')
+            db_path = os.path.join(basedir, 'data', 'recruitment-dev.db')
             shutil.copy2(db_path, backup_path)
             
             flash(f'Backup created successfully: {backup_filename}', 'info')
@@ -341,10 +408,9 @@ def force_delete_agency(agency_id):
             # Supprimer les contrats
             AgencyContract.query.filter_by(agency_id=agency_id).delete(synchronize_session=False)
             
-            # Supprimer les utilisateurs (sauf WEBDEV)
+            # Supprimer tous les utilisateurs de l'agence (y compris tout webdev mal assigné)
             User.query.filter(
-                User.agency_id == agency_id,
-                User.role != 'webdev'
+                User.agency_id == agency_id
             ).delete(synchronize_session=False)
             
             # Enfin, supprimer l'agence elle-même
@@ -402,9 +468,9 @@ def export_and_download(agency_id):
     """Exporter et télécharger immédiatement les données d'une agence"""
     try:
         # Récupérer l'agence
-        agency = Agency.query.get(agency_id)
+        agency = Agency.query.filter_by(id=agency_id, is_deleted=False).first()
         if not agency:
-            return jsonify({'error': 'Agence non trouvée'}), 404
+            return jsonify({'error': 'This agency no longer exists. Please contact your manager.'}), 403
         
         # Exporter les données de l'agence
         export_result = AgencyManagementService.export_agency_data_to_json(agency_id)
@@ -427,6 +493,26 @@ def export_and_download(agency_id):
         
     except Exception as e:
         return jsonify({'error': f'Erreur lors de l\'export et téléchargement: {str(e)}'}), 500
+
+# Reactivate a soft-deleted agency
+@admin_bp.route('/reactivate_agency/<int:agency_id>', methods=['POST'])
+@login_required
+@webdev_required
+def reactivate_agency(agency_id):
+    """Réactiver une agence (soft-delete -> active)"""
+    try:
+        agency = Agency.query.get_or_404(agency_id)
+        if not agency.is_deleted:
+            flash('Agency is already active', 'info')
+            return redirect(url_for('admin.manage_agencies'))
+        agency.is_deleted = False
+        db.session.commit()
+        flash(f'Agency "{agency.name}" has been reactivated', 'success')
+        return redirect(url_for('admin.manage_agencies'))
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error reactivating agency: {str(e)}', 'error')
+        return redirect(url_for('admin.manage_agencies'))
 
 @admin_bp.route('/debug-vitals')
 @login_required

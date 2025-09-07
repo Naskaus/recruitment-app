@@ -22,12 +22,12 @@ class AgencyManagementService:
             dict: Dictionnaire contenant le statut de l'opération et le chemin du fichier
         """
         try:
-            # Récupérer l'agence
-            agency = Agency.query.get(agency_id)
+            # Récupérer l'agence active uniquement
+            agency = Agency.query.filter_by(id=agency_id, is_deleted=False).first()
             if not agency:
                 return {
                     'success': False,
-                    'error': f'Agence avec l\'ID {agency_id} non trouvée'
+                    'error': f"Agence avec l'ID {agency_id} non trouvée ou supprimée"
                 }
             
             # Structure des données à exporter
@@ -311,3 +311,290 @@ class AgencyManagementService:
                 return {'success': False, 'error': 'Fichier non trouvé'}
         except Exception as e:
             return {'success': False, 'error': f'Erreur lors de la suppression: {str(e)}'}
+
+    @staticmethod
+    def import_agency_data(data: dict):
+        """Importe une agence et toutes ses données associées à partir d'un dictionnaire JSON.
+
+        Le format attendu correspond à la sortie de export_agency_data_to_json:
+        - 'agency': {...}
+        - 'users': [...]
+        - 'staff_profiles': [...]
+        - 'venues': [...]
+        - 'positions': [...]
+        - 'contracts': [...]
+        - 'assignments': [...]
+        - 'performance_records': [...]
+        - 'contract_calculations': [...]
+
+        Returns: dict(success: bool, agency_id, created: {...}, warnings: [...])
+        """
+        from app.models import Agency, User, UserRole, StaffProfile, Venue, AgencyPosition, AgencyContract, Assignment, PerformanceRecord, ContractCalculations
+        from app import db
+
+        def _parse_date(val):
+            if not val:
+                return None
+            try:
+                # Accept both date and datetime iso strings
+                return datetime.fromisoformat(val).date() if 'T' in val else datetime.strptime(val, '%Y-%m-%d').date()
+            except Exception:
+                try:
+                    return datetime.fromisoformat(val).date()
+                except Exception:
+                    return None
+
+        def _parse_time(val):
+            if not val:
+                return None
+            try:
+                return datetime.strptime(val, '%H:%M').time()
+            except Exception:
+                return None
+
+        def _parse_dt(val):
+            if not val:
+                return None
+            try:
+                return datetime.fromisoformat(val)
+            except Exception:
+                return None
+
+        # Some exports may wrap content; support both root forms
+        content = data
+        if isinstance(data, dict) and 'agency' not in data and 'export_data' in data:
+            content = data.get('export_data') or data
+
+        if not isinstance(content, dict) or 'agency' not in content:
+            return {'success': False, 'error': "Format d'import invalide: clé 'agency' manquante"}
+
+        warnings = []
+        created_counts = {
+            'users': 0,
+            'staff_profiles': 0,
+            'venues': 0,
+            'positions': 0,
+            'contracts': 0,
+            'assignments': 0,
+            'performance_records': 0,
+            'contract_calculations': 0,
+        }
+
+        # ID remapping tables (old -> new)
+        idmap = {
+            'user': {},
+            'staff': {},
+            'venue': {},
+            'position': {},
+            'contract': {},
+            'assignment': {},
+        }
+
+        try:
+            # Start a transaction
+            # 1) Create Agency (ensure name uniqueness)
+            agency_payload = content['agency']
+            base_name = (agency_payload.get('name') or 'Imported Agency').strip()
+            name_candidate = base_name
+            suffix_idx = 1
+            while Agency.query.filter_by(name=name_candidate).first() is not None:
+                name_candidate = f"{base_name} (Imported {datetime.utcnow().strftime('%Y%m%d_%H%M%S')})" if suffix_idx == 1 else f"{base_name} (Imported {suffix_idx})"
+                suffix_idx += 1
+
+            new_agency = Agency(name=name_candidate)
+            db.session.add(new_agency)
+            db.session.flush()  # get new_agency.id without full commit
+
+            # 2) Users
+            for u in content.get('users', []) or []:
+                try:
+                    username = u.get('username')
+                    role = u.get('role') or UserRole.ADMIN.value
+                    if not username:
+                        warnings.append('Utilisateur sans username ignoré')
+                        continue
+                    # Avoid username collision globally; append suffix if needed
+                    user_candidate = username
+                    i = 1
+                    while User.query.filter_by(username=user_candidate).first() is not None:
+                        user_candidate = f"{username}_{i}"
+                        i += 1
+                    new_user = User(username=user_candidate, role=role, agency_id=new_agency.id)
+                    # Set a temporary password (must be changed later)
+                    try:
+                        new_user.set_password('TempPass123!')
+                    except Exception:
+                        pass
+                    db.session.add(new_user)
+                    db.session.flush()
+                    idmap['user'][u.get('id')] = new_user.id
+                    created_counts['users'] += 1
+                except Exception as ue:
+                    warnings.append(f"User import error for '{u.get('username')}': {ue}")
+
+            # 3) Venues
+            for v in content.get('venues', []) or []:
+                try:
+                    new_v = Venue(
+                        name=v.get('name'),
+                        logo_url=v.get('logo_url'),
+                        agency_id=new_agency.id,
+                    )
+                    db.session.add(new_v)
+                    db.session.flush()
+                    idmap['venue'][v.get('id')] = new_v.id
+                    created_counts['venues'] += 1
+                except Exception as ve:
+                    warnings.append(f"Venue import error for '{v.get('name')}': {ve}")
+
+            # 4) Positions
+            for p in content.get('positions', []) or []:
+                try:
+                    new_p = AgencyPosition(
+                        name=p.get('name'),
+                        agency_id=new_agency.id,
+                        created_at=_parse_dt(p.get('created_at')),
+                    )
+                    db.session.add(new_p)
+                    db.session.flush()
+                    idmap['position'][p.get('id')] = new_p.id
+                    created_counts['positions'] += 1
+                except Exception as pe:
+                    warnings.append(f"Position import error for '{p.get('name')}': {pe}")
+
+            # 5) Contracts
+            for c in content.get('contracts', []) or []:
+                try:
+                    new_c = AgencyContract(
+                        name=c.get('name'),
+                        days=c.get('days'),
+                        agency_id=new_agency.id,
+                        late_cutoff_time=c.get('late_cutoff_time'),
+                        first_minute_penalty=c.get('first_minute_penalty'),
+                        additional_minute_penalty=c.get('additional_minute_penalty'),
+                        drink_price=c.get('drink_price'),
+                        staff_commission=c.get('staff_commission'),
+                        created_at=_parse_dt(c.get('created_at')),
+                    )
+                    db.session.add(new_c)
+                    db.session.flush()
+                    idmap['contract'][c.get('id')] = new_c.id
+                    created_counts['contracts'] += 1
+                except Exception as ce:
+                    warnings.append(f"Contract import error for '{c.get('name')}': {ce}")
+
+            # 6) Staff Profiles
+            for s in content.get('staff_profiles', []) or []:
+                try:
+                    new_s = StaffProfile(
+                        agency_id=new_agency.id,
+                        staff_id=s.get('staff_id'),
+                        first_name=s.get('first_name'),
+                        last_name=s.get('last_name'),
+                        nickname=s.get('nickname'),
+                        phone=s.get('phone'),
+                        instagram=s.get('instagram'),
+                        facebook=s.get('facebook'),
+                        line_id=s.get('line_id'),
+                        dob=_parse_date(s.get('dob')),
+                        height=s.get('height'),
+                        weight=s.get('weight'),
+                        status=s.get('status'),
+                        photo_url=s.get('photo_url'),
+                        admin_mama_name=s.get('admin_mama_name'),
+                        created_at=_parse_dt(s.get('created_at')),
+                        preferred_position=s.get('preferred_position'),
+                        notes=s.get('notes'),
+                    )
+                    db.session.add(new_s)
+                    db.session.flush()
+                    idmap['staff'][s.get('id')] = new_s.id
+                    created_counts['staff_profiles'] += 1
+                except Exception as se:
+                    warnings.append(f"Staff import error for '{s.get('nickname') or s.get('first_name')}': {se}")
+
+            # 7) Assignments
+            for a in content.get('assignments', []) or []:
+                try:
+                    new_a = Assignment(
+                        agency_id=new_agency.id,
+                        staff_id=idmap['staff'].get(a.get('staff_id')),
+                        managed_by_user_id=idmap['user'].get(a.get('managed_by_user_id')),
+                        archived_staff_name=a.get('archived_staff_name'),
+                        archived_staff_photo=a.get('archived_staff_photo'),
+                        venue_id=idmap['venue'].get(a.get('venue_id')),
+                        contract_role=a.get('contract_role'),
+                        contract_type=a.get('contract_type'),
+                        start_date=_parse_date(a.get('start_date')),
+                        end_date=_parse_date(a.get('end_date')),
+                        base_salary=a.get('base_salary'),
+                        status=a.get('status') or 'active',
+                        created_at=_parse_dt(a.get('created_at')),
+                    )
+                    db.session.add(new_a)
+                    db.session.flush()
+                    idmap['assignment'][a.get('id')] = new_a.id
+                    created_counts['assignments'] += 1
+                except Exception as ae:
+                    warnings.append(f"Assignment import error (staff_id={a.get('staff_id')}): {ae}")
+
+            # 8) Performance Records
+            for r in content.get('performance_records', []) or []:
+                try:
+                    new_r = PerformanceRecord(
+                        assignment_id=idmap['assignment'].get(r.get('assignment_id')),
+                        record_date=_parse_date(r.get('record_date')),
+                        arrival_time=_parse_time(r.get('arrival_time')),
+                        departure_time=_parse_time(r.get('departure_time')),
+                        drinks_sold=r.get('drinks_sold'),
+                        special_commissions=r.get('special_commissions'),
+                        bonus=r.get('bonus'),
+                        malus=r.get('malus'),
+                        lateness_penalty=r.get('lateness_penalty'),
+                        daily_salary=r.get('daily_salary'),
+                        daily_profit=r.get('daily_profit'),
+                        created_at=_parse_dt(r.get('created_at')),
+                    )
+                    # Skip if assignment missing (dangling)
+                    if new_r.assignment_id is None:
+                        warnings.append('Performance record ignoré: assignment introuvable dans l\'import')
+                        continue
+                    db.session.add(new_r)
+                    created_counts['performance_records'] += 1
+                except Exception as re:
+                    warnings.append(f"Performance import error (assignment_id={r.get('assignment_id')}): {re}")
+
+            # 9) Contract Calculations
+            for ccalc in content.get('contract_calculations', []) or []:
+                try:
+                    new_calc = ContractCalculations(
+                        assignment_id=idmap['assignment'].get(ccalc.get('assignment_id')),
+                        total_salary=ccalc.get('total_salary'),
+                        total_commission=ccalc.get('total_commission'),
+                        total_profit=ccalc.get('total_profit'),
+                        days_worked=ccalc.get('days_worked'),
+                        total_drinks=ccalc.get('total_drinks'),
+                        total_special_comm=ccalc.get('total_special_comm'),
+                        last_updated=_parse_dt(ccalc.get('last_updated')),
+                    )
+                    if new_calc.assignment_id is None:
+                        warnings.append("Contract calculation ignoré: assignment introuvable dans l'import")
+                        continue
+                    db.session.add(new_calc)
+                    created_counts['contract_calculations'] += 1
+                except Exception as ce2:
+                    warnings.append(f"Contract calculation import error (assignment_id={ccalc.get('assignment_id')}): {ce2}")
+
+            db.session.commit()
+
+            return {
+                'success': True,
+                'agency_id': new_agency.id,
+                'agency_name': new_agency.name,
+                'created': created_counts,
+                'warnings': warnings,
+            }
+
+        except Exception as e:
+            db.session.rollback()
+            return {'success': False, 'error': f"Erreur lors de l'import: {str(e)}", 'warnings': warnings}

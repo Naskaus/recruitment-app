@@ -122,7 +122,7 @@ def create_app():
             print(f"ID: {user.id}, Username: {user.username}, Role: {user.role}, Agency: {user.agency.name if user.agency else 'None'}")
         
         print("\n=== AGENCIES ===")
-        agencies = Agency.query.all()
+        agencies = Agency.query.filter_by(is_deleted=False).all()
         for agency in agencies:
             print(f"ID: {agency.id}, Name: {agency.name}")
         
@@ -156,7 +156,7 @@ def create_app():
             print(f"Error: User '{username}' not found.")
             return
         
-        agency = Agency.query.filter_by(name=agency_name).first()
+        agency = Agency.query.filter_by(name=agency_name, is_deleted=False).first()
         if not agency:
             print(f"Error: Agency '{agency_name}' not found.")
             return
@@ -196,7 +196,7 @@ def create_app():
             print(f"Error: User '{username}' not found.")
             return
         
-        agency = Agency.query.filter_by(name=agency_name).first()
+        agency = Agency.query.filter_by(name=agency_name, is_deleted=False).first()
         if not agency:
             print(f"Error: Agency '{agency_name}' not found.")
             return
@@ -208,7 +208,7 @@ def create_app():
     @app.cli.command("list-agencies")
     def list_agencies():
         """Lists all agencies."""
-        agencies = Agency.query.all()
+        agencies = Agency.query.filter_by(is_deleted=False).all()
         print("📊 Agencies:")
         for agency in agencies:
             print(f"  - {agency.id}: {agency.name}")
@@ -231,7 +231,7 @@ def create_app():
         # Get or create default agency for non-WebDev users
         agency = None
         if role_name != UserRole.WEBDEV.value:
-            agency = Agency.query.filter_by(name='Bangkok Agency').first()
+            agency = Agency.query.filter_by(name='Bangkok Agency', is_deleted=False).first()
             if not agency:
                 agency = Agency(name='Bangkok Agency')
                 db.session.add(agency)
@@ -248,7 +248,7 @@ def create_app():
     @click.argument("agency_name")
     def create_agency(agency_name):
         """Creates a new agency."""
-        if Agency.query.filter_by(name=agency_name).first():
+        if Agency.query.filter_by(name=agency_name, is_deleted=False).first():
             print(f"Error: Agency '{agency_name}' already exists.")
             return
         
@@ -262,12 +262,12 @@ def create_app():
     @click.argument("new_name")
     def rename_agency(old_name, new_name):
         """Renames an agency."""
-        agency = Agency.query.filter_by(name=old_name).first()
+        agency = Agency.query.filter_by(name=old_name, is_deleted=False).first()
         if not agency:
             print(f"Error: Agency '{old_name}' not found.")
             return
         
-        if Agency.query.filter_by(name=new_name).first():
+        if Agency.query.filter_by(name=new_name, is_deleted=False).first():
             print(f"Error: Agency '{new_name}' already exists.")
             return
         

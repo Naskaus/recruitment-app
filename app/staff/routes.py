@@ -19,20 +19,34 @@ def get_current_agency_id():
     
     if current_user.role == 'webdev':
         agency_id = session.get('current_agency_id', current_user.agency_id)
-        # For WebDev, if no agency is selected, use the first available agency
+        from app.models import Agency
+        # If we have an agency_id, verify it's active
+        if agency_id:
+            active = Agency.query.filter_by(id=agency_id, is_deleted=False).first()
+            if not active:
+                # Clear invalid session agency and try to fallback
+                session.pop('current_agency_id', None)
+                session.pop('current_agency_name', None)
+                agency_id = None
+        # For WebDev, if no agency is selected, use the first available active agency
         if not agency_id:
-            from app.models import Agency
-            first_agency = Agency.query.first()
+            first_agency = Agency.query.filter_by(is_deleted=False).first()
             if first_agency:
                 agency_id = first_agency.id
                 session['current_agency_id'] = agency_id
+                session['current_agency_name'] = first_agency.name
             else:
-                abort(403, "No agencies available.")
+                abort(403, "This agency no longer exists. Please contact your manager.")
         return agency_id
     else:
         agency_id = current_user.agency_id
         if not agency_id:
             abort(403, "User not associated with an agency.")
+        # Ensure the user's agency is active (not soft-deleted)
+        from app.models import Agency
+        active = Agency.query.filter_by(id=agency_id, is_deleted=False).first()
+        if not active:
+            abort(403, "This agency no longer exists. Please contact your manager.")
         return agency_id
 
 # Blueprint definition

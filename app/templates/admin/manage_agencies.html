@@ -276,15 +276,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                 }
             });
-            if (!resp.ok) {
-                const t = await resp.text();
-                throw new Error(t || 'Force delete failed');
+            let data = null;
+            try {
+                data = await resp.json();
+            } catch (parseErr) {
+                throw new Error('Invalid server response');
             }
-            // Reload to reflect deletion
-            window.location.reload();
+            if (resp.ok && data && data.status === 'success') {
+                // Remove the agency row without reloading the page
+                const row = btn.closest('tr') || agenciesTableBody.querySelector(`tr[data-agency-id="${agencyId}"]`);
+                if (row) row.remove();
+                showNotification(data.message || 'Agency permanently deleted.', 'success');
+            } else {
+                const errMsg = (data && data.message) ? data.message : 'Force delete failed';
+                throw new Error(errMsg);
+            }
         } catch (err) {
             console.error(err);
-            showNotification('Error during permanent deletion.', 'error');
+            showNotification(err.message || 'Error during permanent deletion.', 'error');
         }
     });
 

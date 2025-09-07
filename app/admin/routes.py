@@ -342,94 +342,85 @@ def import_agency():
 @login_required
 @webdev_required
 def force_delete_agency(agency_id):
-    """Supprimer définitivement une agence avec sauvegarde préalable"""
+    """Supprimer définitivement une agence avec sauvegarde préalable (JSON responses)."""
     try:
-        # Récupérer l'agence
-        # Allow force-delete regardless of current soft-delete state
+        # Récupérer l'agence (force delete regardless of soft-delete state)
         agency = Agency.query.get(agency_id)
         if not agency:
-            flash('Agency not found', 'error')
-            return redirect(url_for('admin.manage_agencies'))
-        
-        # Créer une sauvegarde avant suppression
+            current_app.logger.error(
+                f'Error during force delete for agency {agency_id}: Agency not found',
+                exc_info=True
+            )
+            return jsonify({'status': 'error', 'message': 'Agency not found'}), 500
+
+        # Backup step only when using SQLite (skip on PostgreSQL or others)
         try:
-            # Créer un dossier pour les sauvegardes si nécessaire
-            import os
-            from datetime import datetime
-            
-            backup_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'backups')
-            os.makedirs(backup_dir, exist_ok=True)
-            
-            # Nom du fichier de sauvegarde
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            backup_filename = f'agency_{agency_id}_backup_{timestamp}.sqlite'
-            backup_path = os.path.join(backup_dir, backup_filename)
-            
-            # Copier la base de données actuelle comme sauvegarde
-            import shutil
-            from config import basedir
-            
-            db_path = os.path.join(basedir, 'data', 'recruitment-dev.db')
-            shutil.copy2(db_path, backup_path)
-            
-            flash(f'Backup created successfully: {backup_filename}', 'info')
-            
-        except Exception as backup_error:
+            db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI', '') or ''
+            if 'sqlite' in db_uri.lower():
+                import os
+                from datetime import datetime
+                import shutil
+                from config import basedir
+
+                backup_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'backups')
+                os.makedirs(backup_dir, exist_ok=True)
+
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                backup_filename = f'agency_{agency_id}_backup_{timestamp}.sqlite'
+                backup_path = os.path.join(backup_dir, backup_filename)
+
+                # Copy the local SQLite database file as a backup
+                db_path = os.path.join(basedir, 'data', 'recruitment-dev.db')
+                shutil.copy2(db_path, backup_path)
+        except Exception as e:
             db.session.rollback()
-            flash(f'Error creating backup: {str(backup_error)}', 'error')
-            return redirect(url_for('admin.manage_agencies'))
-        
+            current_app.logger.error(
+                f'Error during force delete for agency {agency_id}: {e}',
+                exc_info=True
+            )
+            return jsonify({'status': 'error', 'message': str(e)}), 500
+
         # Supprimer toutes les données associées à l'agence
         try:
-            # Supprimer les calculs de contrats
+            # Collect assignment IDs for related deletions
             assignment_ids = [a.id for a in Assignment.query.filter_by(agency_id=agency_id).all()]
             if assignment_ids:
                 ContractCalculations.query.filter(
                     ContractCalculations.assignment_id.in_(assignment_ids)
                 ).delete(synchronize_session=False)
-                
-                # Supprimer les enregistrements de performance
+
                 PerformanceRecord.query.filter(
                     PerformanceRecord.assignment_id.in_(assignment_ids)
                 ).delete(synchronize_session=False)
-                
-                # Supprimer les assignments
+
                 Assignment.query.filter_by(agency_id=agency_id).delete(synchronize_session=False)
-            
-            # Supprimer les profils staff
+
             StaffProfile.query.filter_by(agency_id=agency_id).delete(synchronize_session=False)
-            
-            # Supprimer les venues
             Venue.query.filter_by(agency_id=agency_id).delete(synchronize_session=False)
-            
-            # Supprimer les positions
             AgencyPosition.query.filter_by(agency_id=agency_id).delete(synchronize_session=False)
-            
-            # Supprimer les contrats
             AgencyContract.query.filter_by(agency_id=agency_id).delete(synchronize_session=False)
-            
-            # Supprimer tous les utilisateurs de l'agence (y compris tout webdev mal assigné)
-            User.query.filter(
-                User.agency_id == agency_id
-            ).delete(synchronize_session=False)
-            
-            # Enfin, supprimer l'agence elle-même
+            User.query.filter(User.agency_id == agency_id).delete(synchronize_session=False)
+
+            # Finally, delete the agency itself
             db.session.delete(agency)
             db.session.commit()
-            
-            flash(f'Agency "{agency.name}" has been permanently deleted.', 'success')
-            
-        except Exception as delete_error:
+
+            return jsonify({'status': 'success', 'message': f'Agency "{agency.name}" has been permanently deleted.'}), 200
+        except Exception as e:
             db.session.rollback()
-            flash(f'Error during agency deletion: {str(delete_error)}', 'error')
-            return redirect(url_for('admin.manage_agencies'))
-        
-        return redirect(url_for('admin.manage_agencies'))
-        
+            current_app.logger.error(
+                f'Error during force delete for agency {agency_id}: {e}',
+                exc_info=True
+            )
+            return jsonify({'status': 'error', 'message': str(e)}), 500
+
     except Exception as e:
         db.session.rollback()
-        flash(f'Error processing agency deletion: {str(e)}', 'error')
-        return redirect(url_for('admin.manage_agencies'))
+        current_app.logger.error(
+            f'Error during force delete for agency {agency_id}: {e}',
+            exc_info=True
+        )
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @admin_bp.route('/download_backup/<path:filename>')
 @login_required

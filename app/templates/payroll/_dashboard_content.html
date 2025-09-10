@@ -153,37 +153,59 @@
         </div>
         
         <h5 class="section-title" style="text-align: left !important;"><i class="fas fa-file-contract"></i> Detailed Contracts ({{ contracts|length }})</h5>
+        <div class="overflow-x-auto">
         <table class="detailed-table" style="margin: 0 auto; display: inline-table;">
                 <thead>
                     <tr style="border-bottom: 3px solid #495057;">
-                        <th style="font-weight: 900;">ID</th>
-                        <th style="font-weight: 900;">Staff</th>
-                        <th style="font-weight: 900;">Staff ID</th>
-                        <th style="font-weight: 900;">Venue</th>
-                        <th style="font-weight: 900;">Contract<br>Type</th>
-                        <th style="font-weight: 900;">Status</th>
-                        <th style="font-weight: 900;">Start<br>Date</th>
-                        <th style="font-weight: 900;">End<br>Date</th>
-                        <th style="font-weight: 900;">Days<br>Worked</th>
-                        <th style="font-weight: 900;">Total<br>Profit</th>
+                        <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm" style="font-weight: 900;">ID</th>
+                        <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm" style="font-weight: 900;">Staff</th>
+                        <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm" style="font-weight: 900;">Staff ID</th>
+                        <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm" style="font-weight: 900;">Venue</th>
+                        <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm" style="font-weight: 900;">Type</th>
+                        <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm" style="font-weight: 900;">Status</th>
+                        <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm" style="font-weight: 900;">Start</th>
+                        <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm" style="font-weight: 900;">End</th>
+                        <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm" style="font-weight: 900;">Days</th>
+                        <th class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm" style="font-weight: 900;">Profit</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for contract in contracts %}
                     <tr>
-                        <td><a href="{{ url_for('payroll.report_view', assignment_id=contract.id) }}" style="color: #4A90E2; text-decoration: none; font-weight: bold;">{{ contract.id }}</a></td>
-                        <td><strong>{{ contract.staff.nickname if contract.staff else contract.archived_staff_name }}</strong></td>
-                        <td><strong>{{ contract.staff.staff_id if contract.staff else 'N/A' }}</strong></td>
-                        <td><strong>{{ contract.venue.name if contract.venue else 'N/A' }}</strong></td>
-                        <td><strong>{{ contract.contract_type }}</strong></td>
-                        <td><span class="badge status-badge status-{{ contract.status|lower }}"><strong>{{ contract.status }}</strong></span></td>
-                        <td><strong>{{ contract.start_date.strftime('%d-%m') if contract.start_date else 'N/A' }}</strong></td>
-                        <td><strong>{{ contract.end_date.strftime('%d-%m') if contract.end_date else 'N/A' }}</strong></td>
-                        <td><strong>{{ contract.contract_calculations.days_worked if contract.contract_calculations else 'N/A' }}</strong></td>
-                        <td class="{{ 'text-success' if contract.contract_calculations and contract.contract_calculations.total_profit >= 0 else 'text-danger' }}"><strong>{{ contract.contract_calculations.total_profit if contract.contract_calculations else 'N/A' }}</strong></td>
+                        <td class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm whitespace-nowrap"><a href="{{ url_for('payroll.report_view', assignment_id=contract.id) }}" style="color: #4A90E2; text-decoration: none; font-weight: bold;">{{ contract.id }}</a></td>
+                        <td class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm whitespace-nowrap"><strong>{{ contract.staff.nickname if contract.staff else contract.archived_staff_name }}</strong></td>
+                        <td class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm whitespace-nowrap"><strong>{{ contract.staff.staff_id if contract.staff else 'N/A' }}</strong></td>
+                        <td class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm whitespace-nowrap"><strong>{{ contract.venue.name if contract.venue else 'N/A' }}</strong></td>
+                        <td class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm whitespace-nowrap"><strong>{{ contract.contract_type }}</strong></td>
+                        <td class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm whitespace-nowrap"><span class="badge status-badge status-{{ contract.status|lower }}"><strong>{{ contract.status }}</strong></span></td>
+                        <td class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm whitespace-nowrap">
+                            <strong>
+                                {% if contract.start_date %}
+                                    <span class="date-2line">{{ contract.start_date.strftime('%d') }}</span>
+                                    <span class="date-2line-mon">{{ contract.start_date.strftime('%b')|upper }}</span>
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </strong>
+                        </td>
+                        <td class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm whitespace-nowrap">
+                            <strong>
+                                {% if contract.end_date %}
+                                    <span class="date-2line">{{ contract.end_date.strftime('%d') }}</span>
+                                    <span class="date-2line-mon">{{ contract.end_date.strftime('%b')|upper }}</span>
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </strong>
+                        </td>
+                        <td class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm whitespace-nowrap"><strong>{{ contract.contract_calculations.days_worked if contract.contract_calculations else 'N/A' }}</strong></td>
+                        <td class="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm whitespace-nowrap {{ 'text-success' if contract.contract_calculations and contract.contract_calculations.total_profit >= 0 else 'text-danger' }}"><strong>{{ contract.contract_calculations.total_profit if contract.contract_calculations else 'N/A' }}</strong></td>
                     </tr>
                     {% endfor %}
                 </tbody>
         </table>
+        </div>
+    </div>
     </div>
 </div>
+

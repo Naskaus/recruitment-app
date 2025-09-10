@@ -210,9 +210,38 @@ document.addEventListener('DOMContentLoaded', function() {
     savePositionsBtn.addEventListener('click', savePositions);
 
     // Remove position input
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', async function(e) {
         if (e.target.classList.contains('remove-position')) {
-            e.target.closest('.position-input-group').remove();
+            const inputGroup = e.target.closest('.position-input-group');
+            const input = inputGroup.querySelector('.position-input');
+            const positionId = input.dataset.id;
+
+            if (positionId && positionId !== 'null') {
+                // Existing position, send DELETE request
+                if (confirm('Are you sure you want to delete this position?')) {
+                    try {
+                        const response = await fetch(`/auth/api/positions/${positionId}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                            }
+                        });
+                        const data = await response.json();
+                        if (response.ok) {
+                            inputGroup.remove();
+                            positions = positions.filter(p => p.id !== parseInt(positionId));
+                        } else {
+                            alert('Failed to delete position: ' + data.message);
+                        }
+                    } catch (error) {
+                        console.error('Error deleting position:', error);
+                        alert('An error occurred while deleting the position.');
+                    }
+                }
+            } else {
+                // New, unsaved position, just remove from DOM
+                inputGroup.remove();
+            }
         }
     });
 });

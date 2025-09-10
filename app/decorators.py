@@ -39,12 +39,12 @@ def super_admin_required(f):
     return decorated_function
 
 def webdev_required(f):
-    """Décorateur pour vérifier que l'utilisateur a le rôle 'webdev'"""
+    """Décorateur pour vérifier que l'utilisateur a le rôle 'webdev' ou 'super_admin'"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
             abort(401)  # Unauthorized
-        if current_user.role != UserRole.WEBDEV.value:
+        if current_user.role not in [UserRole.WEBDEV.value, UserRole.SUPER_ADMIN.value]:
             abort(403)  # Forbidden
         return f(*args, **kwargs)
     return decorated_function

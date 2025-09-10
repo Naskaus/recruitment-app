@@ -59,6 +59,14 @@ class AgencyManagementService:
             filename = f"agency_{agency_id}_{agency.name.replace(' ', '_')}_{timestamp}.json"
             filepath = os.path.join(export_dir, filename)
             
+            # --- AJOUT ---
+            # Extraire le chemin du répertoire à partir du chemin complet du fichier
+            export_dir_from_path = os.path.dirname(filepath)
+
+            # Créer le répertoire et tous les répertoires parents s'ils n'existent pas
+            os.makedirs(export_dir_from_path, exist_ok=True)
+            # --- FIN DE L'AJOUT ---
+
             # Sauvegarder le fichier JSON
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(export_data, f, ensure_ascii=False, indent=2, default=str)

@@ -1,84 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<style>
-  /* Styles for the "Days Worked" column */
-  .days-worked-cell {
-    text-align: center;
-    font-weight: 600;
-    font-size: 1.05em;
-    vertical-align: middle;
-  }
-  .summary-stats-container {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    padding: 16px 24px;
-    width: 100%;
-  }
-  .summary-stat {
-    text-align: center;
-  }
-  .summary-label {
-    display: block;
-    font-size: 0.9em;
-    color: #6c757d;
-    margin-bottom: 4px;
-  }
-  .summary-value {
-    display: block;
-    font-size: 1.75em;
-    font-weight: 700;
-  }
 
-  /* NEW: Styles for the Final Summary Modal (Refactored from inline) */
-  .final-summary-grid {
-    font-size: 1.1em;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem 1.5rem;
-  }
-  .final-summary-row {
-    display: flex;
-    justify-content: space-between;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 0.5rem;
-  }
-  
-  /* Styles pour le bouton Export PDF */
-  .payroll-export-pdf {
-    white-space: nowrap;
-    min-width: fit-content;
-  }
-  
-  /* Responsive pour les petits écrans */
-  @media (max-width: 1400px) {
-    .filter-actions {
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .payroll-export-pdf {
-      order: 3;
-      width: 100%;
-      text-align: center;
-      margin-top: 8px;
-    }
-  }
-  
-  /* Pour les très petits écrans */
-  @media (max-width: 768px) {
-    .filter-actions {
-      flex-direction: column;
-      align-items: stretch;
-    }
-    .payroll-export-pdf {
-      order: 3;
-      width: 100%;
-      text-align: center;
-      margin-top: 8px;
-    }
-  }
-</style>
 
 <div class="page-header">
   <h2>Payroll & Performance (Contracts) v2</h2>
@@ -93,20 +16,20 @@
         <input type="text" id="nickname" name="nickname" placeholder="Enter nickname..." value="{{ filters.search_nickname or '' }}">
       </div>
       <div class="filter-group">
-        <label for="venue">Venue</label>
-        <select id="venue" name="venue">
+        <label for="venue_id">Venue</label>
+        <select id="venue_id" name="venue_id">
           <option value="">All Venues</option>
           {% for venue in filters.venues %}
-            <option value="{{ venue }}" {% if filters.selected_venue == venue %}selected{% endif %}>{{ venue }}</option>
+            <option value="{{ venue.id }}" {% if filters.selected_venue_id == venue.id %}selected{% endif %}>{{ venue.name }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="filter-group">
         <label for="contract_type">Contract Type</label>
         <select id="contract_type" name="contract_type">
-          <option value="">All Types</option>
-          {% for c_type in filters.contract_types %}
-            <option value="{{ c_type }}" {% if filters.selected_contract_type == c_type %}selected{% endif %}>{{ c_type }}</option>
+          <option value="all">All Types</option>
+          {% for contract in filters.contract_types %}
+            <option value="{{ contract.name }}" {% if filters.selected_contract_type == contract.name %}selected{% endif %}>{{ contract.name }}</option>
           {% endfor %}
         </select>
       </div>
@@ -168,6 +91,7 @@
 
 <div class="card">
   <div class="card-body">
+    <div class="table-responsive-wrapper">
       <table class="payroll-table">
         <thead>
         <tr>
@@ -319,6 +243,7 @@
         {% endif %}
         </tbody>
       </table>
+    </div>
   </div>
 </div>
 

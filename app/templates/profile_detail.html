@@ -50,6 +50,7 @@
           <p><strong>Date of Birth:</strong> {{ profile.dob.strftime('%d %B %Y') if profile.dob else 'N/A' }}</p>
           <p><strong>Height:</strong> {{ profile.height or 'N/A' }} cm</p>
           <p><strong>Weight:</strong> {{ profile.weight or 'N/A' }} kg</p>
+          <p><strong>Profile Created:</strong> {{ profile.created_at.strftime('%d %b %Y') if profile.created_at else 'N/A' }}</p>
         </div>
 
         <h4>Contact & Social</h4>

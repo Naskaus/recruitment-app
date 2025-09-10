@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import sys
 import os
+
+# Add the project root to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
+
 import shutil
 from app import create_app, db
 from app.models import User, Agency, StaffProfile, Venue, AgencyPosition, AgencyContract
@@ -15,15 +21,17 @@ def reset_and_import_db():
         print("=" * 60)
         
         # 1. Sauvegarder l'ancienne base de données
-        if os.path.exists('recruitment.db'):
-            backup_name = f'recruitment_backup_{int(os.path.getmtime("recruitment.db"))}.db'
-            shutil.copy2('recruitment.db', backup_name)
-            print(f"📦 Sauvegarde créée : {backup_name}")
+        db_path = os.path.join(project_root, 'data', 'recruitment-dev.db')
+        if os.path.exists(db_path):
+            backup_name = f"recruitment_backup_{int(os.path.getmtime(db_path))}.db"
+            backup_path = os.path.join(project_root, 'data', backup_name)
+            shutil.copy2(db_path, backup_path)
+            print(f"📦 Sauvegarde créée : {backup_path}")
         
         # 2. Supprimer la base de données actuelle
-        if os.path.exists('recruitment.db'):
-            os.remove('recruitment.db')
-            print("🗑️ Base de données supprimée")
+        if os.path.exists(db_path):
+            os.remove(db_path)
+            print(f"🗑️ Base de données supprimée : {db_path}")
         
         # 3. Créer une nouvelle base de données vide
         db.create_all()

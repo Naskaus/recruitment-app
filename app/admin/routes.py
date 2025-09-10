@@ -485,7 +485,42 @@ def export_and_download(agency_id):
     except Exception as e:
         return jsonify({'error': f'Erreur lors de l\'export et téléchargement: {str(e)}'}), 500
 
+@admin_bp.route('/download_agency_db/<int:agency_id>')
+@login_required
+@webdev_required
+def download_agency_db(agency_id):
+    """Exporter et télécharger immédiatement la base de données d'une agence"""
+    try:
+        # Récupérer l'agence
+        agency = Agency.query.filter_by(id=agency_id, is_deleted=False).first()
+        if not agency:
+            flash('Agency not found or has been deleted.', 'error')
+            return redirect(url_for('admin.manage_agencies'))
+
+        # Exporter les données de l'agence
+        export_result = AgencyManagementService.export_agency_data_to_json(agency_id)
+
+        if not export_result['success']:
+            flash(f'Error during agency data export: {export_result["error"]}', 'error')
+            return redirect(url_for('admin.manage_agencies'))
+
+        # Récupérer les données exportées
+        export_data = export_result['export_data']
+        filename = export_result['filename']
+
+        # Retourner les données JSON directement avec les en-têtes de téléchargement
+        response = jsonify(export_data)
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.headers['Content-Type'] = 'application/json'
+
+        return response
+
+    except Exception as e:
+        flash(f'Error during agency DB download: {str(e)}', 'error')
+        return redirect(url_for('admin.manage_agencies'))
+
 # Reactivate a soft-deleted agency
+
 @admin_bp.route('/reactivate_agency/<int:agency_id>', methods=['POST'])
 @login_required
 @webdev_required

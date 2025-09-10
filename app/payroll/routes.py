@@ -13,7 +13,7 @@ from sqlalchemy.orm import joinedload
 payroll_bp = Blueprint('payroll', __name__, template_folder='../templates', url_prefix='/payroll')
 
 # --- Constants ---
-CONTRACT_TYPES = {"1day": 1, "10days": 10, "1month": 30}
+
 DRINK_STAFF_COMMISSION = 100
 DRINK_BAR_PRICE = 220
 BAR_COMMISSION = DRINK_BAR_PRICE - DRINK_STAFF_COMMISSION  # 220 - 100 = 120 THB per drink
@@ -106,7 +106,7 @@ def payroll_page():
     # Apply filters
     if selected_venue_id:
         q = q.filter(Assignment.venue_id == selected_venue_id)
-    if selected_contract_type:
+    if selected_contract_type and selected_contract_type != 'all':
         q = q.filter(Assignment.contract_type == selected_contract_type)
     
     # Apply status filter with default to 'active' for better performance
@@ -207,9 +207,10 @@ def payroll_page():
     agency_managers = User.query.filter_by(agency_id=agency_id).order_by(User.username).all()
     agency_venues = Venue.query.filter_by(agency_id=agency_id).order_by(Venue.name).all()
 
+    agency_contracts_for_filter = AgencyContract.query.filter_by(agency_id=agency_id).order_by(AgencyContract.name).all()
     filter_data = {
         "venues": agency_venues,
-        "contract_types": CONTRACT_TYPES.keys(),
+        "contract_types": agency_contracts_for_filter,
         "statuses": ['ongoing', 'active', 'ended', 'archived', 'all'],
         "managers": agency_managers,
         "selected_venue_id": selected_venue_id,
@@ -607,7 +608,7 @@ def payroll_pdf():
     # Apply filters (same logic as payroll_page)
     if selected_venue_id:
         q = q.filter(Assignment.venue_id == selected_venue_id)
-    if selected_contract_type:
+    if selected_contract_type and selected_contract_type != 'all':
         q = q.filter(Assignment.contract_type == selected_contract_type)
     if selected_status:
         q = q.filter(Assignment.status == selected_status)
@@ -913,7 +914,7 @@ def payroll_dashboard():
     # Apply filters (same logic as payroll_page)
     if selected_venue_id:
         q = q.filter(Assignment.venue_id == selected_venue_id)
-    if selected_contract_type:
+    if selected_contract_type and selected_contract_type != 'all':
         q = q.filter(Assignment.contract_type == selected_contract_type)
     
     # Apply status filter
@@ -969,9 +970,11 @@ def payroll_dashboard():
         selected_venue = Venue.query.get(selected_venue_id)
     
     # Prepare filter data for template (same approach as PDF route)
+    agency_contracts_for_filter = AgencyContract.query.filter_by(agency_id=agency_id).order_by(AgencyContract.name).all()
     filter_data = {
         "venues": agency_venues,
-        "managers": agency_managers
+        "managers": agency_managers,
+        "contract_types": agency_contracts_for_filter
     }
     
     # Pass data to the template with names expected by the frontend
@@ -1017,7 +1020,7 @@ def payroll_dashboard_pdf():
 
     if selected_venue_id:
         q = q.filter(Assignment.venue_id == selected_venue_id)
-    if selected_contract_type:
+    if selected_contract_type and selected_contract_type != 'all':
         q = q.filter(Assignment.contract_type == selected_contract_type)
     if selected_status and selected_status != 'all':
         q = q.filter(Assignment.status == selected_status)

@@ -23,6 +23,9 @@ class LoginForm(FlaskForm):
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
+        # Redirect WebDev users to an agency-agnostic page to avoid 403 when no active agency
+        if current_user.role == UserRole.WEBDEV.value:
+            return redirect(url_for('admin.manage_agencies'))
         return redirect(url_for('staff.staff_list'))
     
     form = LoginForm()
@@ -34,6 +37,9 @@ def login():
             return redirect(url_for('auth.login'))
         
         login_user(user, remember=True)
+        # Send WebDev to Agencies management; others to staff list
+        if user.role == UserRole.WEBDEV.value:
+            return redirect(url_for('admin.manage_agencies'))
         return redirect(url_for('staff.staff_list'))
         
     return render_template('login.html', form=form)

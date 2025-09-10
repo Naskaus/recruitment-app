@@ -1,165 +1,18 @@
-2025-09-05 18:53:39,840 ERROR: Exception on /staff/ [GET] [in C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py:825]
-Traceback (most recent call last):
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
-    self.dialect.do_execute(
-    ~~~~~~~~~~~~~~~~~~~~~~~^
-        cursor, str_statement, effective_parameters, context
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\default.py", line 951, in do_execute
-    cursor.execute(statement, parameters)
-    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-sqlite3.OperationalError: no such column: agency.is_deleted
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 1455, in wsgi_app
-    response = self.full_dispatch_request()
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 869, in full_dispatch_request
-    rv = self.handle_user_exception(e)
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 867, in full_dispatch_request
-    rv = self.dispatch_request()
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 852, in dispatch_request
-    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
-    return current_app.ensure_sync(func)(*args, **kwargs)
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
-  File "C:\Users\User\os_agency_v0.55\recruitment-app\app\decorators.py", line 16, in decorated_function
-    return f(*args, **kwargs)
-  File "C:\Users\User\os_agency_v0.55\recruitment-app\app\staff\routes.py", line 94, in staff_list
-    return render_template('staff_list.html', profiles=all_profiles, statuses=ALLOWED_STATUSES,
-        venues=venues, current_filters={'search_nickname': search_nickname, 'sort_by': sort_by, 'sort_order': sort_order})
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\templating.py", line 152, in render_template
-    return _render(app, template, context)
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\templating.py", line 133, in _render
-    rv = template.render(context)
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 1295, in render
-    self.environment.handle_exception()
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
-    raise rewrite_traceback_stack(source=source)
-  File "C:\Users\User\os_agency_v0.55\recruitment-app\app\templates\staff_list.html", line 1, in top-level template code
-    {% extends "base.html" %}
-  File "C:\Users\User\os_agency_v0.55\recruitment-app\app\templates\base.html", line 31, in top-level template code
-    {{ current_user.agency.name if current_user.agency else 'No Agency' }}
-    
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 490, in getattr
-    return getattr(obj, attribute)
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\attributes.py", line 569, in __get__
-    return self.impl.get(state, dict_)  # type: ignore[no-any-return]
-           ~~~~~~~~~~~~~^^^^^^^^^^^^^^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\attributes.py", line 1096, in get
-    value = self._fire_loader_callables(state, key, passive)
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\attributes.py", line 1131, in _fire_loader_callables
-    return self.callable_(state, passive)
-           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\strategies.py", line 978, in _load_for_state
-    return self._emit_lazyload(
-           ~~~~~~~~~~~~~~~~~~~^
-        session,
-        ^^^^^^^^
-    ...<7 lines>...
-        execution_options,
-        ^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\strategies.py", line 1079, in _emit_lazyload
-    return loading.load_on_pk_identity(
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
-        session,
-        ^^^^^^^^
-    ...<3 lines>...
-        execution_options=execution_options,
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\loading.py", line 695, in load_on_pk_identity
-    session.execute(
-    ~~~~~~~~~~~~~~~^
-        q,
-        ^^
-    ...<2 lines>...
-        bind_arguments=bind_arguments,
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\session.py", line 2365, in execute
-    return self._execute_internal(
-           ~~~~~~~~~~~~~~~~~~~~~~^
-        statement,
-        ^^^^^^^^^^
-    ...<4 lines>...
-        _add_event=_add_event,
-        ^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\session.py", line 2251, in _execute_internal
-    result: Result[Any] = compile_state_cls.orm_execute_statement(
-                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
-        self,
-        ^^^^^
-    ...<4 lines>...
-        conn,
-        ^^^^^
-    )
-    ^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
-    result = conn.execute(
-        statement, params or {}, execution_options=execution_options
-    )
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
-    return meth(
-        self,
-        distilled_parameters,
-        execution_options or NO_OPTIONS,
-    )
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\sql\elements.py", line 526, in _execute_on_connection
-    return connection._execute_clauseelement(
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
-        self, distilled_params, execution_options
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
-    ret = self._execute_context(
-        dialect,
-    ...<8 lines>...
-        cache_hit=cache_hit,
-    )
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
-    return self._exec_single_context(
-           ~~~~~~~~~~~~~~~~~~~~~~~~~^
-        dialect, context, statement, parameters
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
-    self._handle_dbapi_exception(
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
-        e, str_statement, effective_parameters, cursor, context
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\base.py", line 2355, in _handle_dbapi_exception
-    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
-    self.dialect.do_execute(
-    ~~~~~~~~~~~~~~~~~~~~~~~^
-        cursor, str_statement, effective_parameters, context
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\default.py", line 951, in do_execute
-    cursor.execute(statement, parameters)
-    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: agency.is_deleted
-[SQL: SELECT agency.id AS agency_id, agency.name AS agency_name, agency.is_deleted AS agency_is_deleted, agency.created_at AS agency_created_at 
-FROM agency 
-WHERE agency.id = ?]
-[parameters: (1,)]
-(Background on this error at: https://sqlalche.me/e/20/e3q8)
-2025-09-05 18:57:01,179 INFO: OS Agency startup [in C:\Users\User\os_agency_v0.55\recruitment-app\app\__init__.py:43]
-2025-09-05 18:59:26,323 INFO: OS Agency startup [in C:\Users\User\os_agency_v0.55\recruitment-app\app\__init__.py:43]
+2025-09-07 23:42:31,826 INFO: [PERF] Starting payroll page load - 2025-09-07 23:42:31.826720 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:78]
+2025-09-07 23:42:31,844 INFO: [PERF] Assignments retrieved: 45 in 0.018s [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:138]
+2025-09-07 23:42:31,845 INFO: [PERF] Starting batch processing for 45 assignments [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:147]
+2025-09-07 23:42:31,848 INFO: [PERF] Batch pre-queries finished in 0.003s [in C:\Users\User\os_agency_v0.55\recruitment-app\app\services\payroll_service.py:97]
+2025-09-07 23:42:31,859 INFO: [PERF] Batch of 45 assignments processed in 0.012s [in C:\Users\User\os_agency_v0.55\recruitment-app\app\services\payroll_service.py:175]
+2025-09-07 23:42:31,860 INFO: [PERF] Batch finished in 0.015s [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:152]
+2025-09-07 23:42:31,953 INFO: [PERF] Calculations finished in 0.108s [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:202]
+2025-09-07 23:42:31,955 INFO: [PERF] Payroll page ready to render in 0.129s total (status filter: archived) [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:226]
+2025-09-07 23:42:45,614 INFO: [PERF] Starting payroll page load - 2025-09-07 23:42:45.614535 [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:78]
+2025-09-07 23:42:45,625 INFO: [PERF] Assignments retrieved: 44 in 0.011s [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:138]
+2025-09-07 23:42:45,625 INFO: [PERF] Starting batch processing for 44 assignments [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:147]
+2025-09-07 23:42:45,627 INFO: [PERF] Batch pre-queries finished in 0.002s [in C:\Users\User\os_agency_v0.55\recruitment-app\app\services\payroll_service.py:97]
+2025-09-07 23:42:45,637 INFO: [PERF] Batch of 44 assignments processed in 0.010s [in C:\Users\User\os_agency_v0.55\recruitment-app\app\services\payroll_service.py:175]
+2025-09-07 23:42:45,638 INFO: [PERF] Batch finished in 0.013s [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:152]
+2025-09-07 23:42:45,718 INFO: [PERF] Calculations finished in 0.093s [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:202]
+2025-09-07 23:42:45,719 INFO: [PERF] Payroll page ready to render in 0.105s total (status filter: archived) [in C:\Users\User\os_agency_v0.55\recruitment-app\app\payroll\routes.py:226]
+2025-09-08 00:23:50,024 INFO: OS Agency startup [in C:\Users\User\os_agency_v0.55\recruitment-app\app\__init__.py:43]
+2025-09-08 00:27:52,240 INFO: OS Agency startup [in C:\Users\User\os_agency_v0.55\recruitment-app\app\__init__.py:43]
